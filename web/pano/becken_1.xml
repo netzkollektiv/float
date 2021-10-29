@@ -1,0 +1,57 @@
+<krpano version="1.17" onstart="startup(); set(progress.showload,none); set(progress.showwait,none);  dragcursor();">
+<control mousetype="drag2d"/>
+	<action name="dragcursor">
+		set(plugin[dragmode].visible, false);
+		set(plugin[movemode].visible, true);
+		set(control.mousetype, drag2D);
+		set(cursors.url, %SWFPATH%/skin/drag-cursors.png);
+		set(cursors.type, drag);
+		set(cursors.move,  2|0|30|32);
+		set(cursors.drag, 37|0|30|32);
+	</action>
+
+
+	
+	
+	
+
+	<action name="startup">
+		<!-- load the first scene -->
+		loadscene(get(scene[0].name), null, MERGE);
+if(start_scene === null, set(start_scene,0); );
+	loadscene(get(start_scene));
+
+	</action>
+
+
+
+	
+	
+		<scene name="scene_becken" title="Becken 1" onstart="set(autorotate.enabled, true);" thumburl="panos/becken.tiles/thumb.jpg">
+
+		<view hlookat="300" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="1.0" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/becken.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3563" tiledimageheight="3563">
+				<cube url="panos/becken.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1782" tiledimageheight="1782">
+				<cube url="panos/becken.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="891" tiledimageheight="891">
+				<cube url="panos/becken.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/becken.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>     
+		
+
+
+	</scene>
+
+	
+
+</krpano>

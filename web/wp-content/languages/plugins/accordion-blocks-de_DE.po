@@ -1,0 +1,42 @@
+# Translation of Plugins - Accordion Blocks - Stable (latest release) in German
+# This file is distributed under the same license as the Plugins - Accordion Blocks - Stable (latest release) package.
+msgid ""
+msgstr ""
+"PO-Revision-Date: 2020-11-15 09:34:10+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: GlotPress/3.0.0-alpha.2\n"
+"Language: de\n"
+"Project-Id-Version: Plugins - Accordion Blocks - Stable (latest release)\n"
+
+#: accordion-blocks.php:253
+msgid "Donate"
+msgstr "Spenden"
+
+#. Plugin URI of the plugin
+msgid "https://github.com/philbuchanan/Accordion-Blocks"
+msgstr "https://github.com/philbuchanan/Accordion-Blocks"
+
+#: accordion-blocks.php:248
+msgctxt "link to documentation on wordpress.org site"
+msgid "Documentation"
+msgstr "Dokumentation"
+
+#. Author URI of the plugin
+msgid "https://philbuchanan.com"
+msgstr "https://philbuchanan.com"
+
+#. Author of the plugin
+msgid "Phil Buchanan"
+msgstr "Phil Buchanan"
+
+#. Description of the plugin
+msgid "Gutenberg blocks for creating responsive accordion drop-downs."
+msgstr "Gutenberg-Blöcke zum Erstellen von responsiven Akkordeon-Drop-downs."
+
+#. Plugin Name of the plugin
+#: accordion-blocks.php:288
+msgid "Accordion Blocks"
+msgstr "Accordion Blocks"

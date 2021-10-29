@@ -1,0 +1,52 @@
+<krpano version="1.17" onstart="startup(); set(progress.showload,none); set(progress.showwait,none);  dragcursor();">
+<control mousetype="drag2d"/>
+	<action name="dragcursor">
+		set(plugin[dragmode].visible, false);
+		set(plugin[movemode].visible, true);
+		set(control.mousetype, drag2D);
+		set(cursors.url, %SWFPATH%/skin/drag-cursors.png);
+		set(cursors.type, drag);
+		set(cursors.move,  2|0|30|32);
+		set(cursors.drag, 37|0|30|32);
+	</action>
+
+
+	
+	
+	
+
+	<action name="startup">
+		<!-- load the first scene -->
+		loadscene(get(scene[0].name), null, MERGE);
+if(start_scene === null, set(start_scene,0); );
+	loadscene(get(start_scene));
+
+	</action>
+
+
+<scene name="scene_buero" title="Büro" onstart="set(autorotate.enabled, true);" thumburl="panos/buero.tiles/thumb.jpg" lat="" lng="" heading="">
+
+		<view hlookat="42" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="1.0" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/buero.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3584" tiledimageheight="3584">
+				<cube url="panos/buero.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1792" tiledimageheight="1792">
+				<cube url="panos/buero.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="896" tiledimageheight="896">
+				<cube url="panos/buero.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/buero.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>
+
+
+	</scene>
+	
+
+</krpano>

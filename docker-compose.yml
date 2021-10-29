@@ -1,0 +1,36 @@
+version: "2"
+
+networks:
+  web:
+    external: true
+
+services:
+
+  wordpress:
+    build: ./docker
+    links:
+      - db
+    env_file:
+      - .env
+    volumes:
+      - ./web:/var/www/html
+      - .:/root
+      - /opt/gocode/bin/mhsendmail:/usr/local/bin/mhsendmail
+      - /opt/global/conf/mailhog.ini:/usr/local/etc/php/conf.d/mailhog.ini
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.web.frontend.rule=Host: float.docker03.netzkollektiv.com"
+      - "traefik.docker.network=web"
+    networks:
+      - web
+      - default
+
+  db:
+    image: mysql:5.7
+    env_file:
+      - .env
+    ports:
+      - 127.0.0.1:${MYSQL_PORT}:3306
+    networks:
+      - default

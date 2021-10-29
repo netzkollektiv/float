@@ -1,0 +1,410 @@
+{
+    "packages": [
+        {
+            "name": "automattic/jetpack-autoloader",
+            "version": "2.10.1",
+            "version_normalized": "2.10.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Automattic/jetpack-autoloader.git",
+                "reference": "20393c4677765c3e737dcb5aee7a3f7b90dce4b3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Automattic/jetpack-autoloader/zipball/20393c4677765c3e737dcb5aee7a3f7b90dce4b3",
+                "reference": "20393c4677765c3e737dcb5aee7a3f7b90dce4b3",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^1.1 || ^2.0"
+            },
+            "require-dev": {
+                "automattic/jetpack-changelogger": "^1.1",
+                "yoast/phpunit-polyfills": "0.2.0"
+            },
+            "time": "2021-03-30T15:15:59+00:00",
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Automattic\\Jetpack\\Autoloader\\CustomAutoloaderPlugin",
+                "mirror-repo": "Automattic/jetpack-autoloader",
+                "changelogger": {
+                    "link-template": "https://github.com/Automattic/jetpack-autoloader/compare/v${old}...v${new}"
+                },
+                "branch-alias": {
+                    "dev-master": "2.10.x-dev"
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "classmap": [
+                    "src/AutoloadGenerator.php"
+                ],
+                "psr-4": {
+                    "Automattic\\Jetpack\\Autoloader\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "description": "Creates a custom autoloader for a plugin or theme.",
+            "support": {
+                "source": "https://github.com/Automattic/jetpack-autoloader/tree/2.10.1"
+            },
+            "install-path": "../automattic/jetpack-autoloader"
+        },
+        {
+            "name": "composer/installers",
+            "version": "v1.12.0",
+            "version_normalized": "1.12.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/composer/installers.git",
+                "reference": "d20a64ed3c94748397ff5973488761b22f6d3f19"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/composer/installers/zipball/d20a64ed3c94748397ff5973488761b22f6d3f19",
+                "reference": "d20a64ed3c94748397ff5973488761b22f6d3f19",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^1.0 || ^2.0"
+            },
+            "replace": {
+                "roundcube/plugin-installer": "*",
+                "shama/baton": "*"
+            },
+            "require-dev": {
+                "composer/composer": "1.6.* || ^2.0",
+                "composer/semver": "^1 || ^3",
+                "phpstan/phpstan": "^0.12.55",
+                "phpstan/phpstan-phpunit": "^0.12.16",
+                "symfony/phpunit-bridge": "^4.2 || ^5",
+                "symfony/process": "^2.3"
+            },
+            "time": "2021-09-13T08:19:44+00:00",
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Composer\\Installers\\Plugin",
+                "branch-alias": {
+                    "dev-main": "1.x-dev"
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Composer\\Installers\\": "src/Composer/Installers"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Kyle Robinson Young",
+                    "email": "kyle@dontkry.com",
+                    "homepage": "https://github.com/shama"
+                }
+            ],
+            "description": "A multi-framework Composer library installer",
+            "homepage": "https://composer.github.io/installers/",
+            "keywords": [
+                "Craft",
+                "Dolibarr",
+                "Eliasis",
+                "Hurad",
+                "ImageCMS",
+                "Kanboard",
+                "Lan Management System",
+                "MODX Evo",
+                "MantisBT",
+                "Mautic",
+                "Maya",
+                "OXID",
+                "Plentymarkets",
+                "Porto",
+                "RadPHP",
+                "SMF",
+                "Starbug",
+                "Thelia",
+                "Whmcs",
+                "WolfCMS",
+                "agl",
+                "aimeos",
+                "annotatecms",
+                "attogram",
+                "bitrix",
+                "cakephp",
+                "chef",
+                "cockpit",
+                "codeigniter",
+                "concrete5",
+                "croogo",
+                "dokuwiki",
+                "drupal",
+                "eZ Platform",
+                "elgg",
+                "expressionengine",
+                "fuelphp",
+                "grav",
+                "installer",
+                "itop",
+                "joomla",
+                "known",
+                "kohana",
+                "laravel",
+                "lavalite",
+                "lithium",
+                "magento",
+                "majima",
+                "mako",
+                "mediawiki",
+                "miaoxing",
+                "modulework",
+                "modx",
+                "moodle",
+                "osclass",
+                "pantheon",
+                "phpbb",
+                "piwik",
+                "ppi",
+                "processwire",
+                "puppet",
+                "pxcms",
+                "reindex",
+                "roundcube",
+                "shopware",
+                "silverstripe",
+                "sydes",
+                "sylius",
+                "symfony",
+                "tastyigniter",
+                "typo3",
+                "wordpress",
+                "yawik",
+                "zend",
+                "zikula"
+            ],
+            "support": {
+                "issues": "https://github.com/composer/installers/issues",
+                "source": "https://github.com/composer/installers/tree/v1.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://packagist.com",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/composer",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/composer/composer",
+                    "type": "tidelift"
+                }
+            ],
+            "install-path": "./installers"
+        },
+        {
+            "name": "vendidero/storeabill",
+            "version": "v1.8.1",
+            "version_normalized": "1.8.1.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:vendidero/storeabill.git",
+                "reference": "b1816a97f62836710b174bb47b015e4373e6d80d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vendidero/storeabill/zipball/b1816a97f62836710b174bb47b015e4373e6d80d",
+                "reference": "b1816a97f62836710b174bb47b015e4373e6d80d",
+                "shasum": ""
+            },
+            "require": {
+                "automattic/jetpack-autoloader": "^2.6.0"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.4",
+                "phpunit/phpunit": "7.5.14"
+            },
+            "time": "2021-10-15T14:52:34+00:00",
+            "type": "wordpress-plugin",
+            "extra": {
+                "bamarni-bin": {
+                    "target-directory": "bin/composer"
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Vendidero\\StoreaBill\\": "src",
+                    "Vendidero\\StoreaBill\\Vendor\\": "lib/packages/"
+                },
+                "psr-0": {
+                    "Vendidero\\StoreaBill\\Vendor\\": "lib/packages/"
+                }
+            },
+            "scripts": {
+                "post-install-cmd": [
+                    "@composer bin all install --ansi",
+                    "sh ./bin/vendor-clean.sh"
+                ],
+                "post-update-cmd": [
+                    "@composer bin all update --ansi",
+                    "sh ./bin/vendor-clean.sh"
+                ],
+                "makepot": [
+                    "@makepot-audit --skip-audit"
+                ],
+                "build-lib": [
+                    "sh ./bin/build-lib.sh"
+                ],
+                "bin": [
+                    "echo 'bin not installed'"
+                ]
+            },
+            "license": [
+                "GPL-3.0-or-later"
+            ],
+            "description": "StoreaBill",
+            "homepage": "https://github.com/vendidero/storeabill",
+            "install-path": "../../packages/storeabill"
+        },
+        {
+            "name": "vendidero/storeabill-lexoffice",
+            "version": "v1.1.5",
+            "version_normalized": "1.1.5.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:vendidero/storeabill-lexoffice.git",
+                "reference": "da1f4b53aa89818d7b84312b5ba6f3498bb6340e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vendidero/storeabill-lexoffice/zipball/da1f4b53aa89818d7b84312b5ba6f3498bb6340e",
+                "reference": "da1f4b53aa89818d7b84312b5ba6f3498bb6340e",
+                "shasum": ""
+            },
+            "require": {
+                "automattic/jetpack-autoloader": "^2.6.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^6.5.14"
+            },
+            "time": "2021-10-11T12:45:42+00:00",
+            "type": "wordpress-plugin",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Vendidero\\StoreaBill\\Lexoffice\\": "src"
+                }
+            },
+            "scripts": {
+                "post-install-cmd": [
+                    "composer dump-autoload"
+                ],
+                "post-update-cmd": [
+                    "composer dump-autoload"
+                ]
+            },
+            "license": [
+                "GPL-3.0-or-later"
+            ],
+            "description": "The StoreaBill lexoffice integration.",
+            "homepage": "https://vendidero.de",
+            "install-path": "../../packages/storeabill-lexoffice"
+        },
+        {
+            "name": "vendidero/storeabill-sevdesk",
+            "version": "v1.1.2",
+            "version_normalized": "1.1.2.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:vendidero/storeabill-sevdesk.git",
+                "reference": "5121560fc151b307fb462b12aed6d14fc5166e88"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vendidero/storeabill-sevdesk/zipball/5121560fc151b307fb462b12aed6d14fc5166e88",
+                "reference": "5121560fc151b307fb462b12aed6d14fc5166e88",
+                "shasum": ""
+            },
+            "require": {
+                "automattic/jetpack-autoloader": "^2.6.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^6.5.14"
+            },
+            "time": "2021-09-16T09:55:18+00:00",
+            "type": "wordpress-plugin",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Vendidero\\StoreaBill\\sevDesk\\": "src"
+                }
+            },
+            "scripts": {
+                "post-install-cmd": [
+                    "composer dump-autoload"
+                ],
+                "post-update-cmd": [
+                    "composer dump-autoload"
+                ]
+            },
+            "license": [
+                "GPL-3.0-or-later"
+            ],
+            "description": "The StoreaBill sevDesk integration.",
+            "homepage": "https://vendidero.de",
+            "install-path": "../../packages/storeabill-sevdesk"
+        },
+        {
+            "name": "vendidero/woocommerce-germanized-dpd",
+            "version": "v1.0.2",
+            "version_normalized": "1.0.2.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:vendidero/woocommerce-germanized-dpd.git",
+                "reference": "b5ab028959672b2c9b9c3a6e00b6846a6915cd87"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-dpd/zipball/b5ab028959672b2c9b9c3a6e00b6846a6915cd87",
+                "reference": "b5ab028959672b2c9b9c3a6e00b6846a6915cd87",
+                "shasum": ""
+            },
+            "require": {
+                "automattic/jetpack-autoloader": "^2.6.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "6.5.14"
+            },
+            "time": "2021-09-02T15:40:53+00:00",
+            "type": "wordpress-plugin",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Vendidero\\Germanized\\DPD\\": "src"
+                }
+            },
+            "scripts": {
+                "post-install-cmd": [
+                    "composer dump-autoload"
+                ],
+                "post-update-cmd": [
+                    "composer dump-autoload"
+                ]
+            },
+            "license": [
+                "GPL-3.0-or-later"
+            ],
+            "description": "The Germanized DPD implementation.",
+            "homepage": "https://github.com/vendidero/woocommerce-germanized-dpd",
+            "install-path": "../../packages/woocommerce-germanized-dpd"
+        }
+    ],
+    "dev": false,
+    "dev-package-names": []
+}

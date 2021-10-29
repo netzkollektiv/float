@@ -1,0 +1,50 @@
+.pagination,
+.woocommerce-pagination {
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  position: relative;
+  line-height: 1;
+	width: 100%;
+  padding: 40px 0 60px;
+  .page-numbers {
+    display: inline-flex;
+    align-items: center;
+    color: #4f4f4f;
+    padding: 0;
+		width: 40px;
+		height: 40px;
+		margin: 0 2px;
+    justify-content: center;
+		border-radius: 50%;
+		border: 1px solid rgba($accent, 0.2);
+    &.current,
+		&:hover {
+      color: #fff;
+			background: $accent;
+			border-color: $accent;
+    }
+  }
+  .next,
+  .prev {
+    position: absolute;
+    top: 40px;
+  }
+  .next {
+    right: 0;
+    &:after {
+      font-size: 20px;
+      content: '\e801';
+      font-family: 'peakshops';
+    }
+  }
+  .prev {
+    left: 0;
+
+    &:before {
+      font-size: 20px;
+      content: '\e80b';
+      font-family: 'peakshops';
+    }
+  }
+}

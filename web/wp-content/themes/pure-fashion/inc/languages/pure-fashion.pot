@@ -1,0 +1,615 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Pure Fashion\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-02-18 12:33+0300\n"
+"PO-Revision-Date: 2018-04-09 22:44+0300\n"
+"Last-Translator: Ant Ekşiler <anteksiler@gmail.com>\n"
+"Language-Team: Fuel Themes <support@fuelthemes.net>\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-KeywordsList: _e;__;esc_html_e;esc_html__;esc_attr__;esc_attr_e;esc_html_x;"
+"_x\n"
+"X-Poedit-Basepath: ../..\n"
+"X-Generator: Poedit 2.1.1\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: admin\n"
+"X-Poedit-SearchPathExcluded-1: assets\n"
+"X-Poedit-SearchPathExcluded-2: node_modules\n"
+"X-Poedit-SearchPathExcluded-3: inc/admin\n"
+"X-Poedit-SearchPathExcluded-4: vendor\n"
+"X-Poedit-SearchPathExcluded-5: inc/gutenberg/node_modules\n"
+
+#: 404.php:18
+msgid "Page not found"
+msgstr ""
+
+#: 404.php:20
+msgid ""
+"The page you were looking for doesnt exist. You may have mistyped the address or the "
+"page may have moved."
+msgstr ""
+
+#: 404.php:22
+msgid "Back to Home"
+msgstr ""
+
+#: comments.php:49
+msgid "Comments are closed"
+msgstr ""
+
+#: comments.php:63
+msgid "E-mail"
+msgstr ""
+
+#: comments.php:64
+msgid "Website"
+msgstr ""
+
+#: comments.php:67
+msgid "Comment"
+msgstr ""
+
+#: comments.php:71
+#, php-format
+msgid "You must be <a href=\"%s\">logged in</a> to post a comment."
+msgstr ""
+
+#: comments.php:84
+#, php-format
+msgid ""
+"Logged in as <a href=\"%1$s\">%2$s</a>. <a href=\"%3$s\" title=\"Log out of this "
+"account\">Log out?</a>"
+msgstr ""
+
+#: comments.php:96
+msgid "Your email address will not be published."
+msgstr ""
+
+#: comments.php:100
+msgid "Leave a Reply"
+msgstr ""
+
+#: comments.php:102
+#, php-format
+msgid "Leave a Reply to %s"
+msgstr ""
+
+#: comments.php:105
+msgid "Cancel reply"
+msgstr ""
+
+#: comments.php:107
+msgid "Submit Comment"
+msgstr ""
+
+#: inc/framework/customizer/article.php:6
+msgid "Article"
+msgstr ""
+
+#: inc/framework/customizer/article.php:26
+msgid "Author Name"
+msgstr ""
+
+#: inc/framework/customizer/article.php:46
+msgid "Article Date"
+msgstr ""
+
+#: inc/framework/customizer/article.php:66
+msgid "Article Category"
+msgstr ""
+
+#: inc/framework/customizer/article.php:86
+msgid "Article Navigation"
+msgstr ""
+
+#: inc/framework/customizer/article.php:106
+msgid "Article Tags"
+msgstr ""
+
+#: inc/framework/customizer/blog.php:6
+msgid "Blog"
+msgstr ""
+
+#: inc/framework/customizer/blog.php:25
+msgid "Post Date"
+msgstr ""
+
+#: inc/framework/customizer/blog.php:45
+msgid "Post Excerpt"
+msgstr ""
+
+#: inc/framework/customizer/blog.php:65
+msgid "Post Category"
+msgstr ""
+
+#: inc/framework/customizer/colors.php:6
+msgid "Color"
+msgstr ""
+
+#: inc/framework/customizer/colors.php:25
+msgid "Accent Color"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/controls/class-thb-google-font-select-custom-control.php:115
+msgid "Select weight & style for regular text"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/controls/class-thb-google-font-select-custom-control.php:125
+#: inc/framework/customizer/custom-controls/controls/class-thb-google-font-select-custom-control.php:143
+msgid "Select weight for"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/controls/class-thb-google-font-select-custom-control.php:125
+msgid "italic text"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/controls/class-thb-google-font-select-custom-control.php:143
+msgid "bold text"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/js/wp-color-picker-alpha.js:46
+msgid "Color value"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/js/wp-color-picker-alpha.js:47
+msgid "Select Color"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/js/wp-color-picker-alpha.js:48
+msgid "Default"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/js/wp-color-picker-alpha.js:49
+msgid "Select default color"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/js/wp-color-picker-alpha.js:50
+msgid "Clear"
+msgstr ""
+
+#: inc/framework/customizer/custom-controls/js/wp-color-picker-alpha.js:51
+msgid "Clear color"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:6
+msgid "Footer"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:25
+msgid "Display Footer?"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:44
+msgid "Footer Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:51
+msgid "One Column"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:55
+msgid "Two Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:59
+msgid "Three Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:63
+msgid "Four Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:67
+msgid "Double Left Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:71
+msgid "Double Right Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:75
+msgid "Five Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:79
+msgid "Six Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:83
+msgid "Five / Large Right Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:87
+msgid "Five / Large Left Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:91
+msgid "Five / Large 2 Right Columns"
+msgstr ""
+
+#: inc/framework/customizer/footer.php:95
+msgid "Five / Large 2 Left Columns"
+msgstr ""
+
+#: inc/framework/customizer/header-secondary.php:5
+msgid "Header - Secondary Area"
+msgstr ""
+
+#: inc/framework/customizer/header-secondary.php:23
+#: inc/framework/customizer/mobilemenu.php:25
+msgid "Display Search?"
+msgstr ""
+
+#: inc/framework/customizer/header-secondary.php:43
+msgid "Display Secondary Menu?"
+msgstr ""
+
+#: inc/framework/customizer/header.php:5
+msgid "Header"
+msgstr ""
+
+#: inc/framework/customizer/header.php:22
+msgid "Logo Height"
+msgstr ""
+
+#: inc/framework/customizer/header.php:39
+msgid "Logo Height - Mobile"
+msgstr ""
+
+#: inc/framework/customizer/header.php:56
+msgid "Fixed Header - Shadow"
+msgstr ""
+
+#: inc/framework/customizer/init.php:12 inc/gutenberg-patterns.php:360
+#: inc/woocommerce/woocommerce-product-data-tabs.php:21
+msgid "Pure Fashion"
+msgstr ""
+
+#: inc/framework/customizer/init.php:13
+msgid "Pure Fashion Theme Settings"
+msgstr ""
+
+#: inc/framework/customizer/mobilemenu.php:6
+msgid "Mobile Menu"
+msgstr ""
+
+#: inc/framework/customizer/mobilemenu.php:45
+msgid "Mobile Menu Footer Content"
+msgstr ""
+
+#: inc/framework/customizer/shop.php:6
+msgid "Shop"
+msgstr ""
+
+#: inc/framework/customizer/shop.php:23
+msgid "Products Per Page"
+msgstr ""
+
+#: inc/framework/customizer/shop.php:24
+msgid "Set number of products per page."
+msgstr ""
+
+#: inc/framework/customizer/shop.php:46
+msgid "Shop Description"
+msgstr ""
+
+#: inc/framework/customizer/shop.php:47
+msgid "Displays on main shop page, similar to product category descriptions."
+msgstr ""
+
+#: inc/framework/customizer/shop.php:66
+msgid "Show Double Width Images?"
+msgstr ""
+
+#: inc/framework/customizer/shop.php:67
+msgid "When enabled, some products will be double width."
+msgstr ""
+
+#: inc/framework/customizer/shop.php:85
+msgid "Double Size Image Position"
+msgstr ""
+
+#: inc/framework/customizer/shop.php:86
+msgid "For example, for third and eighth products to be double-width, enter: 3,8."
+msgstr ""
+
+#: inc/framework/customizer/shop.php:105
+msgid "Single Product Ajax"
+msgstr ""
+
+#: inc/framework/customizer/shop.php:106
+msgid "When enabled, add to cart functionality will use AJAX on single product pages."
+msgstr ""
+
+#: inc/framework/customizer/subfooter.php:6
+msgid "Sub-Footer"
+msgstr ""
+
+#: inc/framework/customizer/subfooter.php:25
+msgid "Display Sub-Footer?"
+msgstr ""
+
+#: inc/framework/customizer/subfooter.php:45
+msgid "Copyright Text"
+msgstr ""
+
+#: inc/framework/customizer/subfooter.php:65
+msgid "Text on the right"
+msgstr ""
+
+#: inc/framework/customizer/subheader.php:5
+msgid "Sub-Header"
+msgstr ""
+
+#: inc/framework/customizer/subheader.php:23
+msgid "Display Sub-Header?"
+msgstr ""
+
+#: inc/framework/customizer/subheader.php:40
+msgid "Sub-Header Text"
+msgstr ""
+
+#: inc/framework/customizer/typography.php:5
+msgid "Typography"
+msgstr ""
+
+#: inc/framework/customizer/typography.php:24
+msgid "Primary Font"
+msgstr ""
+
+#: inc/framework/customizer/typography.php:25
+msgid "Changes primarily heading tags"
+msgstr ""
+
+#: inc/framework/customizer/typography.php:51
+msgid "Secondary Font"
+msgstr ""
+
+#: inc/framework/customizer/typography.php:52
+msgid "Changes primarily body text"
+msgstr ""
+
+#: inc/gutenberg-patterns.php:22
+msgid "Homepage"
+msgstr ""
+
+#: inc/gutenberg-patterns.php:172
+msgid "About Page"
+msgstr ""
+
+#: inc/gutenberg-patterns.php:330
+msgid "Contact Page"
+msgstr ""
+
+#: inc/gutenberg/classes/class-api.php:60 inc/gutenberg/classes/class-api.php:78
+#: inc/gutenberg/classes/class-categories.php:26
+msgid "Woocommerce Required"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/block.js:32
+msgid "WooCommerce Category Block Grid"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/block.js:36
+#: inc/gutenberg/src/thb-woocommerce-category/block.js:36
+msgid "woocommerce"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/block.js:37
+#: inc/gutenberg/src/thb-woocommerce-category/block.js:37
+msgid "category"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1 inc/gutenberg/src/thb-iconbox/block.js:38
+#: inc/gutenberg/src/thb-woocommerce-block-category/block.js:38
+#: inc/gutenberg/src/thb-woocommerce-category/block.js:38
+msgid "fuel"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:47
+msgid "Desktop Height"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:48
+msgid "This height value wont affect mobile screens"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:61
+msgid "Button Label"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:229
+msgid "Display Count"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:242
+msgid "Display Description"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:268
+#: inc/gutenberg/src/thb-woocommerce-category/block.js:32
+#: inc/gutenberg/src/thb-woocommerce-category/edit.js:206
+msgid "WooCommerce Category Grid"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:269
+#: inc/gutenberg/src/thb-woocommerce-category/edit.js:207
+msgid "Please select WooCommerce Categories"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:287
+#: inc/gutenberg/src/thb-woocommerce-category/edit.js:216
+msgid "Categories"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1
+#: inc/gutenberg/src/thb-woocommerce-block-category/edit.js:313
+#: inc/gutenberg/src/thb-woocommerce-category/edit.js:243
+msgid "Settings"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1 inc/gutenberg/src/thb-iconbox/block.js:32
+msgid "Icon Box"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1 inc/gutenberg/src/thb-iconbox/block.js:36
+msgid "iconbox"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1 inc/gutenberg/src/thb-iconbox/block.js:37
+msgid "icon"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1 inc/gutenberg/src/thb-iconbox/edit.js:106
+msgid "Title"
+msgstr ""
+
+#: inc/gutenberg/dist/blocks.build.js:1 inc/gutenberg/src/thb-iconbox/edit.js:113
+msgid "Subtitle"
+msgstr ""
+
+#: inc/gutenberg/src/init.php:104
+msgid "Shop Now"
+msgstr ""
+
+#: inc/gutenberg/src/init.php:205 inc/gutenberg/src/init.php:237
+#: inc/gutenberg/src/init.php:282
+msgid "Please assign WooCommerce categories"
+msgstr ""
+
+#: inc/gutenberg/src/init.php:350
+msgid "Fuel Themes Blocks"
+msgstr ""
+
+#: inc/header-related.php:105 searchform.php:13 searchform.php:14
+msgid "Search"
+msgstr ""
+
+#: inc/misc.php:94
+msgid "This is a protected area. Please enter your password:"
+msgstr ""
+
+#: inc/misc.php:95
+msgid "Password"
+msgstr ""
+
+#: inc/misc.php:95
+msgid "Submit"
+msgstr ""
+
+#: inc/post-related.php:46
+msgid "by"
+msgstr ""
+
+#: inc/script-calls.php:81
+msgid "%curr% of %total%"
+msgstr ""
+
+#: inc/script-calls.php:82
+msgid "of"
+msgstr ""
+
+#: inc/script-calls.php:83
+msgid "Loading"
+msgstr ""
+
+#: inc/script-calls.php:84
+msgid "Loading..."
+msgstr ""
+
+#: inc/script-calls.php:85
+msgid "No More Posts"
+msgstr ""
+
+#: inc/script-calls.php:86
+msgid "All Products Loaded"
+msgstr ""
+
+#: inc/script-calls.php:87
+msgid "Load More"
+msgstr ""
+
+#: inc/script-calls.php:88
+msgid "Adding to Cart"
+msgstr ""
+
+#: inc/script-calls.php:89
+msgid "Added To Cart"
+msgstr ""
+
+#: inc/script-calls.php:90
+msgid "has been added to your cart."
+msgstr ""
+
+#: inc/script-calls.php:91
+msgid "No Results Found"
+msgstr ""
+
+#: inc/script-calls.php:92
+msgid "Results Found"
+msgstr ""
+
+#: inc/script-calls.php:93
+msgid "View All Results"
+msgstr ""
+
+#: inc/script-calls.php:94
+msgid "Prev"
+msgstr ""
+
+#: inc/script-calls.php:95 inc/templates/post-detail-bits/post-nav.php:30
+msgid "Next"
+msgstr ""
+
+#: inc/script-calls.php:96
+msgid "QTY"
+msgstr ""
+
+#: inc/templates/header/mobile-menu-style1.php:17
+#: inc/woocommerce/woocommerce-cart.php:71 inc/woocommerce/woocommerce-filterbar.php:21
+msgid "Close"
+msgstr ""
+
+#: inc/templates/post-detail-bits/post-nav.php:24
+msgid "Previous"
+msgstr ""
+
+#: inc/templates/post-styles/post-style1.php:43
+#: inc/templates/post-styles/post-style2.php:50
+msgid "Read More"
+msgstr ""
+
+#: inc/woocommerce/woocommerce-cart.php:22
+msgid "Shopping Cart"
+msgstr ""
+
+#: inc/woocommerce/woocommerce-filterbar.php:79
+msgid "Filter"
+msgstr ""
+
+#: inc/woocommerce/woocommerce-product-data-tabs.php:40
+msgid "Adds Video at the end of product images. Accepts WP oEmbed video urls."
+msgstr ""
+
+#: inc/woocommerce/woocommerce-single.php:38
+msgid "Previous Product"
+msgstr ""
+
+#: inc/woocommerce/woocommerce-single.php:47
+msgid "Next Product"
+msgstr ""

@@ -1,0 +1,19 @@
+{
+  "name": "thb-gutenberg-blocks",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "cgb-scripts start",
+    "build": "cgb-scripts build",
+    "eject": "cgb-scripts eject"
+  },
+  "dependencies": {
+    "@woocommerce/components": "^4.0.0",
+    "@wordpress/components": "^10.0.0",
+    "@wordpress/element": "^2.13.1",
+    "@wordpress/icons": "^2.4.0",
+    "@wordpress/url": "^2.17.0",
+    "cgb-scripts": "1.23.0",
+    "webpack": "^3.12.0"
+  }
+}

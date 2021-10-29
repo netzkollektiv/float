@@ -1,0 +1,8 @@
+*** Pure Fashion changelog ***
+
+2021-04-13 - version 1.0.1
+* Fixes horizontal scrollbar for full width gutenberg elements on Windows
+* Fixes subheader customer setting
+
+2021-03-25 - version 1.0.0
+* Initial Release

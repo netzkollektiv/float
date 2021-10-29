@@ -1,0 +1,63 @@
+<krpano version="1.0.8">
+	<!-- flatskin template -->
+
+	<!-- events - fullscreen button change, set cursor on start -->
+	<events onxmlcomplete="dragcursor();"
+	        onenterfullscreen="set(plugin[openfs].visible,false); set(plugin[closefs].visible,true);"
+	        onexitfullscreen ="set(plugin[openfs].visible,true);  set(plugin[closefs].visible,false);"
+	        />
+
+
+	<!-- actions to change the mouse cursor -->
+	<action name="dragcursor">
+		set(plugin[dragmode].visible, false);
+		set(plugin[movemode].visible, true);
+		set(control.mousetype, drag2D);
+		set(cursors.url, %SWFPATH%/skin/drag-cursors.png);
+		set(cursors.type, drag);
+		set(cursors.move,  2|0|30|32);
+		set(cursors.drag, 37|0|30|32);
+	</action>
+
+	<action name="qtvrcursor">
+		set(plugin[dragmode].visible, true);
+		set(plugin[movemode].visible, false);
+		set(control.mousetype, moveto);
+		set(cursors.url, %SWFPATH%/skin/qtvr-cursors.png);
+		set(cursors.type, 8way);
+		set(cursors.move,       0|0|16|16);
+		set(cursors.drag,      16|0|16|16);
+		set(cursors.arrow_u,   32|0|16|16);
+		set(cursors.arrow_d,   48|0|16|16);
+		set(cursors.arrow_l,   64|0|16|16);
+		set(cursors.arrow_r,   80|0|16|16);
+		set(cursors.arrow_lu,  96|0|16|16);
+		set(cursors.arrow_ru, 112|0|16|16);
+		set(cursors.arrow_rd, 128|0|16|16);
+		set(cursors.arrow_ld, 144|0|16|16);
+	</action>
+
+
+	<!-- button showtext() style -->
+	<textstyle name="buttonstyle" font="Arial" fontsize="12" bold="true" italic="true"
+	           textcolor="0x000000" background="false" border="false"
+	           blendmode="layer" effect="glow(0xFFFFFF,0.85,4,4);dropshadow(2,45,0x000000,4,1);"
+	           origin="cursor" edge="bottom" xoffset="15" yoffset="-5" showtime="0.1" fadeintime="0.1" fadetime="0.1"
+	           />
+
+	<style name="button" url="%SWFPATH%/skin/buttons.png" keep="true" />
+
+	<!-- some default buttons (zooming, direction, hotspots on/off, fullscreen) -->
+	<plugin name="in"       align="bottom" x="-160" y="10" style="button" crop="160|0|40|40" onovercrop="160|40|40|40" ondowncrop="160|80|40|40" ondown="set(fov_moveforce,-1);"  onup="set(fov_moveforce,0);" />
+	<plugin name="out"      align="bottom" x="-120" y="10" style="button" crop="200|0|40|40" onovercrop="200|40|40|40" ondowncrop="200|80|40|40" ondown="set(fov_moveforce,+1);"  onup="set(fov_moveforce,0);" />
+	<plugin name="left"     align="bottom" x="-80"  y="10" style="button" crop=  "0|0|40|40" onovercrop=  "0|40|40|40" ondowncrop=  "0|80|40|40" ondown="set(hlookat_moveforce,-1);"  onup="set(hlookat_moveforce,0);" />
+	<plugin name="right"    align="bottom" x="-40"  y="10" style="button" crop= "40|0|40|40" onovercrop= "40|40|40|40" ondowncrop= "40|80|40|40" ondown="set(hlookat_moveforce,+1);"  onup="set(hlookat_moveforce,0);" />
+	<plugin name="up"       align="bottom" x="+0"   y="10" style="button" crop= "80|0|40|40" onovercrop= "80|40|40|40" ondowncrop= "80|80|40|40" ondown="set(vlookat_moveforce,-1);"  onup="set(vlookat_moveforce,0);" />
+	<plugin name="down"     align="bottom" x="+40"  y="10" style="button" crop="120|0|40|40" onovercrop="120|40|40|40" ondowncrop="120|80|40|40" ondown="set(vlookat_moveforce,+1);"  onup="set(vlookat_moveforce,0);" />
+	<plugin name="zoomout"  align="bottom" x="+80"  y="10" style="button" crop="240|0|40|40" onovercrop="240|40|40|40" ondowncrop="240|80|40|40" onhover="showtext(Reset View, buttonstyle);" onclick="zoomto(1.0,smooth(3,3,10));" />
+	<plugin name="dragmode" align="bottom" x="+120" y="10" style="button" crop="400|0|40|40" onovercrop="400|40|40|40" ondowncrop="400|80|40|40" onhover="showtext(Change Controlmode, buttonstyle);"  onclick="dragcursor();" visible="true"  />
+	<plugin name="movemode" align="bottom" x="+120" y="10" style="button" crop="360|0|40|40" onovercrop="360|40|40|40" ondowncrop="360|80|40|40" onhover="showtext(Change Controlmode, buttonstyle);"  onclick="qtvrcursor();" visible="false" />
+	<plugin name="openfs"   align="bottom" x="+160" y="10" style="button" crop="280|0|40|40" onovercrop="280|40|40|40" ondowncrop="280|80|40|40" onhover="showtext(Fullscreen, buttonstyle);"      onclick="set(fullscreen,true);"  visible="true"  />
+	<plugin name="closefs"  align="bottom" x="+160" y="10" style="button" crop="320|0|40|40" onovercrop="320|40|40|40" ondowncrop="320|80|40|40" onhover="showtext(Exit Fullscreen,buttonstyle);"  onclick="set(fullscreen,false);" visible="false" />
+
+</krpano>

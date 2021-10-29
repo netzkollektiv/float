@@ -1,0 +1,997 @@
+<krpano version="1.17" onstart=" set(autorotate.enabled, true); startup(); set(progress.showload,none); set(progress.showwait,none);  navi_ausblenden (); dragcursor(); mobilescale();">
+<action name="mobilescale" autorun="preinit" devices="mobile">
+   mul(stagescale,0.8);
+</action>	
+		<include url="skin/vtourskin_en.xml" />
+			
+			
+			<action name="navi_ausblenden">
+
+
+
+delayedcall(4, skin_hideskin(true); );
+
+</action>
+			<action name="navi_einblenden">
+
+
+
+delayedcall(0, skin_showskin(true); );
+
+</action> 
+
+			<action name="navi_ausblenden_sofort">
+
+
+
+delayedcall(0, skin_hideskin(true); );
+
+</action>
+			<action name="navi_einblenden_sofort">
+
+
+
+delayedcall(0, skin_showskin(true); );
+
+
+</action> 
+
+
+
+
+	<plugin name="navi" url="imagemap.jpg" keep="true" visible="true" devices="mouse"
+	        align="bottom" x="0"  y="0" alpha="0.0" handcursor="false" 
+capture="false"
+zorder="-1000"
+            width="100%" 
+            height="150"
+            onover="set(plugin[navi].visible ,false); set(plugin[navi2].visible ,true);navi_einblenden_sofort(); "
+         
+            /> 
+
+	<plugin name="navi2" url="imagemap.jpg" keep="true" visible="false" devices="mouse"
+	        align="bottom" x="0"  y="150" alpha="0.0" handcursor="false" 
+capture="false" zorder="-1000"
+            width="100%" 
+            height="150"
+            onover="set(plugin[navi2].visible ,false); set(plugin[navi].visible ,true);navi_ausblenden_sofort(); "
+         
+            /> 
+
+
+	<plugin name="navi" url="imagemap.jpg" keep="true" visible="true" devices="touch"
+	        align="bottom" x="0"  y="0" alpha="0.0" handcursor="false" 
+capture="false"
+zorder="-1000"
+            width="100%" 
+            height="0"
+            onover="set(plugin[navi].visible ,false); set(plugin[navi2].visible ,true);navi_einblenden_sofort(); "
+         
+            /> 
+
+	<plugin name="navi2" url="imagemap.jpg" keep="true" visible="false" devices="touch"
+	        align="bottom" x="0"  y="150" alpha="0.0" handcursor="false" 
+capture="false" zorder="-1000"
+            width="100%" 
+            height="0"
+            onover="set(plugin[navi2].visible ,false); set(plugin[navi].visible ,true);navi_ausblenden_sofort(); "
+         
+            /> 
+
+
+
+		<include url="thumbbar.xml"/><action name="becken" >
+
+		
+		<!--
+			syntax: 
+				create_thumbbar(numberofimages, align, orientation, x,y, width,height, border); 
+				
+			numberofimages ... number of images
+			align          ... position of the imagebar (lefttop,left,leftright,top,center,bottom,righttop,right,bottom)
+			orientation    ... orientation of the imagebar (h or v)
+			x,y            ... position offsets
+			width,height   ... thumbnail imagesize
+			border         ... border around images
+		-->
+		create_thumbbar(7, lefttop, h, 15,15, 60,90, 6);
+
+		thumbbar_addimage('images/gruen.jpg');
+		thumbbar_addimage('images/rot.jpg');
+		thumbbar_addimage('images/lila.jpg');
+		thumbbar_addimage('images/hellblau.jpg');
+		thumbbar_addimage('images/gelb.jpg');
+		thumbbar_addimage('images/blau.jpg');	
+		thumbbar_addimage('images/sterne.jpg');		
+	</action>
+
+	<action name="becken_2" >
+
+		
+		<!--
+			syntax: 
+				create_thumbbar(numberofimages, align, orientation, x,y, width,height, border); 
+				
+			numberofimages ... number of images
+			align          ... position of the imagebar (lefttop,left,leftright,top,center,bottom,righttop,right,bottom)
+			orientation    ... orientation of the imagebar (h or v)
+			x,y            ... position offsets
+			width,height   ... thumbnail imagesize
+			border         ... border around images
+		-->
+		create_thumbbar(7, lefttop, h, 15,15, 60,90, 6);
+
+		thumbbar_addimage('images/gruen.jpg');
+		thumbbar_addimage('images/rot.jpg');
+		thumbbar_addimage('images/lila.jpg');
+		thumbbar_addimage('images/hellblau.jpg');
+		thumbbar_addimage('images/gelb.jpg');
+		thumbbar_addimage('images/blau.jpg');	
+				thumbbar_addimage('images/sterne.jpg');	
+	</action>
+	
+	
+	
+<action name="tank_farben_2">
+		
+		
+		<!--
+			syntax: 
+				create_thumbbar(numberofimages, align, orientation, x,y, width,height, border); 
+				
+			numberofimages ... number of images
+			align          ... position of the imagebar (lefttop,left,leftright,top,center,bottom,righttop,right,bottom)
+			orientation    ... orientation of the imagebar (h or v)
+			x,y            ... position offsets
+			width,height   ... thumbnail imagesize
+			border         ... border around images
+		-->
+		create_thumbbar(7, lefttop, h, 15,15, 68,90, 6);
+
+		thumbbar_addimage('images/tank_gruen.jpg');
+		thumbbar_addimage('images/tank_rot.jpg');
+		thumbbar_addimage('images/tank_lila.jpg');
+		thumbbar_addimage('images/tank_hellblau.jpg');
+		thumbbar_addimage('images/tank_gelb.jpg');
+		thumbbar_addimage('images/tank_blau.jpg');
+				thumbbar_addimage('images/tank.jpg');		
+	</action>
+	
+	<!-- vtour.xml template krpano tools version 1.0.8.14 -->
+	
+	<!-- use the editor for moving,rotating,scaling hotspots
+	<plugin name="editor"  url="plugins/editor.swf"  devices="flash" />
+	<plugin name="options" url="plugins/options.swf" devices="flash" />
+	
+ -->
+
+	<!-- the 'tooltip' textfield -->
+	<layer name="tooltip" keep="true"
+	       url="%SWFPATH%/plugins/textfield.swf"
+	       parent="STAGE"
+	       visible="false" alpha="0"
+	       enabled="false"
+	       align="lefttop"
+	       edge="bottom"
+	       oy="-2"
+	       width="300"
+	       autoheight="true"
+	       background="false" backgroundcolor="0xFFFFFF" backgroundalpha="1.0"
+	       border="false" bordercolor="0x000000" borderalpha="1.0"
+	       borderwidth="1.0" roundedge="0"
+	       shadow="0.0" shadowrange="4.0" shadowangle="45" shadowcolor="0x000000" shadowalpha="1.0"
+	       textshadow="1" textshadowrange="6.0" textshadowangle="90" textshadowcolor="0x000000" textshadowalpha="1.0"
+	       css="text-align:center; color:#FFFFFF; font-family:Arial; font-weight:bold; font-size:14px;"
+	       html=""
+	       />
+
+	<!-- the image map -->
+	<plugin name="map" url="imagemap_en.png" keep="true"  
+	        align="righttop" x="16"  y="16" alpha="0.85" handcursor="false" 
+	        scalechildren="true"
+	        maskchildren="true"
+            width="prop" 
+            height="40%"
+            onclick=""
+			style="tooltip"
+			tooltip="test"
+			onover="tween(plugin[map].height, 70%);"
+			onout="tween(plugin[map].height, 40%);"
+            />
+  	<plugin name="map" url="imagemap_en.png" keep="true"  devices="tablet"
+	        align="righttop" x="16"  y="16" alpha="0.85" handcursor="false" 
+	        scalechildren="true"
+	        maskchildren="true"
+            width="prop" 
+            height="50%"
+            onclick=""
+			style="tooltip"
+			tooltip="test"
+			onover="tween(plugin[map].height, 70%);"
+			onout="tween(plugin[map].height, 40%);"
+            />   
+
+    <plugin name="oeffnen" url="imagemap.png" alpha="0.0" keep="true" align="righttop" x="16"  y="16" height="20%"  capture="false"    visible="false"    width="prop"  zorder="2" style="tooltip" tooltip="Grundriss öffnen"  onclick="set(plugin[oeffnen].visible,false); openmap();" />			
+    <plugin name="spotaussen" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="210"  y="620" zorder="2" onhover="showtext(Exterior view, tooltip);"         onclick="loadscene(scene_aussen, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spot1" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="210"  y="500" zorder="2" onhover="showtext(Reception, tooltip);"         onclick="loadscene(scene_1_sphere, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spot2" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="210" y="270" zorder="2" onhover="showtext(Blow-dryer, tooltip);"     onclick="loadscene(scene_2_sphere, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spot3" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="152" y="370" zorder="2" onhover="showtext(Massage, tooltip);" onclick="loadscene(scene_3_sphere, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spot4" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="80" y="210" zorder="2" onhover="showtext(Tank, tooltip);" onclick="loadscene(scene_4_sphere, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spot5" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="345" y="185" zorder="2" onhover="showtext(Bath 2, tooltip);" onclick="loadscene(scene_5_sphere, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spot6" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="430" y="175" zorder="2" onhover="showtext(Basin 2, tooltip);" onclick="loadscene(scene_6_sphere, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spot7" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="284" y="370" zorder="2" onhover="showtext(Bath 1, tooltip);" onclick="loadscene(scene_7_sphere, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spotbuero" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="215" y="75" zorder="2" onhover="showtext(Office, tooltip);" onclick="loadscene(scene_buero, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="spotbecken" url="mappoint.png" keep="true" parent="map" align="lefttop" edge="center" x="360" y="370" zorder="2" onhover="showtext(Basin 1, tooltip);" onclick="loadscene(scene_becken, null, MERGE, BLEND(1)); navi_einblenden(); navi_ausblenden();" />
+    <plugin name="schliessen" url="schliessen.png" alpha="0.8"  scale="0.2" keep="true" parent="map" align="righttop" edge="center" x="50" y="50" zorder="2" style="tooltip" tooltip="Close map&#x00A0; &#x00A0; &#x00A0; &#x00A0; &#x00A0; &#x00A0; &#x00A0; &#x00A0; &#x00A0;&#x00A0; &#x00A0;_"  onclick="action(closemap); set(plugin[map].onout, null); set(plugin[map].onover, null)" />
+
+	
+    <!-- activated hotpot -->
+    <plugin name="activespot" url="mappointactive.png" keep="true" align="center" edge="center" visible="false" zorder="3" />
+    
+    <!-- radar plugin, set heading with "plugin[radar].heading" -->
+    <plugin name="radar"
+	        url="plugins/radar.swf"
+	        alturl="plugins/radar.js"
+	        zorder="1"
+	        keep="true"
+	        heading="0"
+	        parent="map"	        
+	        align="lefttop"
+	        edge="center"
+	        x="0" y="0"
+        fillcolor="0xff0000"
+        fillalpha="0.3"
+        linewidth="0.0"
+        linecolor="0x00b0ef"
+        linealpha="0.3"
+	        scale="1"
+	        visible="false"
+	        />   	        
+
+	<!-- actions -->
+	<action name="closemap">
+        
+    
+        tween(plugin[map].height,20%,distance(300,0.5),easeoutquad);
+		tween(plugin[map].alpha, 0.5);
+		set(plugin[spotaussen].visible, false);
+		set(plugin[spot1].visible, false);
+		set(plugin[spot2].visible, false);
+		set(plugin[spot3].visible, false);
+		set(plugin[spot4].visible, false);
+		set(plugin[spot5].visible, false);
+		set(plugin[spot6].visible, false);
+		set(plugin[spot7].visible, false);
+		set(plugin[spotbuero].visible, false);
+		set(plugin[spotbecken].visible, false);
+		set(plugin[schliessen].visible, false);
+		set(plugin[map].onclick,openmap());
+		set(plugin[oeffnen].visible, true);
+
+	
+    </action>
+    
+    <action name="openmap">
+        		set(plugin[map].onout, 'tween(plugin[map].height, 40%)');
+		set(plugin[map].onover, 'tween(plugin[map].height, 70%)');
+tween(plugin[map].alpha, 0.85);
+        tween(plugin[map].height,70%,distance(300,0.5),easeoutquad);
+		set(plugin[spotaussen].visible, true);
+		set(plugin[spot1].visible, true);
+		set(plugin[spot2].visible, true);
+		set(plugin[spot3].visible, true);
+		set(plugin[spot4].visible, true);
+		set(plugin[spot5].visible, true);
+		set(plugin[spot6].visible, true);
+		set(plugin[spot7].visible, true);
+		set(plugin[spotbuero].visible, true);
+		set(plugin[spotbecken].visible, true);
+		set(plugin[schliessen].visible, true);
+		set(onclick,action(closemap);
+		set(plugin[oeffnen].visible, false);
+    </action>
+  <action name="openmap" devices="tablet">
+        		set(plugin[map].onout, 'tween(plugin[map].height, 40%)');
+		set(plugin[map].onover, 'tween(plugin[map].height, 70%)');
+tween(plugin[map].alpha, 0.85);
+        tween(plugin[map].height,50%,distance(300,0.5),easeoutquad);
+		set(plugin[spotaussen].visible, true);
+		set(plugin[spot1].visible, true);
+		set(plugin[spot2].visible, true);
+		set(plugin[spot3].visible, true);
+		set(plugin[spot4].visible, true);
+		set(plugin[spot5].visible, true);
+		set(plugin[spot6].visible, true);
+		set(plugin[spot7].visible, true);
+		set(plugin[spotbuero].visible, true);
+		set(plugin[spotbecken].visible, true);
+		set(plugin[schliessen].visible, true);
+		set(onclick,action(closemap);
+
+    </action>
+
+
+	<!-- activatespot action, 
+	     - this action has two arguments:
+	       - %1 = the current spot
+	       - %2 = the current radar heading
+	-->
+	<action name="activatespot">
+		set(plugin[activespot].parent, plugin[%1]);
+		set(plugin[activespot].visible, true);
+		
+		copy(plugin[radar].x, plugin[%1].x);
+		copy(plugin[radar].y, plugin[%1].y);
+		
+		set(plugin[radar].visible, true);
+		set(plugin[radar].heading, %2);
+	</action>
+	
+	<style name="hotspot_blau"
+	       url="skin/hotspot_blau.png"
+	       /> 
+   
+	<textstyle name="tooltip"
+       font="Verdana"
+       fontsize="12.0"
+       bold="true"
+       italic="false"
+       background="true"
+       backgroundcolor="0xFFFFFF"
+       border="true"
+       bordercolor="0x000000"
+       textcolor="0x000000"
+       alpha="1.0"
+       blendmode="normal"
+       effect=""
+       origin="cursor"
+       edge="bottom"
+       textalign="center"
+       xoffset="0"
+       yoffset="-3"
+       showtime="0.1"
+       fadetime="0.0"
+       fadeintime="0.0"
+       noclip="true"
+       />
+	<style name="tooltip"
+	       onover="copy(layer[tooltip].html, tooltip);
+	               set(layer[tooltip].visible, true);
+	               tween(layer[tooltip].alpha, 1.0, 0.5);
+	               asyncloop(hovering, copy(layer[tooltip].x,mouse.stagex); copy(layer[tooltip].y,mouse.stagey); );"
+	       onout="tween(layer[tooltip].alpha, 0.0, 0.1, default, set(layer[tooltip].visible,false), copy(layer[tooltip].x,mouse.stagex); copy(layer[tooltip].y,mouse.stagey); );"
+	       />	
+
+
+	
+	<!-- <plugin name="rotate" url="skin/btn_stop.png" align="bottom"  y="10" x="200" onhover="showtext(Rotation stoppen/ starten, buttonstyle)" blendmode="screen" onclick="switch(plugin[rotate].url,skin/btn_stop.png,skin/btn_rotate.png);switch(autorotate.enabled);" onover="set(plugin[rotate].blendmode,add);" onout="set(plugin[rotate].blendmode,screen);" keep="true" />   -->
+
+	<action name="startup">
+		<!-- load the first scene -->
+		loadscene(get(scene[0].name), null, MERGE);
+
+
+	</action>
+
+
+
+	
+
+
+		<action name="massage">
+
+		
+		<!--
+			syntax: 
+				create_thumbbar(numberofimages, align, orientation, x,y, width,height, border); 
+				
+			numberofimages ... number of images
+			align          ... position of the imagebar (lefttop,left,leftright,top,center,bottom,righttop,right,bottom)
+			orientation    ... orientation of the imagebar (h or v)
+			x,y            ... position offsets
+			width,height   ... thumbnail imagesize
+			border         ... border around images
+		-->
+		create_thumbbar(2, lefttop, h, 15,15, 68,90, 6);
+
+		thumbbar_addimage('images/massage.jpg');
+		thumbbar_addimage('images/massage_2.jpg');
+
+	</action>
+
+
+	
+	<!-- hotspot styles (for Flash and HTML5) -->
+	<style name="hotspot_ani_black"
+	       url="hotspots/hotspot_blau.png"
+	       crop="0|0|64|64"
+	       framewidth="64" frameheight="64" frame="0" lastframe="19"
+	       onloaded="hotspot_animate();"
+	       altonloaded="if(isphone, mul(scale,2)); onloaded();"
+	       />
+
+	<style name="hotspot_ani_white"
+	       url="hotspots/hotspot_ani_white_64x64x20.png"
+	       crop="0|0|64|64"
+	       framewidth="64" frameheight="64" frame="0" lastframe="19"
+	       onloaded="hotspot_animate();"
+	       altonloaded="if(isphone, mul(scale,2)); onloaded();"
+	       />
+
+	<action name="hotspot_animate">
+		inc(frame,1,get(lastframe),0);
+		mul(ypos,frame,frameheight);
+		txtadd(crop,'0|',get(ypos),'|',get(framewidth),'|',get(frameheight));
+		delayedcall(0.04, if(loaded, hotspot_animate() ) );
+	</action>
+	
+	
+
+
+
+	<!-- the scenes -->
+	
+		<scene name="scene_1_sphere" title="Reception" onstart="activatespot(spot1, -90); if(device.touch, navi_ausblenden(););" thumburl="panos/1_sphere.tiles/thumb.jpg">
+
+		<view hlookat="90" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/1_sphere.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="696" progressive="false">
+			<level tiledimagewidth="3826" tiledimageheight="3826">
+				<cube url="panos/1_sphere.tiles/l3_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="1913" tiledimageheight="1913">
+				<cube url="panos/1_sphere.tiles/l2_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="957" tiledimageheight="957">
+				<cube url="panos/1_sphere.tiles/l1_%s_%0v%0h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/1_sphere.tiles/mobile_%s.jpg" />
+			</mobile>
+			<tablet>
+				<cube url="panos/1_sphere.tiles/tablet_%s.jpg" />
+			</tablet>
+		</image>
+
+		<!-- place hotspots here -->
+
+		
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="-10"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_2_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Blow-dryer,tooltip);"
+				 tooltip="Blow-dryer"
+		         />
+				
+				<hotspot name="spotaussen" style="hotspot_ani_black|tooltip" 
+		         ath="180"
+		         atv="0"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_aussen',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Exterior view,tooltip);"
+				 tooltip="Exterior view"
+		         />	
+		         	 
+		<!-- note - the url of the video must be always relative to the main krpano swf file -->
+		<hotspot name="videospot" 
+
+
+
+				 url="plugins/videoplayer.swf" 
+				 alturl="plugins/videoplayer.js"
+         videourl="%SWFPATH%/video1.mp4"
+posterurl="hotspots/videoposter.jpg"
+				 distorted="true"
+				 capture="false"
+				 ath="53"
+				 atv="-10"
+				 edge="center"
+				 scale="0.5"
+				 rx="-10"
+				 ry="-55"
+				 rz="-1"
+				 loop="true"
+				 pausedonstart="false"
+				 directionalsound="true"
+				 range="110"
+				 volume="0.0"
+				 style="tooltip"
+				 tooltip="Play/Pause"
+				 onhover="if(ispaused, showtext(Play, tooltip), showtext(Pause, tooltip));"
+				 onclick="togglepause();"
+
+				 />
+				 
+
+<!--	<hotspot name="videospot"
+         url="plugins/videoplayer.swf"
+         alturl="plugins/videoplayer.js"
+         videourl="hotspots/film.flv|hotspots/film.webm|hotspots/film.ogv"
+
+				 distorted="true"
+				 ath="54"
+				 atv="-11"
+				 edge="center"
+				 scale="0.6"
+				 rx="-11"
+				 ry="-55"
+				 rz="0"
+				 loop="true"
+				 pausedonstart="false"
+				 directionalsound="true"
+				 range="110"
+				 volume="0.0"
+				 onhover="if(ispaused, showtext(Play, tooltip), showtext(Pause, tooltip));"
+				 onclick="togglepause();"
+
+         />	-->
+
+	</scene>
+	
+		<scene name="scene_6_sphere" title="Basin 2" onstart="thumbs();  becken_2 ();  activatespot(spot6, 105);thumbs(); if(device.touch, navi_ausblenden(););" thumburl="panos/6_sphere.tiles/thumb.jpg">
+
+		<view hlookat="340" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/6_sphere.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3662" tiledimageheight="3662">
+				<cube url="panos/6_sphere.tiles/%s/l4/%v/l4_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1831" tiledimageheight="1831">
+				<cube url="panos/6_sphere.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="916" tiledimageheight="916">
+				<cube url="panos/6_sphere.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="512" tiledimageheight="512">
+				<cube url="panos/6_sphere.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/6_sphere.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>
+
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="75"
+		         atv="10"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_5_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Bath 2,tooltip);"
+				 tooltip="Bath 2"
+		         />				 
+		<hotspot name="spot2" style="hotspot_ani_black|tooltip" 
+		         ath="63"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_2_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Blow-dryer,tooltip);"
+				 tooltip="Blow-dryer"
+		         />
+				 
+		<hotspot name="spot4" style="hotspot_ani_black|tooltip" 
+		         ath="0"
+		         atv="-30"
+		         zoom="false"
+				 onhover="showtext(Starry sky,tooltip);"
+		         onclick="thumbbar_showimage(thumbbar_image_6);"
+				 tooltip="Starry sky"
+		         />	
+
+	</scene>
+
+	<scene name="scene_5_sphere" title="Bath 2" onstart="activatespot(spot5, -90); if(device.touch, navi_ausblenden(););" thumburl="panos/5_sphere.tiles/thumb.jpg">
+
+		<view hlookat="0" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/5_sphere.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="696" progressive="false">
+			<level tiledimagewidth="3827" tiledimageheight="3827">
+				<cube url="panos/5_sphere.tiles/l3_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="1914" tiledimageheight="1914">
+				<cube url="panos/5_sphere.tiles/l2_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="957" tiledimageheight="957">
+				<cube url="panos/5_sphere.tiles/l1_%s_%0v%0h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/5_sphere.tiles/mobile_%s.jpg" />
+			</mobile>
+			<tablet>
+				<cube url="panos/5_sphere.tiles/tablet_%s.jpg" />
+			</tablet>
+		</image>
+
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="-110"
+		         atv="0"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_2_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Blow-dryer,tooltip);"
+				 tooltip="Blow-dryer"
+		         />
+		<hotspot name="spot2" style="hotspot_ani_black|tooltip" 
+		         ath="102"
+		         atv="0"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_6_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Basin 2,tooltip);"
+				 tooltip="Basin 2"
+		         />
+
+	</scene>
+
+	
+	
+		<scene name="scene_4_sphere" title="Tank" onstart="thumbs();  tank_farben_2 ();  activatespot(spot4, -22); if(device.touch, navi_ausblenden(););" thumburl="panos/4_sphere.tiles/thumb.jpg">
+
+		<view hlookat="0" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/4_sphere.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3754" tiledimageheight="3754">
+				<cube url="panos/4_sphere.tiles/%s/l4/%v/l4_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1877" tiledimageheight="1877">
+				<cube url="panos/4_sphere.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="939" tiledimageheight="939">
+				<cube url="panos/4_sphere.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="512" tiledimageheight="512">
+				<cube url="panos/4_sphere.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/4_sphere.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>
+
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="85"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_2_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Blow-dryer,tooltip);"
+				 tooltip="Blow-dryer"
+		         />
+				 
+		<hotspot name="spot4" style="hotspot_ani_black|tooltip" 
+		         ath="0"
+		         atv="0"
+		         zoom="false"
+				 onhover="showtext(Tank closed,tooltip);"
+		         onclick="thumbbar_showimage(thumbbar_image_6);"
+				 tooltip="Tank closed"
+		         />	
+
+	</scene>
+
+	
+		<scene name="scene_3_sphere" title="Massage" onstart="massage ();  activatespot(spot3, 180); if(device.touch, navi_ausblenden(););" thumburl="panos/3_sphere.tiles/thumb.jpg">
+
+		<view hlookat="0" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/3_sphere.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3713" tiledimageheight="3713">
+				<cube url="panos/3_sphere.tiles/%s/l4/%v/l4_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1857" tiledimageheight="1857">
+				<cube url="panos/3_sphere.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="929" tiledimageheight="929">
+				<cube url="panos/3_sphere.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="512" tiledimageheight="512">
+				<cube url="panos/3_sphere.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/3_sphere.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>
+
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="50"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_2_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Blow-dryer,tooltip);"
+				 tooltip="Blow-dryer"
+		         />
+		<hotspot name="spot2" style="hotspot_ani_black|tooltip" 
+		         ath="0"
+		         atv="25"
+		         zoom="false"
+				 onhover="showtext(Massage lounger,tooltip);"
+		         onclick="thumbbar_showimage(thumbbar_image_0);"
+				 tooltip="Massage lounger"
+		         />	
+	</scene>
+
+
+
+
+	<scene name="scene_2_sphere" title="Blow-dryer" onstart="activatespot(spot2, -90); if(device.touch, navi_ausblenden(););" thumburl="panos/2_sphere.tiles/thumb.jpg">
+
+		<view hlookat="30" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/2_sphere.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="696" progressive="false">
+			<level tiledimagewidth="3829" tiledimageheight="3829">
+				<cube url="panos/2_sphere.tiles/l3_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="1915" tiledimageheight="1915">
+				<cube url="panos/2_sphere.tiles/l2_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="958" tiledimageheight="958">
+				<cube url="panos/2_sphere.tiles/l1_%s_%0v%0h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/2_sphere.tiles/mobile_%s.jpg" />
+			</mobile>
+			<tablet>
+				<cube url="panos/2_sphere.tiles/tablet_%s.jpg" />
+			</tablet>
+		</image>
+
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="-180"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_1_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Reception,tooltip);"
+				 tooltip="Reception"
+		         />
+		<hotspot name="spot2" style="hotspot_ani_black|tooltip" 
+		         ath="-117"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_3_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Massage,tooltip);"
+				 tooltip="Massage"
+		         />
+		<hotspot name="spot3" style="hotspot_ani_black|tooltip" 
+		         ath="-84"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_4_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Tank,tooltip);"
+				 tooltip="Tank"
+		         />	
+		<hotspot name="spot4" style="hotspot_ani_black|tooltip" 
+		         ath="55"
+		         atv="0"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_5_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Bath 2,tooltip);"
+				 tooltip="Bath 2"
+		         />
+		<hotspot name="spot5" style="hotspot_ani_black|tooltip" 
+		         ath="160"
+		         atv="0"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_7_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Bath 1,tooltip);"
+				 tooltip="Bath 1"
+		         />			 
+		<hotspot name="spot6" style="hotspot_ani_black|tooltip" 
+		         ath="20"
+		         atv="0"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_buero',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Office,tooltip);"
+				 tooltip="Office"
+		         />
+		<!--hotspot name="spot7" style="hotspot_ani_black|tooltip" 
+		         ath="179"
+		         atv="3"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_aussen',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Exterior view,tooltip);"
+				 tooltip="Exterior view"
+		         /-->		         
+	</scene>
+
+
+
+
+
+	
+		<scene name="scene_becken" title="Basin 1" onstart="becken();  activatespot(spotbecken, 40); if(device.touch, navi_ausblenden(););" thumburl="panos/becken.tiles/thumb.jpg">
+
+		<view hlookat="300" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/becken.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3563" tiledimageheight="3563">
+				<cube url="panos/becken.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1782" tiledimageheight="1782">
+				<cube url="panos/becken.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="891" tiledimageheight="891">
+				<cube url="panos/becken.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/becken.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>     
+		
+		
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="180"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_7_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Bath 1,tooltip);"
+				 tooltip="Bath 1"
+		         />
+
+		<hotspot name="spot4" style="hotspot_ani_black|tooltip" 
+		         ath="270"
+		         atv="-30"
+		         zoom="false"
+				 onhover="showtext(Starry sky,tooltip);"
+		         onclick="thumbbar_showimage(thumbbar_image_6);"
+				 tooltip="Starry sky"
+		         />	
+
+
+	</scene>
+
+	
+	
+	
+	<scene name="scene_7_sphere" title="Bath 1" onstart="activatespot(spot7, 40); if(device.touch, navi_ausblenden(););" thumburl="panos/7_sphere.tiles/thumb.jpg">
+
+		<view hlookat="215" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/7_sphere.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="766" progressive="false">
+			<level tiledimagewidth="3830" tiledimageheight="3830">
+				<cube url="panos/7_sphere.tiles/l3_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="1915" tiledimageheight="1915">
+				<cube url="panos/7_sphere.tiles/l2_%s_%0v%0h.jpg" />
+			</level>
+			<level tiledimagewidth="958" tiledimageheight="958">
+				<cube url="panos/7_sphere.tiles/l1_%s_%0v%0h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/7_sphere.tiles/mobile_%s.jpg" />
+			</mobile>
+			<tablet>
+				<cube url="panos/7_sphere.tiles/tablet_%s.jpg" />
+			</tablet>
+		</image>
+
+		<hotspot name="spot1" style="hotspot_ani_black|tooltip" 
+		         ath="-180"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_1_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Blow-dryer,tooltip);"
+				 tooltip="Blow-dryer"
+		         />
+		<hotspot name="spot2" style="hotspot_ani_black|tooltip" 
+		         ath="0"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_becken',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Basin 1,tooltip);"
+				 tooltip="Basin 1"
+		         />
+
+	</scene>
+
+
+
+
+
+
+
+
+	<scene name="scene_buero" title="Office" onstart="activatespot(spotbuero, -125); if(device.touch, navi_ausblenden(););" thumburl="panos/buero.tiles/thumb.jpg" lat="" lng="" heading="">
+
+		<view hlookat="42" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto" />
+
+		<preview url="panos/buero.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3584" tiledimageheight="3584">
+				<cube url="panos/buero.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1792" tiledimageheight="1792">
+				<cube url="panos/buero.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="896" tiledimageheight="896">
+				<cube url="panos/buero.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/buero.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>
+
+		<!-- place your scene hotspots here -->
+		<hotspot name="spotbuero" style="hotspot_ani_black|tooltip" 
+		         ath="210"
+		         atv="5"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_2_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Blow-dryer,tooltip);"
+				 tooltip="Blow-dryer"
+		         />
+		<hotspot name="spot2" 
+
+				 url="hotspots/poster.png" 
+width="1400"
+height="1050" handcursor="false" 
+				 distorted="true"
+				 ath="100"
+				 atv="44"
+				 capture="false"
+				 edge="center"
+				 scale="0.68"
+				 rx="44"
+				 ry="31.5"
+				 rz="0"
+				 loop="true"
+				 pausedonstart="false"
+				 directionalsound="true"
+				 range="110"
+				 volume="0.0"
+				 
+				 onhover=""
+				 onclick=""
+
+				 />
+	</scene>
+
+		<scene name="scene_aussen" title="Exterior view" onstart="activatespot(spotaussen, -90); if(device.touch, navi_ausblenden(););"  thumburl="panos/aussen.tiles/thumb.jpg" lat="" lng="" heading="">
+
+		<view hlookat="0" vlookat="0" fovtype="MFOV" fov="120" maxpixelzoom="0.8" fovmin="60" fovmax="120" limitview="auto"  />
+
+		<preview url="panos/aussen.tiles/preview.jpg" />
+
+		<image type="CUBE" multires="true" tilesize="512" progressive="false">
+			<level tiledimagewidth="3639" tiledimageheight="3639">
+				<cube url="panos/aussen.tiles/%s/l4/%v/l4_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1820" tiledimageheight="1820">
+				<cube url="panos/aussen.tiles/%s/l3/%v/l3_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="910" tiledimageheight="910">
+				<cube url="panos/aussen.tiles/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="512" tiledimageheight="512">
+				<cube url="panos/aussen.tiles/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+			<mobile>
+				<cube url="panos/aussen.tiles/mobile_%s.jpg" />
+			</mobile>
+		</image>
+
+		<!-- place your scene hotspots here -->
+		<hotspot name="spotaussen" style="hotspot_ani_black|tooltip" 
+		         ath="0"
+		         atv="0"
+		         zoom="false"
+		         onclick="looktohotspot(get(name),70, smooth(200,100,200) );  loadscene('scene_1_sphere',null,MERGE,ZOOMBLEND(1));"
+				 onhover="showtext(Entrance,tooltip);"
+				 tooltip="Entrance"
+		         />
+				 
+	</scene>
+
+</krpano>
