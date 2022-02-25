@@ -621,7 +621,7 @@ button {
         height: 300px;
 
         @include max-break( $break-small ) {
-            top: 90px;
+            top: 130px;
         }
 
         img {

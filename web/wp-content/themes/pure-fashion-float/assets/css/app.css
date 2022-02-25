@@ -7814,7 +7814,7 @@ button#sereslauncher {
     height: 300px; }
     @media only screen and (max-width: 768px) {
       .section-contact-map .map {
-        top: 90px; } }
+        top: 130px; } }
     .section-contact-map .map img {
       object-fit: contain !important; }
 
