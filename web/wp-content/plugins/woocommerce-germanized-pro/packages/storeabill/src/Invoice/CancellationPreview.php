@@ -30,11 +30,12 @@ class CancellationPreview extends Cancellation implements Previewable {
 		$this->set_is_editor_preview( $args['is_editor_preview'] );
 		$this->set_date_created( time() );
 		$this->set_prices_include_tax( true );
+		$this->set_order_number( $this->parent->get_order_number() );
+		$this->set_parent_number( $this->parent->get_number() );
 		$this->set_number( 1 );
 		$this->set_formatted_number( $this->format_number( $this->get_number() ) );
 		$this->set_address( $this->parent->get_address() );
 
-		$this->set_parent_number( $this->parent->get_number() );
 		$this->set_parent_formatted_number( $this->parent->get_formatted_number() );
 		$this->set_reason( _x( 'Preview refund message', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 

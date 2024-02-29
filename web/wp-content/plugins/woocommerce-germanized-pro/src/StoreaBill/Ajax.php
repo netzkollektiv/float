@@ -2,6 +2,9 @@
 
 namespace Vendidero\Germanized\Pro\StoreaBill;
 
+use Vendidero\Germanized\Pro\StoreaBill\CommercialInvoice\Helper;
+use Vendidero\Germanized\Pro\StoreaBill\PackingSlip\PackingSlips;
+
 defined( 'ABSPATH' ) || exit;
 
 class Ajax {
@@ -17,11 +20,13 @@ class Ajax {
 	 * Hook in methods - uses WordPress ajax handlers (admin-ajax).
 	 */
 	protected static function add_ajax_events() {
-
 		$ajax_events = array(
 			'refresh_packing_slip',
 			'create_packing_slip',
 			'remove_packing_slip',
+			'create_commercial_invoice_load',
+			'create_commercial_invoice_submit',
+			'remove_commercial_invoice',
 		);
 
 		foreach ( $ajax_events as $ajax_event ) {
@@ -36,6 +41,175 @@ class Ajax {
 		}
 
 		$GLOBALS['wpdb']->hide_errors();
+	}
+
+	public static function create_commercial_invoice_submit() {
+		check_ajax_referer( 'wc-gzdp-create-commercial-invoice-submit', 'security' );
+
+		if ( ! isset( $_POST['reference_id'] ) ) {
+			wp_die();
+		}
+
+		if ( ! current_user_can( 'create_commercial_invoices' ) ) {
+			wp_die( -1 );
+		}
+
+		$shipment_id = absint( $_POST['reference_id'] );
+
+		if ( ! $shipment = wc_gzd_get_shipment( $shipment_id ) ) {
+			wp_die( -1 );
+		}
+
+		$args = array();
+
+		if ( ! empty( $_POST['items'] ) ) {
+			$args['items'] = (array) wc_clean( wp_unslash( $_POST['items'] ) );
+		}
+
+		$commercial_invoice_props = array(
+			'incoterms',
+			'export_type',
+			'export_reason',
+			'insurance_total',
+			'shipping_total',
+			'currency',
+			'invoice_type',
+		);
+
+		foreach ( $commercial_invoice_props as $prop_name ) {
+			if ( ! empty( $_POST[ "commercial_invoice_{$prop_name}" ] ) ) {
+				$args[ $prop_name ] = wc_clean( wp_unslash( $_POST[ "commercial_invoice_{$prop_name}" ] ) );
+			}
+		}
+
+		$result = Helper::sync_commercial_invoice( $shipment, $args );
+
+		if ( true === $result && ( $commercial_invoice = wc_gzdp_get_commercial_invoice_by_shipment( $shipment_id ) ) ) {
+			$response = array(
+				'success'               => true,
+				'commercial_invoice_id' => $commercial_invoice->get_id(),
+				'shipment_id'           => $shipment_id,
+				'messages'              => array(),
+				'fragments'             => array(
+					'#shipment-' . $shipment_id . ' .wc-gzdp-shipment-commercial-invoice' => self::refresh_commercial_invoice_html( $shipment, $commercial_invoice ),
+					'tr#shipment-' . $shipment_id . ' td.actions .wc-gzd-shipment-action-button-generate-commercial-invoice' => self::commercial_invoice_download_button_html( $commercial_invoice ),
+				),
+			);
+		} else {
+			$response = array(
+				'success'     => false,
+				'shipment_id' => $shipment_id,
+				'messages'    => is_wp_error( $result ) ? $result->get_error_messages() : array( _x( 'There was an error while creating the commercial invoice', 'commercial-invoice', 'woocommerce-germanized-pro' ) ),
+			);
+		}
+
+		wp_send_json( $response );
+	}
+
+	/**
+	 * @param CommercialInvoice $commercial_invoice
+	 *
+	 * @return string
+	 */
+	protected static function commercial_invoice_download_button_html( $commercial_invoice ) {
+		return '<a class="button wc-gzd-shipment-action-button wc-gzd-shipment-action-button-download-commercial-invoice download" href="' . esc_url( $commercial_invoice->get_download_url() ) . '" target="_blank" title="' . _x( 'Download commercial invoice', 'commercial-invoice', 'woocommerce-germanized-pro' ) . '">' . _x( 'Download commercial invoice', 'commercial-invoice', 'woocommerce-germanized-pro' ) . '</a>';
+	}
+
+	protected static function refresh_commercial_invoice_html( $p_shipment, $p_commercial_invoice = false ) {
+		$shipment = $p_shipment;
+
+		if ( $p_commercial_invoice ) {
+			$commercial_invoice = $p_commercial_invoice;
+		} else {
+			$commercial_invoice = false;
+		}
+
+		ob_start();
+		include_once WC_Germanized_pro()->plugin_path() . '/includes/admin/views/html-shipment-commercial-invoice.php';
+		$html = ob_get_clean();
+
+		return $html;
+	}
+
+	public static function create_commercial_invoice_load() {
+		check_ajax_referer( 'wc-gzdp-create-commercial-invoice-load', 'security' );
+
+		if ( ! isset( $_POST['reference_id'] ) ) {
+			wp_die();
+		}
+
+		if ( ! current_user_can( 'create_commercial_invoices' ) ) {
+			wp_die( -1 );
+		}
+
+		$shipment_id = absint( $_POST['reference_id'] );
+
+		if ( ! $shipment = wc_gzd_get_shipment( $shipment_id ) ) {
+			wp_die( -1 );
+		}
+
+		ob_start();
+		include WC_Germanized_pro()->plugin_path() . '/includes/admin/views/html-shipment-commercial-invoice-backbone-form.php';
+		$html = ob_get_clean();
+
+		$response = array(
+			'fragments'   => array(
+				'.wc-gzd-shipment-create-commercial-invoice' => '<div class="wc-gzd-shipment-create-commercial-invoice">' . $html . '</div>',
+			),
+			'shipment_id' => $shipment_id,
+			'success'     => true,
+		);
+
+		wp_send_json( $response );
+	}
+
+	public static function remove_commercial_invoice() {
+		check_ajax_referer( 'wc-gzdp-remove-commercial-invoice', 'security' );
+
+		if ( ! isset( $_POST['commercial_invoice'] ) ) {
+			wp_die( -1 );
+		}
+
+		$commercial_invoice_id = absint( $_POST['commercial_invoice'] );
+
+		if ( ! current_user_can( 'delete_commercial_invoice', $commercial_invoice_id ) ) {
+			wp_die( -1 );
+		}
+
+		$response_error = array(
+			'success'  => false,
+			'messages' => array(
+				__( 'There was an error processing the commercial invoice.', 'woocommerce-germanized-pro' ),
+			),
+		);
+
+		if ( ! $commercial_invoice = wc_gzdp_get_commercial_invoice( $commercial_invoice_id ) ) {
+			wp_send_json( $response_error );
+		}
+
+		try {
+			$shipment    = $commercial_invoice->get_shipment();
+			$shipment_id = $shipment->get_id();
+
+			$commercial_invoice->delete( true );
+
+			/**
+			 * Explicitly pass needs_refresh to make sure shipment modal is re-initiated.
+			 */
+			$response = array(
+				'success'       => true,
+				'needs_refresh' => true,
+				'shipment_id'   => $shipment_id,
+				'fragments'     => array(
+					'#shipment-' . $shipment_id . ' .wc-gzdp-shipment-commercial-invoice' => self::refresh_commercial_invoice_html( $shipment ),
+				),
+			);
+
+			wp_send_json( $response );
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
+
+		wp_send_json( $response_error );
 	}
 
 	public static function create_packing_slip() {

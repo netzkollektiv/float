@@ -62,6 +62,33 @@ class Install {
 				$dhl->save();
 			}
 		}
+
+		/**
+		 * Maybe update DP to use the new tracking URL
+		 */
+		if ( version_compare( $current_version, '3.0.5', '<' ) ) {
+			Helper::instance()->load_shipping_providers();
+
+			$dp = wc_gzd_get_shipping_provider( 'deutsche_post' );
+
+			if ( ! is_a( $dp, '\Vendidero\Germanized\DHL\ShippingProvider\DeutschePost' ) ) {
+				return;
+			}
+
+			if ( $dp->is_activated() ) {
+				if ( strstr( $dp->get_tracking_url_placeholder(), 'form.einlieferungsdatum_tag' ) ) {
+					$dp->set_tracking_url_placeholder( $dp->get_default_tracking_url_placeholder() );
+					$dp->save();
+				}
+			}
+		}
+
+		/**
+		 * Keep using legacy SOAP API (for now) for older installations to prevent update issues.
+		 */
+		if ( version_compare( $current_version, '2.0.0', '<' ) ) {
+			update_option( 'woocommerce_gzd_dhl_enable_legacy_soap', 'yes' );
+		}
 	}
 
 	private static function migrate_settings() {
@@ -120,9 +147,6 @@ class Install {
 				self::update_provider_setting( $deutsche_post, $option_name_clean, $option_value );
 			}
 		}
-
-		$deutsche_post->set_label_default_shipment_weight( get_option( 'woocommerce_gzd_deutsche_post_label_default_shipment_weight' ) );
-		$deutsche_post->set_label_minimum_shipment_weight( get_option( 'woocommerce_gzd_deutsche_post_label_minimum_shipment_weight' ) );
 
 		$dhl->save();
 		$deutsche_post->save();

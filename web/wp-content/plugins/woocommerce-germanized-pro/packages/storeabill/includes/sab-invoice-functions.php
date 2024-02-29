@@ -151,7 +151,7 @@ function sab_calculate_invoice_date_due( $date_created ) {
 
 		return $new_date_due;
 	} else {
-		return $date_created;
+		return clone $date_created;
 	}
 }
 

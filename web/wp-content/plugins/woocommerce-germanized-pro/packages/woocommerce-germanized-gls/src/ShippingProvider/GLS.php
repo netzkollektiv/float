@@ -7,20 +7,15 @@
 namespace Vendidero\Germanized\GLS\ShippingProvider;
 
 use Vendidero\Germanized\GLS\Package;
+use Vendidero\Germanized\GLS\ShippingProvider\Services\AddonLiability;
+use Vendidero\Germanized\GLS\ShippingProvider\Services\BaseService;
+use Vendidero\Germanized\Shipments\Labels\ConfigurationSet;
 use Vendidero\Germanized\Shipments\Shipment;
 use Vendidero\Germanized\Shipments\ShippingProvider\Auto;
 
 defined( 'ABSPATH' ) || exit;
 
 class GLS extends Auto {
-
-	protected function get_default_label_minimum_shipment_weight() {
-		return 0.01;
-	}
-
-	protected function get_default_label_default_shipment_weight() {
-		return 0.5;
-	}
 
 	public function get_title( $context = 'view' ) {
 		return _x( 'GLS', 'gls', 'woocommerce-germanized-pro' );
@@ -97,42 +92,176 @@ class GLS extends Auto {
 	 * @return array
 	 */
 	protected function get_return_label_fields( $shipment ) {
+		$settings     = parent::get_return_label_fields( $shipment );
 		$default_args = $this->get_default_label_props( $shipment );
-		$default      = $this->get_default_label_product( $shipment );
-		$available    = $this->get_available_label_products( $shipment );
-		$return_type  = $this->get_shipment_setting( $shipment, 'label_default_return_type' );
 		$return_types = Package::get_return_types();
 
-		$settings = array(
+		$settings = array_merge(
+			$settings,
 			array(
-				'id'          => 'product_id',
-				'label'       => sprintf( _x( '%s Product', 'shipments', 'woocommerce-germanized-shipments' ), $this->get_title() ), // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
-				'description' => '',
-				'options'     => $this->get_available_label_products( $shipment ),
-				'value'       => $default && array_key_exists( $default, $available ) ? $default : '',
-				'type'        => 'select',
-			),
-			array(
-				'id'      => 'return_type',
-				'label'   => _x( 'Return type', 'gls', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'options' => $return_types,
-				'value'   => $return_type && array_key_exists( $return_type, $return_types ) ? $return_type : '',
-			),
-			array(
-				'id'                => 'pickup_date',
-				'label'             => _x( 'Pickup Date', 'gls', 'woocommerce-germanized-pro' ),
-				'description'       => _x( 'Date when parcel should be picked up at customer.', 'gls', 'woocommerce-germanized-pro' ),
-				'desc_tip'          => true,
-				'type'              => 'date',
-				'value'             => isset( $default_args['pickup_date'] ) ? $default_args['pickup_date'] : '',
-				'custom_attributes' => array(
-					'data-show-if-return_type' => 'pick_and_return',
+				array(
+					'id'      => 'return_type',
+					'label'   => _x( 'Return type', 'gls', 'woocommerce-germanized-pro' ),
+					'type'    => 'select',
+					'options' => $return_types,
+					'value'   => $default_args['return_type'] && array_key_exists( $default_args['return_type'], $return_types ) ? $default_args['return_type'] : '',
 				),
-			),
+				array(
+					'id'                => 'pickup_date',
+					'label'             => _x( 'Pickup Date', 'gls', 'woocommerce-germanized-pro' ),
+					'description'       => _x( 'Date when parcel should be picked up at customer.', 'gls', 'woocommerce-germanized-pro' ),
+					'desc_tip'          => true,
+					'type'              => 'date',
+					'value'             => isset( $default_args['pickup_date'] ) ? $default_args['pickup_date'] : '',
+					'custom_attributes' => array(
+						'data-show-if-return_type' => 'pick_and_return',
+					),
+				),
+			)
 		);
 
 		return $settings;
+	}
+
+	protected function register_products() {
+		$this->register_product(
+			'PARCEL',
+			array(
+				'label'          => _x( 'Parcel', 'gls', 'woocommerce-germanized-pro' ),
+				'shipment_types' => array( 'simple', 'return' ),
+			)
+		);
+
+		$this->register_product(
+			'EXPRESS',
+			array(
+				'label' => _x( 'Express', 'gls', 'woocommerce-germanized-pro' ),
+			)
+		);
+	}
+
+	protected function register_services() {
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => 'ExWorks',
+					'label'    => _x( 'ExWorks', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'PARCEL' ),
+					'level'    => 'unit',
+				)
+			)
+		);
+
+		$this->register_service( new AddonLiability( $this ) );
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => 'FlexDeliveryService',
+					'label'    => _x( 'Flex Delivery', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'PARCEL' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => 'Guaranteed24Service',
+					'label'    => _x( 'Guaranteed 24', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'PARCEL' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => '0800Service',
+					'label'    => _x( '08:00', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'EXPRESS' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => '0900Service',
+					'label'    => _x( '09:00', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'EXPRESS' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => '1000Service',
+					'label'    => _x( '10:00', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'EXPRESS' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => '1200Service',
+					'label'    => _x( '12:00', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'EXPRESS' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => 'SaturdayService',
+					'label'    => _x( 'Saturday', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'EXPRESS' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => 'Saturday1000Service',
+					'label'    => _x( 'Saturday 10:00', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'EXPRESS' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
+
+		$this->register_service(
+			new BaseService(
+				$this,
+				array(
+					'id'       => 'Saturday1200Service',
+					'label'    => _x( 'Saturday 12:00', 'gls', 'woocommerce-germanized-pro' ),
+					'products' => array( 'EXPRESS' ),
+					'level'    => 'shipment',
+				)
+			)
+		);
 	}
 
 	/**
@@ -141,98 +270,23 @@ class GLS extends Auto {
 	 * @return array
 	 */
 	protected function get_simple_label_fields( $shipment ) {
-		$settings     = parent::get_simple_label_fields( $shipment );
-		$default_args = $this->get_default_label_props( $shipment );
+		$settings = parent::get_simple_label_fields( $shipment );
 
-		$settings = array_merge(
-			$settings,
-			array(
+		if ( 'simple' === $shipment->get_type() ) {
+			$default_args = $this->get_default_label_props( $shipment );
+			$settings     = array_merge(
+				$settings,
 				array(
-					'id'          => 'shipping_date',
-					'label'       => _x( 'Shipping Date', 'gls', 'woocommerce-germanized-pro' ),
-					'description' => _x( 'By default the next working day is used.', 'gls', 'woocommerce-germanized-pro' ),
-					'desc_tip'    => true,
-					'type'        => 'date',
-					'value'       => isset( $default_args['shipping_date'] ) ? $default_args['shipping_date'] : '',
-				),
-			)
-		);
-
-		foreach ( Package::get_services() as $service => $service_data ) {
-			$new_service = array(
-				'id'                => 'service_' . $service,
-				'label'             => $service_data['title'],
-				'description'       => '',
-				'type'              => 'checkbox',
-				'value'             => in_array( $service, $default_args['services'], true ) ? 'yes' : 'no',
-				'wrapper_class'     => 'form-field-checkbox',
-				'custom_attributes' => array(
-					'data-products-supported' => strtoupper( $service_data['product'] ),
-				),
+					array(
+						'id'          => 'shipping_date',
+						'label'       => _x( 'Shipping Date', 'gls', 'woocommerce-germanized-pro' ),
+						'description' => _x( 'By default the next working day is used.', 'gls', 'woocommerce-germanized-pro' ),
+						'desc_tip'    => true,
+						'type'        => 'date',
+						'value'       => isset( $default_args['shipping_date'] ) ? $default_args['shipping_date'] : '',
+					),
+				)
 			);
-
-			if ( ! empty( $service_data['fields'] ) ) {
-				$new_service['class']                             = 'checkbox show-if-trigger';
-				$new_service['custom_attributes']['data-show-if'] = '.show-if-' . $service;
-			}
-
-			$services[] = $new_service;
-
-			if ( ! empty( $service_data['fields'] ) ) {
-				$added_column_start = false;
-
-				foreach ( $service_data['fields'] as $field ) {
-					if ( ! is_null( $field['value_callback'] ) ) {
-						continue;
-					}
-
-					$field_value = '';
-
-					if ( ! is_null( $field['default_callback'] ) ) {
-						$field_value = Package::get_callback_value( $shipment, $field['default_callback'], $field['formatting_callback'] );
-					}
-
-					if ( ! $added_column_start ) {
-						$services[] = array(
-							'id'    => '',
-							'type'  => 'columns',
-							'class' => 'show-if show-if-' . $service,
-						);
-
-						$added_column_start = true;
-					}
-
-					$new_field = array(
-						'id'            => $service . '_' . $field['api_name'],
-						'label'         => $field['label'],
-						'description'   => $field['description'],
-						'type'          => $field['type'],
-						'class'         => $field['class'],
-						'value'         => $field_value,
-						'wrapper_class' => 'column col-6',
-						'options'       => $field['options'],
-					);
-
-					$services[] = $new_field;
-				}
-
-				if ( $added_column_start ) {
-					$services[] = array(
-						'id'   => '',
-						'type' => 'columns_end',
-					);
-				}
-			}
-		}
-
-		if ( ! empty( $services ) ) {
-			$settings[] = array(
-				'type'         => 'services_start',
-				'id'           => '',
-				'hide_default' => ! empty( $default_args['services'] ) ? false : true,
-			);
-
-			$settings = array_merge( $settings, $services );
 		}
 
 		return $settings;
@@ -244,87 +298,27 @@ class GLS extends Auto {
 	 *
 	 * @return \WP_Error|mixed
 	 */
-	protected function validate_label_request( $shipment, $args = array() ) {
-		if ( 'return' === $shipment->get_type() ) {
-			$args = $this->validate_return_label_args( $shipment, $args );
-		} else {
-			$args = $this->validate_simple_label_args( $shipment, $args );
-		}
+	protected function validate_label_request( $shipment, $props ) {
+		if ( 'simple' === $shipment->get_type() ) {
+			$props = wp_parse_args(
+				$props,
+				array(
+					'shipping_date' => '',
+				)
+			);
 
-		return $args;
-	}
+			$error = new \WP_Error();
 
-	/**
-	 * @param Shipment $shipment
-	 * @param $args
-	 *
-	 * @return \WP_Error|mixed
-	 */
-	protected function validate_return_label_args( $shipment, $args = array() ) {
-		return $args;
-	}
+			if ( ! empty( $args['shipping_date'] ) && ! \Vendidero\Germanized\Shipments\Package::is_valid_datetime( $args['shipping_date'], 'Y-m-d' ) ) {
+				$error->add( 500, _x( 'Error while parsing shipping date.', 'gls', 'woocommerce-germanized-pro' ) );
+			}
 
-	/**
-	 * @param Shipment $shipment
-	 * @param $args
-	 *
-	 * @return \WP_Error|mixed
-	 */
-	protected function validate_simple_label_args( $shipment, $args = array() ) {
-		$args = wp_parse_args(
-			$args,
-			array(
-				'product_id'    => '',
-				'shipping_date' => '',
-				'services'      => array(),
-			)
-		);
-
-		$error = new \WP_Error();
-
-		if ( ! empty( $args['shipping_date'] ) && ! \Vendidero\Germanized\Shipments\Package::is_valid_datetime( $args['shipping_date'], 'Y-m-d' ) ) {
-			$error->add( 500, _x( 'Error while parsing shipping date.', 'gls', 'woocommerce-germanized-pro' ) );
-		}
-
-		// Do only allow valid services
-		if ( ! empty( $args['services'] ) ) {
-			$args['services'] = array_intersect( $args['services'], $this->get_available_label_services( $shipment ) );
-			$args['services'] = array_values( $args['services'] );
-		}
-
-		foreach ( $args['services'] as $service ) {
-			$service_fields = Package::get_service_fields( $service );
-
-			if ( ! empty( $service_fields ) ) {
-				foreach ( $service_fields as $field ) {
-					if ( ! is_null( $field['value_callback'] ) ) {
-						continue;
-					}
-
-					$field_value = '';
-
-					if ( ! is_null( $field['default_callback'] ) ) {
-						$field_value = Package::get_callback_value( $shipment, $field['default_callback'], $field['formatting_callback'] );
-					}
-
-					if ( isset( $args[ $service . '_' . $field['api_name'] ] ) ) {
-						$field_value = $args[ $service . '_' . $field['api_name'] ];
-					}
-
-					if ( '' === $field_value && true === $field['mandatory'] ) {
-						$error->add( 500, sprintf( esc_html_x( 'Please supply a value for %1$s: %2$s.', 'gls', 'woocommerce-germanized-pro' ), esc_html( Package::get_service_title( $service ) ), esc_html( $field['label'] ) ) );
-
-						$args['services'] = array_diff( $args['services'], array( $service ) );
-					}
-				}
+			if ( wc_gzd_shipment_wp_error_has_errors( $error ) ) {
+				return $error;
 			}
 		}
 
-		if ( wc_gzd_shipment_wp_error_has_errors( $error ) ) {
-			return $error;
-		}
-
-		return $args;
+		return $props;
 	}
 
 	/**
@@ -333,94 +327,35 @@ class GLS extends Auto {
 	 * @return array
 	 */
 	protected function get_default_label_props( $shipment ) {
-		if ( 'return' === $shipment->get_type() ) {
-			$gls_defaults = $this->get_default_return_label_props( $shipment );
-		} else {
-			$gls_defaults = $this->get_default_simple_label_props( $shipment );
-		}
-
 		$defaults = parent::get_default_label_props( $shipment );
-		$defaults = array_replace_recursive( $defaults, $gls_defaults );
 
-		return $defaults;
-	}
-
-	/**
-	 * @param Shipment $shipment
-	 *
-	 * @return array
-	 */
-	protected function get_default_return_label_props( $shipment ) {
-		$product_id = $this->get_default_label_product( $shipment );
-
-		$defaults = array(
-			'services' => array(),
-		);
-
-		return $defaults;
-	}
-
-	/**
-	 * @param \Vendidero\Germanized\Shipments\Shipment $shipment
-	 */
-	public function get_default_label_product( $shipment ) {
 		if ( 'simple' === $shipment->get_type() ) {
-			if ( $shipment->is_shipping_domestic() ) {
-				return $this->get_shipment_setting( $shipment, 'label_default_product_dom' );
-			} else {
-				return $this->get_shipment_setting( $shipment, 'label_default_product_int' );
+			$defaults = wp_parse_args(
+				$defaults,
+				array(
+					'shipping_date' => '',
+				)
+			);
+
+			if ( $shipment->is_shipping_international() ) {
+				$defaults['incoterms'] = $this->get_setting( 'label_default_incoterms', '10' );
 			}
-		}
+		} else {
+			$return_type = '';
 
-		return '';
-	}
-
-	/**
-	 * @param Shipment $shipment
-	 *
-	 * @return array
-	 */
-	protected function get_default_simple_label_props( $shipment ) {
-		$product_id = $this->get_default_label_product( $shipment );
-
-		$defaults = array(
-			'services'      => array(),
-			'shipping_date' => '',
-		);
-
-		foreach ( Package::get_services() as $service_id => $service ) {
-			if ( $product_id !== $service['product'] ) {
-				continue;
+			if ( $config_set = $shipment->get_label_configuration_set() ) {
+				$return_type = $config_set->get_setting( 'return_type', $return_type, 'additional' );
 			}
 
-			if ( 'yes' === $this->get_shipment_setting( $shipment, 'label_service_' . $service_id ) ) {
-				$defaults['services'][] = $service_id;
-			}
+			$defaults = wp_parse_args(
+				$defaults,
+				array(
+					'return_type' => $return_type,
+				)
+			);
 		}
 
 		return $defaults;
-	}
-
-	/**
-	 * @param \Vendidero\Germanized\Shipments\Shipment $shipment
-	 */
-	public function get_available_label_products( $shipment ) {
-		$is_return = $shipment->get_type() === 'return';
-
-		if ( $shipment->is_shipping_domestic() ) {
-			return Package::get_domestic_products( $is_return );
-		} elseif ( $shipment->is_shipping_inner_eu() ) {
-			return Package::get_eu_products( $is_return );
-		} else {
-			return Package::get_international_products( $is_return );
-		}
-	}
-
-	/**
-	 * @param \Vendidero\Germanized\Shipments\Shipment $shipment
-	 */
-	public function get_available_label_services( $shipment ) {
-		return array_keys( Package::get_services() );
 	}
 
 	protected function get_available_base_countries() {
@@ -493,131 +428,56 @@ class GLS extends Auto {
 			)
 		);
 
-		$general_settings = parent::get_general_settings( $for_shipping_method );
+		$general_settings = parent::get_general_settings();
 
 		return array_merge( $settings, $general_settings );
 	}
 
-	protected function get_label_settings( $for_shipping_method = false ) {
-		$select_product_dom = Package::get_domestic_products();
-		$select_product_int = Package::get_international_products();
-		$select_product_eu  = Package::get_eu_products();
-		$select_formats     = array();
+	/**
+	 * @param ConfigurationSet $configuration_set
+	 *
+	 * @return mixed
+	 */
+	protected function get_label_settings_by_zone( $configuration_set ) {
+		$settings = parent::get_label_settings_by_zone( $configuration_set );
 
-		$settings = array(
-			array(
-				'title'          => '',
-				'title_method'   => _x( 'Products', 'gls', 'woocommerce-germanized-pro' ),
-				'type'           => 'title',
-				'id'             => 'shipping_provider_gls_label_options',
-				'allow_override' => true,
-			),
+		if ( 'shipping_provider' === $configuration_set->get_setting_type() ) {
+			if ( 'int' === $configuration_set->get_zone() && 'simple' === $configuration_set->get_shipment_type() ) {
+				$settings = array_merge(
+					$settings,
+					array(
+						array(
+							'title'    => _x( 'Default Incoterms', 'gls', 'woocommerce-germanized-pro' ),
+							'type'     => 'select',
+							'default'  => '10',
+							'value'    => $this->get_setting( 'label_default_incoterms', '10' ),
+							'id'       => 'label_default_incoterms',
+							'desc_tip' => _x( 'Select default incoterms for international shipments.', 'gls', 'woocommerce-germanized-pro' ),
+							'options'  => Package::get_available_incoterms(),
+							'class'    => 'wc-enhanced-select',
+						),
+					)
+				);
+			}
+		}
 
-			array(
-				'title'   => _x( 'Domestic Default Service', 'gls', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'id'      => 'label_default_product_dom',
-				'default' => 'PARCEL',
-				'value'   => $this->get_setting( 'label_default_product_dom', 'PARCEL' ),
-				'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default GLS shipping service for domestic shipments that you want to offer to your customers (you can always change this within each individual shipment afterwards).', 'gls', 'woocommerce-germanized-pro' ) . '</div>',
-				'options' => $select_product_dom,
-				'class'   => 'wc-enhanced-select',
-			),
-
-			array(
-				'title'   => _x( 'EU Default Service', 'gls', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'default' => '',
-				'value'   => $this->get_setting( 'label_default_product_eu', '' ),
-				'id'      => 'label_default_product_eu',
-				'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default GLS shipping service for cross-border shipments that you want to offer to your customers (you can always change this within each individual shipment afterwards).', 'gls', 'woocommerce-germanized-pro' ) . '</div>',
-				'options' => $select_product_eu,
-				'class'   => 'wc-enhanced-select',
-			),
-
-			array(
-				'title'   => _x( 'Int. Default Service', 'gls', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'default' => '',
-				'value'   => $this->get_setting( 'label_default_product_int', '' ),
-				'id'      => 'label_default_product_int',
-				'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default GLS shipping service for cross-border shipments that you want to offer to your customers (you can always change this within each individual shipment afterwards).', 'gls', 'woocommerce-germanized-pro' ) . '</div>',
-				'options' => $select_product_int,
-				'class'   => 'wc-enhanced-select',
-			),
-
-			array(
-				'title'   => _x( 'Default return option', 'gls', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'default' => '',
-				'value'   => $this->get_setting( 'label_default_return_type', '' ),
-				'id'      => 'label_default_return_type',
-				'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default GLS return option (you can always change this within each individual shipment afterwards).', 'gls', 'woocommerce-germanized-pro' ) . '</div>',
-				'options' => Package::get_return_types(),
-				'class'   => 'wc-enhanced-select',
-			),
-		);
-
-		$settings = array_merge(
-			$settings,
-			array(
-				array(
-					'title'          => _x( 'Force email', 'gls', 'woocommerce-germanized-pro' ),
-					'desc'           => _x( 'Force transferring customer email to GLS.', 'gls', 'woocommerce-germanized-pro' ) . '<div class="wc-gzd-additional-desc">' . sprintf( _x( 'By default the customer email address is only transferred in case explicit consent has been given via a checkbox during checkout. You may force to transfer the customer email address during label creation to make sure your customers receive email notifications by GLS. Make sure to check your privacy policy and seek advice by a lawyer in case of doubt.', 'gls', 'woocommerce-germanized-pro' ) ) . '</div>',
-					'id'             => 'label_force_email_transfer',
-					'value'          => $this->get_setting( 'label_force_email_transfer', 'no' ),
-					'default'        => 'no',
-					'allow_override' => false,
-					'type'           => 'gzd_toggle',
-				),
-
-				array(
-					'type' => 'sectionend',
-					'id'   => 'shipping_provider_gls_label_options',
-				),
-			)
-		);
-
-		$settings = array_merge( $settings, parent::get_label_settings( $for_shipping_method ) );
-
-		$settings = array_merge(
-			$settings,
-			array(
-				array(
-					'title'          => _x( 'Default Services', 'gls', 'woocommerce-germanized-pro' ),
-					'allow_override' => true,
-					'type'           => 'title',
-					'id'             => 'gls_label_default_services_options',
-					'desc'           => sprintf( _x( 'Adjust services to be added to your labels by default.', 'gls', 'woocommerce-germanized-pro' ) ),
-				),
-			)
-		);
-
-		foreach ( Package::get_services() as $service_id => $service ) {
+		if ( 'return' === $configuration_set->get_shipment_type() ) {
 			$settings = array_merge(
 				$settings,
 				array(
 					array(
-						'title'   => $service['title'],
-						'desc'    => sprintf( _x( 'Enable the %s Service by default.', 'gls', 'woocommerce-germanized-pro' ), esc_html( $service['title'] ) ),
-						'id'      => 'label_service_' . $service_id,
-						'value'   => wc_bool_to_string( $this->get_setting( 'label_service_' . $service_id, 'no' ) ),
-						'default' => 'no',
-						'type'    => 'gzd_toggle',
+						'title'   => _x( 'Return option', 'gls', 'woocommerce-germanized-pro' ),
+						'type'    => 'select',
+						'default' => '',
+						'value'   => $configuration_set->get_setting( 'return_type', '', 'additional' ),
+						'id'      => $configuration_set->get_setting_id( 'return_type', 'additional' ),
+						'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default GLS return option (you can always change this within each individual shipment afterwards).', 'gls', 'woocommerce-germanized-pro' ) . '</div>',
+						'options' => Package::get_return_types(),
+						'class'   => 'wc-enhanced-select',
 					),
 				)
 			);
 		}
-
-		$settings = array_merge(
-			$settings,
-			array(
-				array(
-					'type' => 'sectionend',
-					'id'   => 'gls_label_default_services_options',
-				),
-			)
-		);
 
 		return $settings;
 	}
@@ -628,5 +488,21 @@ class GLS extends Auto {
 
 	public function get_signup_link() {
 		return 'https://www.gls-pakete.de/geschaeftlich-versenden/geschaeftskunde-werden';
+	}
+
+	public function get_available_label_products( $shipment ) {
+		if ( is_callable('parent::get_available_label_products' ) ) {
+			return parent::get_available_label_products( $shipment );
+		} else {
+			return array();
+		}
+	}
+
+	public function get_default_label_product( $shipment ) {
+		if ( is_callable('parent::get_default_label_product' ) ) {
+			return parent::get_default_label_product( $shipment );
+		} else {
+			return '';
+		}
 	}
 }

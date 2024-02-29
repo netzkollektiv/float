@@ -3,18 +3,18 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
@@ -28,38 +28,41 @@ class Twitter
 
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
+    public function __construct()
     {
     }
 
-    private function __wakeup()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    protected function __construct()
+    public function __wakeup()
     {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
     }
 
     /**
      * getDefault function.
-     *
-     * @access public
-     * @return void
      */
     public function getDefault()
     {
-        $data = [
+        return [
             'contentBlockerId' => 'twitter',
             'name' => 'Twitter',
             'description' => '',
-            'privacyPolicyURL' => _x('https://twitter.com/privacy', 'Frontend / Content Blocker / Twitter / URL', 'borlabs-cookie'),
+            'privacyPolicyURL' => _x(
+                'https://twitter.com/privacy',
+                'Frontend / Content Blocker / Twitter / URL',
+                'borlabs-cookie'
+            ),
             'hosts' => [
                 'twitter.com',
                 't.co',
@@ -68,9 +71,25 @@ class Twitter
 	<div class="_brlbs-embed _brlbs-twitter">
     	<img class="_brlbs-thumbnail" src="%%thumbnail%%" alt="%%name%%">
 		<div class="_brlbs-caption">
-			<p>' . _x("By loading the tweet, you agree to Twitter's privacy policy.", 'Frontend / Content Blocker / Twitter / Text', 'borlabs-cookie') .'<br><a href="%%privacy_policy_url%%" target="_blank" rel="nofollow noopener noreferrer">' . _x('Learn more', 'Frontend / Content Blocker / Twitter / Text', 'borlabs-cookie') . '</a></p>
-			<p><a class="_brlbs-btn" href="#" data-borlabs-cookie-unblock role="button">' . _x('Load tweet', 'Frontend / Content Blocker / Twitter / Text', 'borlabs-cookie') . '</a></p>
-			<p><label><input type="checkbox" name="unblockAll" value="1" checked> <small>' . _x('Always unblock Twitter Tweets', 'Frontend / Content Blocker / Twitter / Text', 'borlabs-cookie') . '</small></label></p>
+			<p>' . _x(
+                "By loading the tweet, you agree to Twitter's privacy policy.",
+                'Frontend / Content Blocker / Twitter / Text',
+                'borlabs-cookie'
+            ) . '<br><a href="%%privacy_policy_url%%" target="_blank" rel="nofollow noopener noreferrer">' . _x(
+                'Learn more',
+                'Frontend / Content Blocker / Twitter / Text',
+                'borlabs-cookie'
+            ) . '</a></p>
+			<p><a class="_brlbs-btn" href="#" data-borlabs-cookie-unblock role="button">' . _x(
+                'Load tweet',
+                'Frontend / Content Blocker / Twitter / Text',
+                'borlabs-cookie'
+            ) . '</a></p>
+			<p><label><input type="checkbox" name="unblockAll" value="1" checked> <small>' . _x(
+                'Always unblock Twitter Tweets',
+                'Frontend / Content Blocker / Twitter / Text',
+                'borlabs-cookie'
+            ) . '</small></label></p>
 		</div>
 	</div>
 </div>',
@@ -98,17 +117,13 @@ class Twitter
             'status' => true,
             'undeletable' => true,
         ];
-
-        return $data;
     }
 
     /**
      * modify function.
      *
-     * @access public
      * @param mixed $content
-     * @param mixed $atts (default: [])
-     * @return void
+     * @param mixed $atts    (default: [])
      */
     public function modify($content, $atts = [])
     {
@@ -116,7 +131,7 @@ class Twitter
         $contentBlockerData = ContentBlocker::getInstance()->getContentBlockerData('twitter');
 
         // Default thumbnail
-        $thumbnail = BORLABS_COOKIE_PLUGIN_URL . 'images/cb-twitter.png';
+        $thumbnail = BORLABS_COOKIE_PLUGIN_URL . 'assets/images/cb-twitter.png';
 
         // Get the title which was maybe set via title-attribute in a shortcode
         $title = ContentBlocker::getInstance()->getCurrentTitle();
@@ -128,9 +143,12 @@ class Twitter
 
         // Replace text variables
         if (!empty($atts)) {
-
             foreach ($atts as $key => $value) {
-                $contentBlockerData['previewHTML'] = str_replace('%%'.$key.'%%', $value, $contentBlockerData['previewHTML']);
+                $contentBlockerData['previewHTML'] = str_replace(
+                    '%%' . $key . '%%',
+                    $value,
+                    $contentBlockerData['previewHTML']
+                );
             }
         }
 

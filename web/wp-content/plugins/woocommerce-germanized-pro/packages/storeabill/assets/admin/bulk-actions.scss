@@ -39,3 +39,17 @@
     margin: 0;
   }
 }
+
+#wc-orders-filter {
+  .tablenav.top.sab-bulk-action-running {
+    position: relative;
+    padding-top: 100px;
+  }
+
+  .sab-bulk-action-wrapper {
+    position: absolute;
+    left: 0;
+    top: -5px;
+    width: 50%;
+  }
+}

@@ -431,7 +431,7 @@ class Helper {
 	public static function calculate_order_deposit_prices( $item, $calculate_tax_for = array(), $order = false ) {
 		if ( self::order_fee_is_deposit( $item ) ) {
 			$order             = ! $order ? $item->get_order() : $order;
-			$calculate_tax_for = ( empty( $calculate_tax_for ) && $order ) ? \WC_GZD_Admin_Order::instance()->get_order_taxable_location( $order ) : $calculate_tax_for;
+			$calculate_tax_for = ( empty( $calculate_tax_for ) && $order ) ? \WC_GZD_Order_Helper::instance()->get_order_taxable_location( $order ) : $calculate_tax_for;
 
 			if ( $order && wc_tax_enabled() && $order->get_prices_include_tax() && '0' !== $item->get_tax_class() && 'taxable' === $item->get_tax_status() ) {
 				$is_vat_exempt = apply_filters( 'woocommerce_order_is_vat_exempt', 'yes' === $order->get_meta( 'is_vat_exempt' ), $order );

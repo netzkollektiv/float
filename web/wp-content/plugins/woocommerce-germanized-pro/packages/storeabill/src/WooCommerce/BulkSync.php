@@ -33,7 +33,7 @@ class BulkSync extends BulkActionHandler {
 
 		if ( ! empty( $current ) ) {
 			foreach ( $current as $order_id ) {
-				CacheHelper::prevent_caching();
+				CacheHelper::prevent_caching( 'bulk' );
 
 				if ( $order = Helper::get_order( $order_id ) ) {
 					$result = $order->sync_order( true, array( 'created_via' => 'bulk_action' ) );

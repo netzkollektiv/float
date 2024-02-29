@@ -5,7 +5,7 @@
  * Description: StoreaBill, installed as a feature plugin for development and testing purposes.
  * Author: vendidero
  * Author URI: https://vendidero.de
- * Version: 2.1.1
+ * Version: 2.3.0
  * Requires PHP: 5.6
  * License: GPLv3
  *

@@ -64,7 +64,7 @@ class Admin {
 
 		wp_register_script( 'jquery-blockui', Package::get_assets_url() . '/libs/jquery-blockui/jquery.blockUI.min.js', array( 'jquery' ), '2.70', true );
 
-		wp_register_script( 'storeabill_admin_enhanced_select', Package::get_build_url() . '/admin/enhanced-select.js', array( 'selectWoo' ), Package::get_version() ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
+		wp_register_script( 'storeabill_admin_enhanced_select', Package::get_build_url() . '/admin/enhanced-select.js', array( 'selectWoo', 'jquery-ui-sortable' ), Package::get_version() ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
 		wp_register_script( 'storeabill_admin_global', Package::get_build_url() . '/admin/global.js', array( 'jquery', 'jquery-tiptip', 'jquery-blockui', 'storeabill_admin_enhanced_select' ), Package::get_version() ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
 		wp_register_script( 'storeabill_admin_bulk_actions', Package::get_build_url() . '/admin/bulk-actions.js', array( 'storeabill_admin_global' ), Package::get_version() ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
 		wp_register_script( 'storeabill_admin_settings', Package::get_build_url() . '/admin/settings.js', array( 'storeabill_admin_global' ), Package::get_version() ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
@@ -364,7 +364,7 @@ class Admin {
 				$finished    = ( isset( $_GET['bulk_action_handling'] ) && 'finished' === $_GET['bulk_action_handling'] ) ? true : false;
 				$bulk_action = ( isset( $_GET['current_bulk_action'] ) ) ? sab_clean( wp_unslash( $_GET['current_bulk_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-			if ( $finished && ( $handler = self::get_bulk_action_handler( $bulk_action, $current_document_type ) ) && check_admin_referer( $handler->get_done_nonce_action() ) ) {
+			if ( $finished && ( $handler = self::get_bulk_action_handler( $bulk_action, $current_document_type ) ) && check_admin_referer( $handler->get_done_nonce_action(), 'sab_bulk_action_nonce' ) ) {
 				$handler->finish();
 			}
 

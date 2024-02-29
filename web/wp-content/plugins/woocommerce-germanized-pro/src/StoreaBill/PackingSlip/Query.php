@@ -2,7 +2,6 @@
 
 namespace Vendidero\Germanized\Pro\StoreaBill\PackingSlip;
 
-use Vendidero\Germanized\Pro\StoreaBill\PackingSlip;
 use Vendidero\StoreaBill\Document\Document;
 
 defined( 'ABSPATH' ) || exit;

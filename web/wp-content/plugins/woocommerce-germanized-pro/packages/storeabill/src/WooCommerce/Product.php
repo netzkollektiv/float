@@ -71,7 +71,9 @@ class Product implements \Vendidero\StoreaBill\Interfaces\Product {
 	}
 
 	public function is_virtual() {
-		return $this->product->is_virtual() || $this->product->is_downloadable();
+		$is_virtual = $this->product->is_virtual() || $this->product->is_downloadable();
+
+		return apply_filters( 'storeabill_product_is_virtual', $is_virtual, $this->product, $this );
 	}
 
 	public function is_service() {

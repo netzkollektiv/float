@@ -9,7 +9,14 @@ use Elementor\Group_Control_Typography;
 
 class WC_GZDP_Elementor_Widget_Helper {
 
+	/**
+	 * @param WC_GZD_Elementor_Widget $widget
+	 *
+	 * @return void
+	 */
 	public static function register_controls( $widget ) {
+		$is_price_widget = in_array( $widget->get_postfix(), array( 'unit_price', 'deposit' ), true );
+
 		$widget->add_responsive_control(
 			'text_align',
 			array(
@@ -35,29 +42,82 @@ class WC_GZDP_Elementor_Widget_Helper {
 			)
 		);
 
-		$widget->add_control(
-			'notice_color',
-			array(
-				'label'     => __( 'Color', 'woocommerce-germanized-pro' ),
-				'type'      => Controls_Manager::COLOR,
-				'scheme'    => array(
-					'type'  => class_exists( '\Elementor\Core\Schemes\Color' ) ? \Elementor\Core\Schemes\Color::get_type() : \Elementor\Scheme_Color::get_type(),
-					'value' => class_exists( '\Elementor\Core\Schemes\Color' ) ? \Elementor\Core\Schemes\Color::COLOR_1 : \Elementor\Scheme_Color::COLOR_1,
-				),
-				'selectors' => array(
-					'{{WRAPPER}}' => 'color: {{VALUE}}',
-				),
-			)
-		);
+		if ( $is_price_widget ) {
+			$widget->add_control(
+				'notice_color',
+				array(
+					'label'     => __( 'Color', 'woocommerce-germanized-pro' ),
+					'type'      => Controls_Manager::COLOR,
+					'global'    => array(
+						'default' => class_exists( 'Elementor\Core\Kits\Documents\Tabs\Global_Colors' ) ? \Elementor\Core\Kits\Documents\Tabs\Global_Colors::COLOR_PRIMARY : \Elementor\Scheme_Color::COLOR_1,
+					),
+					'selectors' => array(
+						'.woocommerce {{WRAPPER}} .price' => 'color: {{VALUE}}',
+					),
+				)
+			);
 
-		$widget->add_group_control(
-			Group_Control_Typography::get_type(),
-			array(
-				'name'     => 'typography',
-				'scheme'   => class_exists( '\Elementor\Core\Schemes\Typography' ) ? \Elementor\Core\Schemes\Typography::TYPOGRAPHY_1 : \Elementor\Scheme_Typography::TYPOGRAPHY_1,
-				'selector' => '{{WRAPPER}}',
-			)
-		);
+			$widget->add_group_control(
+				Group_Control_Typography::get_type(),
+				array(
+					'name'     => 'typography',
+					'scheme'   => class_exists( '\Elementor\Core\Schemes\Typography' ) ? \Elementor\Core\Schemes\Typography::TYPOGRAPHY_1 : \Elementor\Scheme_Typography::TYPOGRAPHY_1,
+					'selector' => '.woocommerce {{WRAPPER}} .price',
+				)
+			);
+
+			$widget->add_control(
+				'sale_heading',
+				array(
+					'label'     => esc_html__( 'Sale Price', 'woocommerce-germanized-pro' ),
+					'type'      => Controls_Manager::HEADING,
+					'separator' => 'before',
+				)
+			);
+
+			$widget->add_control(
+				'sale_price_color',
+				array(
+					'label'     => __( 'Color', 'woocommerce-germanized-pro' ),
+					'type'      => Controls_Manager::COLOR,
+					'selectors' => array(
+						'.woocommerce {{WRAPPER}} .price ins' => 'color: {{VALUE}};',
+					),
+				)
+			);
+
+			$widget->add_group_control(
+				Group_Control_Typography::get_type(),
+				array(
+					'name'     => 'sale_price_typography',
+					'selector' => '.woocommerce {{WRAPPER}} .price ins',
+				)
+			);
+		} else {
+			$widget->add_control(
+				'notice_color',
+				array(
+					'label'     => __( 'Color', 'woocommerce-germanized-pro' ),
+					'type'      => Controls_Manager::COLOR,
+					'scheme'    => array(
+						'type'  => class_exists( '\Elementor\Core\Schemes\Color' ) ? \Elementor\Core\Schemes\Color::get_type() : \Elementor\Scheme_Color::get_type(),
+						'value' => class_exists( '\Elementor\Core\Schemes\Color' ) ? \Elementor\Core\Schemes\Color::COLOR_1 : \Elementor\Scheme_Color::COLOR_1,
+					),
+					'selectors' => array(
+						'{{WRAPPER}}' => 'color: {{VALUE}}',
+					),
+				)
+			);
+
+			$widget->add_group_control(
+				Group_Control_Typography::get_type(),
+				array(
+					'name'     => 'typography',
+					'scheme'   => class_exists( '\Elementor\Core\Schemes\Typography' ) ? \Elementor\Core\Schemes\Typography::TYPOGRAPHY_1 : \Elementor\Scheme_Typography::TYPOGRAPHY_1,
+					'selector' => '{{WRAPPER}}',
+				)
+			);
+		}
 	}
 
 	public static function render( $product, $widget ) {

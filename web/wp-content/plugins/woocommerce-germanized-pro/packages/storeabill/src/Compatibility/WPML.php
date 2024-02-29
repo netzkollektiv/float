@@ -24,6 +24,8 @@ class WPML implements Compatibility {
 
 	protected static $email_locale = false;
 
+	protected static $languages = null;
+
 	public static function is_active() {
 		return class_exists( 'SitePress' );
 	}
@@ -350,7 +352,7 @@ class WPML implements Compatibility {
 	}
 
 	public static function register_email_options( $options ) {
-		$email_options = self::get_email_options();
+		$email_options = array_values( self::get_email_options() );
 
 		return array_merge( $options, $email_options );
 	}
@@ -467,12 +469,7 @@ class WPML implements Compatibility {
 			add_filter( 'locale', array( __CLASS__, 'language_locale_filter' ), 50 );
 
 			if ( function_exists( 'switch_to_locale' ) ) {
-				switch_to_locale( get_locale() );
-
-				// Filter on plugin_locale so load_plugin_textdomain loads the correct locale.
-				add_filter( 'plugin_locale', 'get_locale' );
-
-				self::reload_locale();
+				self::switch_to_locale( get_locale() );
 			}
 
 			add_filter( 'woocommerce_order_item_get_name', array( __CLASS__, 'order_item_name_filter' ), 10, 2 );
@@ -619,6 +616,17 @@ class WPML implements Compatibility {
 		return $default;
 	}
 
+	public static function switch_to_locale( $locale ) {
+		if ( function_exists( 'switch_to_locale' ) ) {
+			switch_to_locale( $locale );
+		}
+
+		// Filter on plugin_locale so load_plugin_textdomain loads the correct locale.
+		add_filter( 'plugin_locale', 'get_locale' );
+
+		self::reload_locale();
+	}
+
 	/**
 	 * Reload locale
 	 */
@@ -626,8 +634,17 @@ class WPML implements Compatibility {
 		unload_textdomain( 'default' );
 		unload_textdomain( 'woocommerce' );
 
-		// Init WC locale.
-		WC()->load_plugin_textdomain();
+		/**
+		 * Reload cached country translations
+		 */
+		if ( function_exists( 'WC' ) ) {
+			// Init WC locale.
+			WC()->load_plugin_textdomain();
+
+			if ( class_exists( 'WC_Countries' ) ) {
+				WC()->countries = new \WC_Countries();
+			}
+		}
 
 		Package::load_plugin_textdomain();
 
@@ -642,6 +659,20 @@ class WPML implements Compatibility {
 		$sab_document_types = array();
 
 		Package::register_document_types();
+	}
+
+	public static function get_languages() {
+		if ( is_null( self::$languages ) ) {
+			self::$languages = apply_filters( 'wpml_active_languages', array(), array() );
+		}
+
+		return self::$languages;
+	}
+
+	public static function language_exists( $language ) {
+		$languages = self::get_languages();
+
+		return array_key_exists( $language, $languages );
 	}
 
 	public static function restore_language() {

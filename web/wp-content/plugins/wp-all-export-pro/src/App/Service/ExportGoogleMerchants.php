@@ -50,9 +50,10 @@ class ExportGoogleMerchants
         foreach ($articles as $article) {
             $line = array();
             foreach ($headers as $header) {
-                $line[$header] = (isset($article[$header])) ? $article[$header] : '';
+                $line[$header] = (isset($article[$header])) ? $this->sanitize_value($article[$header]) : '';
             }
-            fputcsv($stream, $line, self::GOOGLE_MERCHANTS_DELIMITER);
+			// Do not add escape characters as TSV considers them part of the field value.
+            fputcsv($stream, $line, self::GOOGLE_MERCHANTS_DELIMITER, chr(127));
             $this->wordPressFilters->applyFilters('wp_all_export_after_csv_line', array($stream, XmlExportEngine::$exportID));
         }
 
@@ -219,4 +220,10 @@ class ExportGoogleMerchants
             }
         }
     }
+
+	private function sanitize_value($value){
+		// The TSV format used by GMC doesn't accept tabs or newlines in the data.
+		// The TSV spec does not use escape characters so including tabs or newlines in the values invalidates the file.
+		return str_replace(["\t","\n","\r"], '', $value);
+	}
 }

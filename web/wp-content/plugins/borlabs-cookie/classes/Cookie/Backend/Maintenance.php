@@ -3,25 +3,24 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
 namespace BorlabsCookie\Cookie\Backend;
 
 use BorlabsCookie\Cookie\Config;
-use BorlabsCookie\Cookie\Tools;
 
 class Maintenance
 {
@@ -29,50 +28,63 @@ class Maintenance
 
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
+    public function __construct()
     {
     }
 
-    private function __wakeup()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    protected function __construct()
+    public function __wakeup()
     {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
     }
 
     /**
      * cleanUp function.
      *
-     * @access public
      * @param bool $optimizeTable (default: false)
-     * @return void
      */
     public function cleanUp($optimizeTable = false)
     {
         global $wpdb;
 
-        $table = (Config::getInstance()->get('aggregateCookieConsent') ? $wpdb->base_prefix : $wpdb->prefix)."borlabs_cookie_consent_log";
+        $table = (Config::getInstance()->get('aggregateCookieConsent') ? $wpdb->base_prefix : $wpdb->prefix)
+            . 'borlabs_cookie_consent_log';
         $cookieLifetime = Config::getInstance()->get('cookieLifetime');
 
         // Delete old entries
+        $wpdb->query(
+            '
+            DELETE FROM
+                `' . $table . '`
+            WHERE
+                `stamp` < NOW() - INTERVAL ' . (int) $cookieLifetime . ' DAY
+        '
+        );
+
+        // Delete old statistic entries
+        $tableStatistics = $wpdb->prefix . 'borlabs_cookie_statistics';
         $wpdb->query('
             DELETE FROM
-                `'.$table.'`
+                `' . $tableStatistics . '`
             WHERE
-                `stamp` < NOW() - INTERVAL '.intval($cookieLifetime).' DAY
+                `stamp` < NOW() - INTERVAL 60 DAY
         ');
 
         // Optimize
         if ($optimizeTable === true) {
-            $wpdb->query('OPTIMIZE TABLE `'.$table.'`');
+            $wpdb->query('OPTIMIZE TABLE `' . $table . '`');
+            $wpdb->query('OPTIMIZE TABLE `' . $tableStatistics . '`');
         }
     }
 }

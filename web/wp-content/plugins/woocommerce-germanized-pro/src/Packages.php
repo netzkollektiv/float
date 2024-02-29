@@ -32,6 +32,7 @@ class Packages {
 		'storeabill-sevdesk'         => '\\Vendidero\\StoreaBill\\sevDesk\\Package',
 		'woocommerce-germanized-dpd' => '\\Vendidero\\Germanized\\DPD\\Package',
 		'woocommerce-germanized-gls' => '\\Vendidero\\Germanized\\GLS\\Package',
+		'vendidero-helper'           => '\\Vendidero\\VendideroHelper\\Package',
 	);
 
 	/**
@@ -51,13 +52,6 @@ class Packages {
 	 * Callback for WordPress init hook.
 	 */
 	public static function on_init() {
-		/**
-		 * Do not load packages in case the main version is not loadable.
-		 */
-		if ( ! \WC_GZDP_Dependencies::instance()->is_loadable() ) {
-			return;
-		}
-
 		self::load_packages();
 	}
 
@@ -78,7 +72,16 @@ class Packages {
 	 * Each package should include an init file which loads the package so it can be used by core.
 	 */
 	protected static function load_packages() {
+		$is_loadable = \WC_GZDP_Dependencies::instance()->is_loadable();
+
 		foreach ( self::$packages as $package_name => $package_class ) {
+			/**
+			 * Force loading the vendidero helper plugin to at least allow updating.
+			 */
+			if ( ! $is_loadable && 'vendidero-helper' !== $package_name ) {
+				continue;
+			}
+
 			if ( ! self::package_exists( $package_name ) ) {
 				self::missing_package( $package_name );
 				continue;
@@ -88,7 +91,11 @@ class Packages {
 			 * Prevent calling init twice in case feature plugin is installed
 			 */
 			if ( ! has_action( 'plugins_loaded', array( $package_class, 'init' ) ) ) {
-				call_user_func( array( $package_class, 'init' ) );
+				if ( 'vendidero-helper' === $package_name ) {
+					call_user_func_array( array( $package_class, 'init' ), array( 'is_integration' => true ) );
+				} else {
+					call_user_func( array( $package_class, 'init' ) );
+				}
 			}
 		}
 	}

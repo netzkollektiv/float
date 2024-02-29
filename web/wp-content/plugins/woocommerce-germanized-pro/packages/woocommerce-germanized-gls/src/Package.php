@@ -22,7 +22,7 @@ class Package {
 	 *
 	 * @var string
 	 */
-	const VERSION = '1.0.2';
+	const VERSION = '1.1.1';
 
 	protected static $api = null;
 
@@ -146,11 +146,14 @@ class Package {
 			);
 		} else {
 			$urls = array(
-				'de01' => 'https://shipit-wbm-de01.gls-group.eu',
-				'de02' => 'https://shipit-wbm-de02.gls-group.eu',
-				'de03' => 'https://shipit-wbm-de03.gls-group.eu',
-				'de04' => 'https://shipit-wbm-de04.gls-group.eu',
-				'de08' => 'https://wbm-de08.shipit.gls-group.com',
+				'de01'  => 'https://shipit-wbm-de01.gls-group.eu',
+				'de02'  => 'https://shipit-wbm-de02.gls-group.eu',
+				'de03'  => 'https://shipit-wbm-de03.gls-group.eu',
+				'de04'  => 'https://shipit-wbm-de04.gls-group.eu',
+				'de05'  => 'https://shipit-wbm-de05.gls-group.eu',
+				'de07'  => 'https://shipit-wbm-de07.gls-group.eu',
+				'int01' => 'https://shipit-wbm-int01.gls-group.eu',
+				'de08'  => 'https://wbm-de08.shipit.gls-group.com',
 			);
 		}
 
@@ -347,168 +350,13 @@ class Package {
 		return true;
 	}
 
-	public static function get_service_product( $service ) {
-		$services = self::get_services();
-
-		return array_key_exists( $service, $services ) && $services[ $service ]['product'] ? $services[ $service ]['product'] : 'PARCEL';
-	}
-
-	public static function get_service_title( $service ) {
-		$services = self::get_services();
-
-		return array_key_exists( $service, $services ) && $services[ $service ]['title'] ? $services[ $service ]['title'] : ucwords( $service );
-	}
-
-	public static function get_service_level( $service ) {
-		$services = self::get_services();
-
-		return array_key_exists( $service, $services ) && isset( $services[ $service ]['level'] ) ? $services[ $service ]['level'] : 'shipment';
-	}
-
-	public static function get_service_fields( $service ) {
-		$services = self::get_services();
-
-		$fields = array_key_exists( $service, $services ) && ! empty( $services[ $service ]['fields'] ) ? $services[ $service ]['fields'] : array();
-
-		if ( ! empty( $fields ) ) {
-			foreach ( $fields as $key => $field ) {
-				$fields[ $key ] = wp_parse_args(
-					$field,
-					array(
-						'value_callback'          => null,
-						'default_callback'        => null,
-						'mandatory'               => false,
-						'formatting_callback'     => null,
-						'formatting_api_callback' => null,
-						'api_name'                => '',
-						'label'                   => '',
-						'type'                    => 'text',
-						'class'                   => '',
-						'description'             => '',
-						'options'                 => array(),
-					)
-				);
-
-				if ( ! empty( $fields[ $key ]['formatting_callback'] ) && empty( $fields[ $key ]['formatting_api_callback'] ) ) {
-					$fields[ $key ]['formatting_api_callback'] = $fields[ $key ]['formatting_callback'];
-				}
-			}
-		}
-
-		return $fields;
-	}
-
-	/**
-	 * @param Simple|Shipment $base_object
-	 * @param array $callback
-	 *
-	 * @return mixed
-	 */
-	public static function get_callback_value( $base_object, $callback, $formatting_callback = null ) {
-		$shipment = is_a( $base_object, 'Vendidero\Germanized\Shipments\Shipment' ) ? $base_object : false;
-		$label    = is_a( $base_object, 'Vendidero\Germanized\Shipments\Labels\Label' ) ? $base_object : false;
-
-		if ( is_a( $base_object, 'Vendidero\Germanized\Shipments\Labels\Label' ) ) {
-			$shipment = $base_object->get_shipment();
-		} else {
-			$label = $base_object->get_label();
-		}
-
-		$order  = $shipment ? $shipment->get_order() : false;
-		$object = $shipment;
-		$value  = '';
-
-		if ( 'label' === $callback[0] ) {
-			$object = $label;
-		} elseif ( 'order' === $callback[0] ) {
-			$object = $order;
-		}
-
-		if ( $object ) {
-			$value = ( is_callable( array( $object, $callback[1] ) ) ? call_user_func_array( array( $object, $callback[1] ), array() ) : '' );
-		}
-
-		if ( ! empty( $value ) && $formatting_callback ) {
-			$value = call_user_func_array( $formatting_callback, array( $value ) );
-		}
-
-		return $value;
-	}
-
-	public static function get_services() {
+	public static function get_available_incoterms() {
 		return array(
-			'ExWorks'             => array(
-				'title'   => _x( 'ExWorks', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'PARCEL',
-				'level'   => 'unit',
-			),
-			'AddonLiability'      => array(
-				'title'   => _x( 'Addon Liability', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'PARCEL',
-				'level'   => 'unit',
-				'fields'  => array(
-					array(
-						'api_name'                => 'Amount',
-						'default_callback'        => array( 'shipment', 'get_total' ),
-						'label'                   => _x( 'Amount', 'gls', 'woocommerce-germanized-pro' ),
-						'type'                    => 'text',
-						'class'                   => 'wc_input_decimal',
-						'formatting_callback'     => 'wc_format_localized_decimal',
-						'formatting_api_callback' => 'wc_format_decimal',
-						'mandatory'               => true,
-					),
-					array(
-						'api_name'       => 'Currency',
-						'value_callback' => array( 'order', 'get_currency' ),
-						'type'           => 'text',
-					),
-				),
-			),
-			'FlexDeliveryService' => array(
-				'title'   => _x( 'Flex Delivery', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'PARCEL',
-				'level'   => 'shipment',
-			),
-			'Guaranteed24Service' => array(
-				'title'   => _x( 'Guaranteed 24', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'PARCEL',
-				'level'   => 'shipment',
-			),
-			'0800Service'         => array(
-				'title'   => _x( '08:00', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'EXPRESS',
-				'level'   => 'shipment',
-			),
-			'0900Service'         => array(
-				'title'   => _x( '09:00', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'EXPRESS',
-				'level'   => 'shipment',
-			),
-			'1000Service'         => array(
-				'title'   => _x( '10:00', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'EXPRESS',
-				'level'   => 'shipment',
-			),
-			'1200Service'         => array(
-				'title'   => _x( '12:00', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'EXPRESS',
-				'level'   => 'shipment',
-			),
-			'SaturdayService'     => array(
-				'title'   => _x( 'Saturday', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'EXPRESS',
-				'level'   => 'shipment',
-			),
-			'Saturday1000Service' => array(
-				'title'   => _x( 'Saturday 10:00', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'EXPRESS',
-				'level'   => 'shipment',
-			),
-			'Saturday1200Service' => array(
-				'title'   => _x( 'Saturday 12:00', 'gls', 'woocommerce-germanized-pro' ),
-				'product' => 'EXPRESS',
-				'level'   => 'shipment',
-			),
+			'10' => _x( 'DDP', 'gls', 'woocommerce-germanized-pro' ),
+			'20' => _x( 'DAP', 'gls', 'woocommerce-germanized-pro' ),
+			'30' => _x( 'DDP, VAT unpaid', 'gls', 'woocommerce-germanized-pro' ),
+			'40' => _x( 'DAP, cleared', 'gls', 'woocommerce-germanized-pro' ),
+			'50' => _x( 'DDP, small packages', 'gls', 'woocommerce-germanized-pro' ),
 		);
 	}
 

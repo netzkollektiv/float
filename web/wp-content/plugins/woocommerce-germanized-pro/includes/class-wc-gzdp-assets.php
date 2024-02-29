@@ -2,13 +2,37 @@
 
 class WC_GZDP_Assets {
 
-	public $suffix = '';
+	protected static $_instance = null;
 
 	protected $localized_scripts = array();
 
-	public function __construct() {
-		$this->suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+	public static function instance() {
+		if ( is_null( self::$_instance ) ) {
+			self::$_instance = new self();
+		}
 
+		return self::$_instance;
+	}
+
+	/**
+	 * Cloning is forbidden.
+	 *
+	 * @since 1.0
+	 */
+	public function __clone() {
+		_doing_it_wrong( __FUNCTION__, esc_html__( 'Cheating huh?', 'woocommerce-germanized-pro' ), '1.0' );
+	}
+
+	/**
+	 * Unserializing instances of this class is forbidden.
+	 *
+	 * @since 1.0
+	 */
+	public function __wakeup() {
+		_doing_it_wrong( __FUNCTION__, esc_html__( 'Cheating huh?', 'woocommerce-germanized-pro' ), '1.0' );
+	}
+
+	public function __construct() {
 		add_action( 'admin_enqueue_scripts', array( $this, 'add_admin_assets' ), 15 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'add_frontend_scripts' ), 20 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'add_frontend_styles' ), 21 );
@@ -32,10 +56,6 @@ class WC_GZDP_Assets {
 					'wc_gzdp_checkout_params',
 					array(
 						'ajax_url'                      => admin_url( 'admin-ajax.php' ),
-						'vat_id_status_refresh_nonce'   => wp_create_nonce( 'vat-id-status-refresh' ),
-						'refresh_vat_id_status'         => 'yes' === get_option( 'woocommerce_gzdp_vat_id_required' ) || 'yes' === get_option( 'woocommerce_gzdp_force_virtual_product_business' ),
-						'i18n_vat_id_label_required'    => esc_attr__( 'required', 'woocommerce-germanized-pro' ),
-						'i18n_vat_id_label_optional'    => esc_attr__( 'optional', 'woocommerce-germanized-pro' ),
 						'vat_exempt_postcodes'          => Vendidero\StoreaBill\Countries::get_eu_vat_postcode_exemptions(),
 						'great_britain_supports_vat_id' => wc_bool_to_string( WC_GZDP_VAT_Helper::instance()->country_supports_vat_id( 'GB' ) ),
 						'supports_shipping_vat_id'      => apply_filters( 'woocommerce_gzdp_checkout_supports_shipping_vat_id', true ),
@@ -45,9 +65,29 @@ class WC_GZDP_Assets {
 		}
 	}
 
+	public function register_script( $handle, $path, $dep = array(), $ver = '', $in_footer = array( 'strategy' => 'defer' ) ) {
+		global $wp_version;
+
+		$gzdp = WC_germanized_pro();
+
+		if ( version_compare( $wp_version, '6.3', '<' ) ) {
+			$in_footer = true;
+		}
+
+		$ver = empty( $ver ) ? WC_GERMANIZED_PRO_VERSION : $ver;
+
+		wp_register_script(
+			$handle,
+			$gzdp->get_assets_build_url( $path ),
+			$dep,
+			$ver,
+			$in_footer
+		);
+	}
+
 	public function add_frontend_scripts() {
 		// Checkout general
-		wp_register_script( 'wc-gzdp-checkout', WC_germanized_pro()->plugin_url() . '/assets/js/checkout' . $this->suffix . '.js', array( 'wc-checkout' ), WC_GERMANIZED_PRO_VERSION, true );
+		$this->register_script( 'wc-gzdp-checkout', 'static/checkout.js', array( 'wc-checkout' ) );
 
 		if ( is_checkout() && 'yes' === get_option( 'woocommerce_gzdp_enable_vat_check' ) ) {
 			wp_enqueue_script( 'wc-gzdp-checkout' );
@@ -56,50 +96,72 @@ class WC_GZDP_Assets {
 		do_action( 'woocommerce_gzdp_frontend_scripts', $this );
 	}
 
+	/**
+	 * Helper function to determine whether the current screen is an order edit screen.
+	 *
+	 * @param string $screen_id Screen ID.
+	 *
+	 * @return bool Whether the current screen is an order edit screen.
+	 */
+	protected function is_order_meta_box_screen( $screen_id ) {
+		return in_array( str_replace( 'edit-', '', $screen_id ), $this->get_order_screen_ids(), true );
+	}
+
+	public function get_order_screen_id() {
+		return function_exists( 'wc_get_page_screen_id' ) ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
+	}
+
+	protected function get_order_screen_ids() {
+		$screen_ids = array();
+
+		foreach ( wc_get_order_types() as $type ) {
+			$screen_ids[] = $type;
+			$screen_ids[] = 'edit-' . $type;
+		}
+
+		$screen_ids[] = $this->get_order_screen_id();
+
+		return array_filter( $screen_ids );
+	}
+
 	public function add_admin_assets() {
 		$screen    = get_current_screen();
 		$screen_id = $screen ? $screen->id : '';
+		$gzdp      = WC_germanized_pro();
 
-		wp_register_style( 'wc-gzdp-admin', WC_germanized_pro()->plugin_url() . '/assets/css/wc-gzdp-admin' . $this->suffix . '.css', array(), WC_GERMANIZED_PRO_VERSION );
+		wp_register_style( 'wc-gzdp-admin', $gzdp->get_assets_build_url( 'static/wc-gzdp-admin.css' ), array(), WC_GERMANIZED_PRO_VERSION );
 		wp_enqueue_style( 'wc-gzdp-admin' );
 
-		wp_register_style( 'wc-gzdp-admin-setup-wizard', WC_germanized_pro()->plugin_url() . '/assets/css/wc-gzdp-admin-setup-wizard' . $this->suffix . '.css', array( 'wp-admin', 'dashicons', 'install' ), WC_GERMANIZED_PRO_VERSION );
+		wp_register_style( 'wc-gzdp-admin-setup-wizard', $gzdp->get_assets_build_url( 'static/wc-gzdp-admin-setup-wizard.css' ), array( 'wp-admin', 'dashicons', 'install' ), WC_GERMANIZED_PRO_VERSION );
 
-		wp_register_script( 'wc-gzdp-admin-order', WC_germanized_pro()->plugin_url() . '/assets/js/admin-order' . $this->suffix . '.js', array( 'jquery' ), WC_GERMANIZED_PRO_VERSION, true );
-		wp_register_script( 'wc-gzdp-admin-settings', WC_germanized_pro()->plugin_url() . '/assets/js/admin-settings' . $this->suffix . '.js', array( 'jquery' ), WC_GERMANIZED_PRO_VERSION, true );
-		wp_register_script( 'wc-gzdp-admin-products', WC_germanized_pro()->plugin_url() . '/assets/js/admin-products' . $this->suffix . '.js', array( 'jquery' ), WC_GERMANIZED_PRO_VERSION, true );
-		wp_register_script( 'wc-gzdp-admin-meta-boxes-order', WC_germanized_pro()->plugin_url() . '/assets/js/admin-meta-boxes-order' . $this->suffix . '.js', array( 'wc-admin-meta-boxes' ), WC_GERMANIZED_PRO_VERSION ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
+		wp_register_script( 'wc-gzdp-admin-order', $gzdp->get_assets_build_url( 'static/admin-order.js' ), array( 'jquery' ), WC_GERMANIZED_PRO_VERSION, true );
+		wp_register_script( 'wc-gzdp-admin-settings', $gzdp->get_assets_build_url( 'static/admin-settings.js' ), array( 'jquery' ), WC_GERMANIZED_PRO_VERSION, true );
+		wp_register_script( 'wc-gzdp-admin-products', $gzdp->get_assets_build_url( 'static/admin-products.js' ), array( 'jquery' ), WC_GERMANIZED_PRO_VERSION, true );
+		wp_register_script( 'wc-gzdp-admin-meta-boxes-order', $gzdp->get_assets_build_url( 'static/admin-meta-boxes-order.js' ), array( 'wc-admin-meta-boxes' ), WC_GERMANIZED_PRO_VERSION ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
+		wp_register_script( 'wc-gzdp-admin-shipment-documents', $gzdp->get_assets_build_url( 'static/admin-shipment-documents.js' ), array( 'wc-gzd-admin-shipment-modal' ), WC_GERMANIZED_PRO_VERSION ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
 
-		wp_register_script( 'wc-gzdp-admin-packing-slip', WC_germanized_pro()->plugin_url() . '/assets/js/admin-packing-slip' . $this->suffix . '.js', array( 'wc-gzd-admin-shipments' ), WC_GERMANIZED_PRO_VERSION ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
-
-		if ( $screen && in_array( str_replace( 'edit-', '', $screen->id ), wc_get_order_types( 'order-meta-boxes' ), true ) ) {
+		if ( $this->is_order_meta_box_screen( $screen_id ) ) {
+			wp_enqueue_script( 'wc-gzdp-admin-order' );
 			wp_enqueue_script( 'wc-gzdp-admin-meta-boxes-order' );
-		}
-
-		// Orders.
-		$is_edit_order = in_array( str_replace( 'edit-', '', $screen_id ), wc_get_order_types( 'order-meta-boxes' ), true );
-
-		if ( $is_edit_order ) {
-			wp_enqueue_script( 'wc-gzdp-admin-packing-slip' );
+			wp_enqueue_script( 'wc-gzdp-admin-shipment-documents' );
 
 			wp_localize_script(
-				'wc-gzdp-admin-packing-slip',
-				'wc_gzdp_admin_packing_slip_params',
+				'wc-gzdp-admin-shipment-documents',
+				'wc_gzdp_admin_shipment_documents_params',
 				array(
-					'ajax_url'                          => admin_url( 'admin-ajax.php' ),
-					'remove_packing_slip_nonce'         => wp_create_nonce( 'wc-gzdp-remove-packing-slip' ),
-					'refresh_packing_slip_nonce'        => wp_create_nonce( 'wc-gzdp-refresh-packing-slip' ),
-					'i18n_remove_packing_slip_notice'   => __( 'Do you really want to delete the packing slip?', 'woocommerce-germanized-pro' ),
-					'i18n_create_packing_slip_enabled'  => __( 'Create new packing slip', 'woocommerce-germanized-pro' ),
-					'i18n_create_packing_slip_disabled' => __( 'Please save the shipment before creating a new packing slip', 'woocommerce-germanized-pro' ),
+					'ajax_url'                             => admin_url( 'admin-ajax.php' ),
+					'remove_packing_slip_nonce'            => wp_create_nonce( 'wc-gzdp-remove-packing-slip' ),
+					'refresh_packing_slip_nonce'           => wp_create_nonce( 'wc-gzdp-refresh-packing-slip' ),
+					'remove_commercial_invoice_nonce'      => wp_create_nonce( 'wc-gzdp-remove-commercial-invoice' ),
+					'create_commercial_invoice_load_nonce' => wp_create_nonce( 'wc-gzdp-create-commercial-invoice-load' ),
+					'create_commercial_invoice_submit_nonce' => wp_create_nonce( 'wc-gzdp-create-commercial-invoice-submit' ),
+					'i18n_remove_commercial_invoice_notice' => __( 'Do you really want to delete the commercial invoice?', 'woocommerce-germanized-pro' ),
+					'i18n_remove_packing_slip_notice'      => __( 'Do you really want to delete the packing slip?', 'woocommerce-germanized-pro' ),
+					'i18n_create_packing_slip_enabled'     => __( 'Create new packing slip', 'woocommerce-germanized-pro' ),
+					'i18n_create_packing_slip_disabled'    => __( 'Please save the shipment before creating a new packing slip', 'woocommerce-germanized-pro' ),
 				)
 			);
-		}
-
-		if ( in_array( $screen->id, array( 'shop_order', 'edit-shop_order' ), true ) ) {
-			// Order JS
-			wp_enqueue_script( 'wc-gzdp-admin-order' );
-		} elseif ( 'woocommerce_page_wc-settings' === $screen->id ) {
+		} elseif ( 'woocommerce_page_wc-settings' === $screen_id ) {
 			wp_enqueue_media();
 			wp_localize_script(
 				'wc-gzdp-admin-settings',
@@ -123,7 +185,19 @@ class WC_GZDP_Assets {
 			wp_enqueue_script( 'wc-gzdp-admin-settings' );
 		}
 
-		if ( in_array( $screen->id, array( 'product' ), true ) ) {
+		// Add modal nonce params to the main script
+		if ( 'woocommerce_page_wc-gzd-shipments' === $screen_id || 'woocommerce_page_wc-gzd-return-shipments' === $screen_id ) {
+			wp_localize_script(
+				'wc-gzd-admin-shipments-table',
+				'wc_gzdp_admin_shipments_table_modal_params',
+				array(
+					'create_commercial_invoice_load_nonce' => wp_create_nonce( 'wc-gzdp-create-commercial-invoice-load' ),
+					'create_commercial_invoice_submit_nonce' => wp_create_nonce( 'wc-gzdp-create-commercial-invoice-submit' ),
+				)
+			);
+		}
+
+		if ( in_array( $screen_id, array( 'product' ), true ) ) {
 			wp_enqueue_script( 'wc-gzdp-admin-products' );
 
 			$nutrient_ref_values = array_flip( \Vendidero\Germanized\Pro\Food\Helper::get_nutrient_reference_values() );
@@ -154,4 +228,4 @@ class WC_GZDP_Assets {
 	}
 }
 
-return new WC_GZDP_Assets();
+return WC_GZDP_Assets::instance();

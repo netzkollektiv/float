@@ -96,6 +96,10 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 		return apply_filters( "{$this->get_hook_prefix()}is_paid", $is_paid, $this->get_order() );
 	}
 
+	public function get_payment_method_name() {
+		return $this->get_payment_method();
+	}
+
 	public function get_date_paid() {
 		return is_callable( array( $this->order, 'get_date_paid' ) ) ? $this->order->get_date_paid( 'edit' ) : null;
 	}
@@ -106,6 +110,23 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 
 	public function get_payment_method() {
 		return $this->order->get_payment_method();
+	}
+
+	/**
+	 * @return \Vendidero\StoreaBill\Interfaces\PaymentMethod|false
+	 */
+	public function get_payment_method_instance() {
+		$method = $this->get_payment_method();
+
+		if ( ! empty( $method ) ) {
+			try {
+				return new PaymentMethod( $method );
+			} catch ( Exception $e ) {
+				return false;
+			}
+		}
+
+		return false;
 	}
 
 	public function get_status() {
@@ -238,17 +259,26 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 	}
 
 	public function is_reverse_charge() {
-		$is_reverse_charge = sab_string_to_bool( $this->get_order()->get_meta( 'is_vat_exempt', true ) );
+		return $this->is_vat_exempt();
+	}
 
-		if ( ! $is_reverse_charge ) {
-			$is_reverse_charge = apply_filters( 'woocommerce_order_is_vat_exempt', $is_reverse_charge, $this->get_order() );
+	public function is_vat_exempt() {
+		$is_vat_exempt = sab_string_to_bool( $this->get_order()->get_meta( 'is_vat_exempt', true ) );
+
+		if ( ! $is_vat_exempt ) {
+			$is_vat_exempt = apply_filters( 'woocommerce_order_is_vat_exempt', $is_vat_exempt, $this->get_order() );
 		}
 
-		return apply_filters( "{$this->get_hook_prefix()}is_reverse_charge", $is_reverse_charge, $this->get_order() );
+		/**
+		 * Legacy filter < 2.2.0
+		 */
+		$is_vat_exempt = apply_filters( "{$this->get_hook_prefix()}is_reverse_charge", $is_vat_exempt, $this->get_order() );
+
+		return apply_filters( "{$this->get_hook_prefix()}is_vat_exempt", $is_vat_exempt, $this->get_order() );
 	}
 
 	protected function get_tax_display_mode() {
-		if ( $this->is_reverse_charge() ) {
+		if ( $this->is_vat_exempt() ) {
 			$tax_display_mode = 'excl';
 		} else {
 			$tax_display_mode = get_option( 'woocommerce_tax_display_cart' );
@@ -385,7 +415,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 			/**
 			 * Do enable OSS for non-reverse-charge and inner EU (not base country)
 			 */
-			if ( ! $this->is_reverse_charge() && ( Countries::get_base_country() !== $country && Countries::is_eu_vat_country( $country, $postcode ) ) ) {
+			if ( ! $this->is_vat_exempt() && ( Countries::get_base_country() !== $country && Countries::is_eu_vat_country( $country, $postcode ) ) ) {
 				$country = $this->get_tax_country( $tax );
 
 				if ( ! empty( $country ) && Countries::get_base_country() !== $country ) {
@@ -443,7 +473,6 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 		);
 
 		if ( ! $invoice->is_finalized() && 'simple' === $invoice->get_invoice_type() ) {
-
 			do_action( "{$this->get_hook_prefix()}before_sync_invoice", $this );
 
 			$billing_address = array_merge(
@@ -479,7 +508,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 					'payment_method_name'    => $this->get_order()->get_payment_method(),
 					'payment_method_title'   => $this->get_order()->get_payment_method_title(),
 					'payment_transaction_id' => $this->get_transaction_id(),
-					'is_reverse_charge'      => $this->is_reverse_charge(),
+					'is_vat_exempt'          => $this->is_vat_exempt(),
 					'tax_display_mode'       => $this->get_tax_display_mode(),
 					'is_oss'                 => $this->is_oss(),
 					'vat_id'                 => $this->get_vat_id(),
@@ -675,11 +704,15 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 				}
 			}
 
+			$ref_item_map = array();
+
 			/**
-			 * Remove items that do not exist in parent order any longer.
+			 * Remove items that do not exist in parent order any longer. Remove duplicates.
 			 */
 			foreach ( $invoice->get_items() as $item ) {
-				if ( ! array_key_exists( $item->get_reference_id(), $available_items ) ) {
+				if ( in_array( $item->get_reference_id(), $ref_item_map, true ) ) {
+					$invoice->remove_item( $item->get_id() );
+				} elseif ( ! array_key_exists( $item->get_reference_id(), $available_items ) ) {
 					$invoice->remove_item( $item->get_id() );
 				} elseif ( ! $order_item = $this->order->get_item( $item->get_reference_id() ) ) {
 					$invoice->remove_item( $item->get_id() );
@@ -692,6 +725,8 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 							$invoice->remove_item( $item->get_id() );
 						}
 					}
+
+					$ref_item_map[] = $item->get_reference_id();
 				}
 			}
 
@@ -767,7 +802,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 	 * @return \WP_Error|boolean
 	 */
 	public function sync_order( $add_new = true, $args = array() ) {
-		CacheHelper::prevent_caching();
+		CacheHelper::prevent_caching( 'sync' );
 
 		$result = new \WP_Error();
 
@@ -1052,7 +1087,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 	 * @return bool|\WP_Error
 	 */
 	public function finalize( $defer_render = false ) {
-		CacheHelper::prevent_caching();
+		CacheHelper::prevent_caching( 'sync' );
 
 		Package::extended_log( 'Finalizing order #' . $this->get_id() );
 
@@ -1337,7 +1372,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 	/**
 	 * @param Invoice $invoice
 	 */
-	public function add_document( &$invoice ) {
+	public function add_document( $invoice, $replace = false ) {
 		$this->load_documents();
 
 		if ( ! array_key_exists( $invoice->get_type(), $this->documents ) ) {
@@ -1347,16 +1382,19 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 		$exists = false;
 
 		if ( $invoice->get_id() > 0 ) {
-
-			foreach ( $this->documents[ $invoice->get_type() ] as $document ) {
+			foreach ( $this->documents[ $invoice->get_type() ] as $key => $document ) {
 				if ( $document->get_id() === $invoice->get_id() ) {
+					if ( $replace ) {
+						unset( $this->documents[ $invoice->get_type() ][ $key ] );
+					}
+
 					$exists = true;
 					break;
 				}
 			}
 		}
 
-		if ( ! $exists ) {
+		if ( ! $exists || $replace ) {
 			$this->documents[ $invoice->get_type() ][] = $invoice;
 		}
 
@@ -1530,6 +1568,138 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 	}
 
 	/**
+	 * Get line subtotal - this is the cost before discount.
+	 *
+	 * Patches a Woo bug which leads to fatal errors when using PHP 8 and
+	 * legacy item data (empty total strings).
+	 *
+	 * @param object $item Item to get total from.
+	 * @param bool   $inc_tax (default: false).
+	 * @param bool   $round (default: true).
+	 * @return float
+	 *
+	 * @see WC_Order::get_line_total()
+	 */
+	public function get_line_total( $item, $inc_tax = false, $round = true ) {
+		$total = 0.0;
+
+		if ( is_callable( array( $item, 'get_total' ) ) ) {
+			/**
+			 * Legacy order data may contain empty strings as total - prevent PHP 8 errors
+			 * from being thrown when calling the Woo core method.
+			 *
+			 * @see WC_Order::get_line_total()
+			 */
+			$item_total     = floatval( $item->get_total() );
+			$item_total_tax = floatval( $item->get_total_tax() );
+
+			// Check if we need to add line tax to the line total.
+			$total = $inc_tax ? $item_total + $item_total_tax : $item_total;
+
+			// Check if we need to round.
+			$total = $round ? Numbers::round( $total, sab_get_price_decimals() ) : $total;
+		}
+
+		return apply_filters( 'woocommerce_order_amount_line_total', $total, $this->get_order(), $item, $inc_tax, $round );
+	}
+
+	/**
+	 * Get line subtotal - this is the cost before discount.
+	 *
+	 * Patches a Woo bug which leads to fatal errors when using PHP 8 and
+	 * legacy item data (empty total strings).
+	 *
+	 * @param object $item Item to get total from.
+	 * @param bool   $inc_tax (default: false).
+	 * @param bool   $round (default: true).
+	 * @return float
+	 *
+	 * @see WC_Order::get_line_subtotal()
+	 */
+	public function get_line_subtotal( $item, $inc_tax = false, $round = true ) {
+		$subtotal = 0.0;
+
+		if ( is_callable( array( $item, 'get_subtotal' ) ) ) {
+			if ( $inc_tax ) {
+				$subtotal = floatval( $item->get_subtotal() ) + floatval( $item->get_subtotal_tax() );
+			} else {
+				$subtotal = floatval( $item->get_subtotal() );
+			}
+
+			$subtotal = $round ? Numbers::round( $subtotal, sab_get_price_decimals() ) : $subtotal;
+		}
+
+		return apply_filters( 'woocommerce_order_amount_line_subtotal', $subtotal, $this->get_order(), $item, $inc_tax, $round );
+	}
+
+	/**
+	 * Calculate item cost - useful for gateways.
+	 *
+	 * Patches a Woo bug which leads to fatal errors when using PHP 8 and
+	 * legacy item data (empty total strings).
+	 *
+	 * @param object $item Item to get total from.
+	 * @param bool   $inc_tax (default: false).
+	 * @param bool   $round (default: true).
+	 * @return float
+	 *
+	 * @see WC_Order::get_item_total()
+	 */
+	public function get_item_total( $item, $inc_tax = false, $round = true ) {
+		$total = 0.0;
+
+		if ( is_callable( array( $item, 'get_total' ) ) && $item->get_quantity() ) {
+			/**
+			 * Legacy order data may contain empty strings as total - prevent PHP 8 errors
+			 * from being thrown when calling the Woo core method.
+			 *
+			 * @see WC_Order::get_line_total()
+			 */
+			$item_total     = floatval( $item->get_total() );
+			$item_total_tax = floatval( $item->get_total_tax() );
+
+			if ( $inc_tax ) {
+				$total = ( $item_total + $item_total_tax ) / $item->get_quantity();
+			} else {
+				$total = $item_total / $item->get_quantity();
+			}
+
+			$total = $round ? Numbers::round( $total, sab_get_price_decimals() ) : $total;
+		}
+
+		return apply_filters( 'woocommerce_order_amount_item_total', $total, $this->get_order(), $item, $inc_tax, $round );
+	}
+
+	/**
+	 * Get item subtotal - this is the cost before discount.
+	 *
+	 * Patches a Woo bug which leads to fatal errors when using PHP 8 and
+	 * legacy item data (empty total strings).
+	 *
+	 * @param object $item Item to get total from.
+	 * @param bool   $inc_tax (default: false).
+	 * @param bool   $round (default: true).
+	 * @return float
+	 *
+	 * @see WC_Order::get_item_subtotal()
+	 */
+	public function get_item_subtotal( $item, $inc_tax = false, $round = true ) {
+		$subtotal = 0.0;
+
+		if ( is_callable( array( $item, 'get_subtotal' ) ) && $item->get_quantity() ) {
+			if ( $inc_tax ) {
+				$subtotal = ( floatval( $item->get_subtotal() ) + floatval( $item->get_subtotal_tax() ) ) / $item->get_quantity();
+			} else {
+				$subtotal = floatval( $item->get_subtotal() ) / $item->get_quantity();
+			}
+
+			$subtotal = $round ? Numbers::round( $subtotal, sab_get_price_decimals() ) : $subtotal;
+		}
+
+		return apply_filters( 'woocommerce_order_amount_item_subtotal', $subtotal, $this->get_order(), $item, $inc_tax, $round );
+	}
+
+	/**
 	 * @param WC_Order_Item $order_item
 	 *
 	 * @return float
@@ -1554,7 +1724,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 			 * Dynamically decide whether the item includes tax or not based on order item data.
 			 */
 			$args['incl_tax'] = $this->order_item_type_includes_tax( $order_item, $args['incl_tax'] );
-			$total_left       = (float) $this->get_order()->get_line_total( $order_item, $args['incl_tax'], false ) - $this->get_order_item_refunded_total( $order_item, $args['incl_tax'] );
+			$total_left       = $this->get_line_total( $order_item, $args['incl_tax'], false ) - $this->get_order_item_refunded_total( $order_item, $args['incl_tax'] );
 
 			foreach ( $this->get_invoices() as $invoice ) {
 
@@ -1696,13 +1866,13 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 			 */
 			$args['incl_tax'] = $this->order_item_type_includes_tax( $order_item, $args['incl_tax'] );
 
-			$line_subtotal = (float) $this->get_order()->get_line_subtotal( $order_item, $args['incl_tax'], false );
+			$line_subtotal = $this->get_line_subtotal( $order_item, $args['incl_tax'], false );
 
 			/**
 			 * Fees and/or sipping do not support subtotals - use total instead.
 			 */
 			if ( 0.0 === $line_subtotal ) {
-				$line_subtotal = (float) $this->get_order()->get_line_total( $order_item, $args['incl_tax'], false );
+				$line_subtotal = $this->get_line_total( $order_item, $args['incl_tax'], false );
 			}
 
 			$total_left = $line_subtotal - $this->get_order_item_refunded_total( $order_item, $args['incl_tax'] );
@@ -2002,7 +2172,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 	 * @return bool
 	 */
 	protected function is_free_item( $order_item ) {
-		return ( 0.0 === (float) $this->get_order()->get_line_total( $order_item, true, true ) );
+		return ( 0.0 === $this->get_line_total( $order_item, true, true ) );
 	}
 
 	/**
@@ -2073,19 +2243,19 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 			$total_refunded      = $this->get_order_item_refunded_total( $order_item );
 			$total_refunded_excl = $this->get_order_item_refunded_total( $order_item, false );
 			$quantity            = $order_item->get_quantity() - $this->get_order_item_refunded_quantity( $order_item );
-			$total               = $this->get_order()->get_line_total( $order_item, true, false ) - $total_refunded;
+			$total               = $this->get_line_total( $order_item, true, false ) - $total_refunded;
 			$tax_total_refunded  = $this->get_order_item_refunded_tax_total( $order_item );
 			$line_total_tax      = $this->get_order()->get_line_tax( $order_item ) - $tax_total_refunded;
-			$line_total          = $this->get_order()->get_line_total( $order_item, $item_includes_tax, false ) - ( $item_includes_tax ? $total_refunded : $total_refunded_excl );
+			$line_total          = $this->get_line_total( $order_item, $item_includes_tax, false ) - ( $item_includes_tax ? $total_refunded : $total_refunded_excl );
 
 			$order_item_data[ $order_item->get_id() ] = array(
 				'quantity'     => $quantity,
-				'total'        => Numbers::round_to_precision( $total ),
-				'line_total'   => Numbers::round_to_precision( $line_total ),
-				'tax'          => Numbers::round_to_precision( $line_total_tax ),
-				'refunded'     => Numbers::round_to_precision( $total_refunded ),
-				'refunded_net' => Numbers::round_to_precision( $total_refunded_excl ),
-				'refunded_tax' => Numbers::round_to_precision( $tax_total_refunded ),
+				'total'        => $total,
+				'line_total'   => $line_total,
+				'tax'          => $line_total_tax,
+				'refunded'     => $total_refunded,
+				'refunded_net' => $total_refunded_excl,
+				'refunded_tax' => $tax_total_refunded,
 			);
 		}
 
@@ -2151,8 +2321,8 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 
 					if ( $order_item = $this->get_order_item( $order_item_id ) ) {
 						$order_item_has_refund     = $this->order_item_has_refund( $order_item->get_order_item() );
-						$order_item_price          = $this->get_order()->get_item_total( $order_item->get_order_item(), true, false );
-						$order_item_price_subtotal = $this->get_order()->get_item_subtotal( $order_item->get_order_item(), true, false );
+						$order_item_price          = $this->get_item_total( $order_item->get_order_item(), true, false );
+						$order_item_price_subtotal = $this->get_item_subtotal( $order_item->get_order_item(), true, false );
 					}
 
 					$order_item_price          = Numbers::round_to_precision( $order_item_price );
@@ -2198,7 +2368,7 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 
 							Package::extended_log( sprintf( 'Order item %s doesnt seem to exist any longer or quantity has changed', $order_item_id ) );
 						}
-					} elseif ( $price_has_changed || ( ! empty( $order_item_id ) && abs( $order_items_left[ $order_item_id ]['line_total'] ) < abs( $line_total_available_to_cancel ) ) ) {
+					} elseif ( $price_has_changed || ( ! empty( $order_item_id ) && abs( Numbers::round_to_precision( $order_items_left[ $order_item_id ]['line_total'] ) ) < abs( Numbers::round_to_precision( $line_total_available_to_cancel ) ) ) ) {
 						/**
 						 * Order item has changed in total, e.g. refunded.
 						 */
@@ -2230,11 +2400,9 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 					}
 
 					// Prevent rounding issues.
-					$line_total_to_cancel = Numbers::round_to_precision( $line_total_to_cancel );
-					$total_to_cancel      = Numbers::round_to_precision( $total_to_cancel );
-					$tax_to_cancel        = Numbers::round_to_precision( $tax_to_cancel );
+					$line_total_to_cancel_rounded = Numbers::round_to_precision( $line_total_to_cancel );
 
-					if ( $line_total_to_cancel > 0 || ( $line_total_to_cancel < 0 && $line_total_available_to_cancel < 0 ) ) {
+					if ( $line_total_to_cancel_rounded > 0 || ( $line_total_to_cancel_rounded < 0 && Numbers::round_to_precision( $line_total_available_to_cancel ) < 0 ) ) {
 						if ( ! array_key_exists( $order_item_id, $order_items_to_cancel ) ) {
 							$order_items_to_cancel[ $order_item_id ] = array(
 								'quantity'   => $quantity_to_cancel > 0 ? $quantity_to_cancel : 1,
@@ -2425,7 +2593,6 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 							$item_total      = (float) $item_data['total'];
 							$item_line_total = (float) $item_data['line_total'];
 							$item_tax        = (float) $item_data['tax'];
-							$item_price      = (float) $item->get_price();
 
 							$item_quantity_to_cancel = (int) $item_to_cancel['quantity'] >= $item_quantity ? $item_quantity : $item_to_cancel['quantity'];
 
@@ -2447,8 +2614,6 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 								$item_total_tax_to_cancel = (float) max( $item_tax, $item_to_cancel['tax'] );
 							}
 
-							$item_price_to_cancel = Numbers::round_to_precision( ( (float) $item_total_to_cancel / (float) $item_quantity_to_cancel ) );
-
 							$items_to_cancel[ $item->get_id() ] = array(
 								'name'           => $item->get_name(),
 								'quantity'       => $item_quantity_to_cancel,
@@ -2458,15 +2623,6 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 								'reason'         => $item_to_cancel['reason'],
 								'reason_details' => $item_to_cancel['reason_details'],
 							);
-
-							/**
-							 * It seems like not the whole line item (e.g. part of it) has been refunded.
-							 * Let's force the subtotal to equal total to not include unnecessary discounts.
-							 */
-							if ( $item_price_to_cancel !== $item_price ) {
-								$items_to_cancel[ $item->get_id() ]['subtotal']      = $item_total_to_cancel;
-								$items_to_cancel[ $item->get_id() ]['line_subtotal'] = $item_line_total_to_cancel;
-							}
 
 							if ( false !== $is_refund_linkable && array_key_exists( $order_item_id, $refund_items ) ) {
 								$current_item_refund_id = $refund_items[ $order_item_id ]->get_order_id();
@@ -2517,10 +2673,12 @@ class Order implements \Vendidero\StoreaBill\Interfaces\Order {
 									$reason = $reason . ' (' . $item['reason_details'] . ')';
 								}
 
-								$item_notes[] = sprintf( _x( '%1$s x Item %2$s &rarr; %3$s (Total: %4$s, Line total: %5$s, Tax: %6$s)', 'storeabill-core', 'woocommerce-germanized-pro' ), $item['quantity'], $item['name'], $reason, $item['total'], $item['line_total'], $item['tax'] );
+								$item_notes[] = sprintf( _x( '%1$s x Item %2$s &rarr; %3$s (Total: %4$s, Line total: %5$s, Tax: %6$s)', 'storeabill-core', 'woocommerce-germanized-pro' ), $item['quantity'], $item['name'], $reason, Numbers::round_to_precision( $item['total'] ), Numbers::round_to_precision( $item['line_total'] ), Numbers::round_to_precision( $item['tax'] ) );
 							}
 
 							$this->get_order()->add_order_note( sprintf( _x( '(Partially) Cancelled invoice %1$s: %2$s', 'storeabill-core', 'woocommerce-germanized-pro' ), $invoice->get_formatted_number(), implode( ', ', $item_notes ) ) );
+						} else {
+							Package::extended_log( 'Error while creating cancellation for invoice ' . $invoice->get_formatted_number() . ': ' . implode( ', ', $cancellation->get_error_messages() ) );
 						}
 					}
 				}

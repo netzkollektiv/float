@@ -1304,7 +1304,7 @@ function wc_gzd_format_unit_price( $price, $unit, $unit_base, $product_units = '
 }
 
 function wc_gzd_get_additional_costs_tax_calculation_mode() {
-	$value = get_option( 'woocommerce_gzd_tax_mode_additional_costs', 'split_tax' );
+	$value = get_option( 'woocommerce_gzd_tax_mode_additional_costs', 'main_service' );
 
 	if ( ! in_array( $value, array( 'none', 'split_tax', 'main_service' ), true ) ) {
 		$value = 'none';
@@ -1429,6 +1429,16 @@ function wc_gzd_update_page_content( $page_id, $content, $append = true ) {
 	}
 }
 
+function wc_gzd_post_content_has_shortcode( $tag = '' ) {
+	if ( function_exists( 'wc_post_content_has_shortcode' ) ) {
+		return wc_post_content_has_shortcode( $tag );
+	} else {
+		global $post;
+
+		return is_singular() && is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, $tag );
+	}
+}
+
 function wc_gzd_content_has_shortcode( $content, $shortcode ) {
 	global $shortcode_tags;
 
@@ -1535,6 +1545,11 @@ function wc_gzd_get_post_plain_content( $content_post, $shortcodes_allowed = arr
 		 * will be escaped by wp_kses_post().
 		 */
 		$content = preg_replace( '/(<(style)\b[^>]*>).*?(<\/\2>)/is', '', $content );
+
+		/**
+		 * Remove html comments which may be added by certain pagebuilder.
+		 */
+		$content = preg_replace( '/<!--(.*)-->/Uis', '', $content );
 
 		do_action( 'woocommerce_gzd_after_get_post_plain_content', $post, $shortcodes_allowed );
 	}
@@ -1727,7 +1742,7 @@ function wc_gzd_base_country_supports_photovoltaic_system_vat_exempt() {
 	$base_country    = wc_gzd_get_base_country();
 	$supports_exempt = false;
 
-	if ( 'DE' === $base_country ) {
+	if ( in_array( $base_country, array( 'DE', 'AT' ), true ) ) {
 		$supports_exempt = true;
 	} elseif ( \Vendidero\EUTaxHelper\Helper::is_eu_vat_country( $base_country ) && \Vendidero\EUTaxHelper\Helper::oss_procedure_is_enabled() ) {
 		$supports_exempt = true;
@@ -1736,25 +1751,35 @@ function wc_gzd_base_country_supports_photovoltaic_system_vat_exempt() {
 	return apply_filters( 'woocommerce_gzd_base_country_supports_photovoltaic_system_vat_exempt', $supports_exempt );
 }
 
-function wc_gzd_customer_applies_for_photovoltaic_system_vat_exemption( $args = array() ) {
-	$location                               = \Vendidero\EUTaxHelper\Helper::get_taxable_location();
-	$applies_for_photovoltaic_vat_exemption = false;
+function wc_gzd_current_theme_is_fse_theme() {
+	if ( function_exists( 'wc_current_theme_is_fse_theme' ) ) {
+		return wc_current_theme_is_fse_theme();
+	} else {
+		return false;
+	}
+}
 
-	$args = wp_parse_args(
-		$args,
-		array(
-			'country'  => '',
-			'postcode' => '',
-			'company'  => '',
-		)
-	);
+function wc_gzd_has_checkout_block() {
+	if ( is_callable( array( WC_Tracker::class, 'get_block_tracker_data' ) ) ) {
+		$info = WC_Tracker::get_block_tracker_data( 'woocommerce/checkout', 'checkout' );
+
+		if ( true === wc_string_to_bool( $info['page_contains_block'] ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function wc_gzd_get_photovoltaic_system_customer_location( $args = array() ) {
+	$location = \Vendidero\EUTaxHelper\Helper::get_taxable_location();
 
 	if ( empty( $args ) ) {
 		if ( is_checkout() ) {
 			$args = array(
 				'country'  => WC_GZD_Checkout::instance()->get_checkout_value( 'shipping_country' ) ? WC_GZD_Checkout::instance()->get_checkout_value( 'shipping_country' ) : WC_GZD_Checkout::instance()->get_checkout_value( 'billing_country' ),
 				'postcode' => WC_GZD_Checkout::instance()->get_checkout_value( 'shipping_postcode' ) ? WC_GZD_Checkout::instance()->get_checkout_value( 'shipping_postcode' ) : WC_GZD_Checkout::instance()->get_checkout_value( 'billing_postcode' ),
-				'company'  => WC_GZD_Checkout::instance()->get_checkout_value( 'shipping_company' ) ? WC_GZD_Checkout::instance()->get_checkout_value( 'shipping_company' ) : WC_GZD_Checkout::instance()->get_checkout_value( 'billing_company' ),
+				'company'  => WC_GZD_Checkout::instance()->get_checkout_value( 'billing_company' ) ? WC_GZD_Checkout::instance()->get_checkout_value( 'billing_company' ) : WC_GZD_Checkout::instance()->get_checkout_value( 'shipping_company' ),
 			);
 		} else {
 			$args = array(
@@ -1763,20 +1788,45 @@ function wc_gzd_customer_applies_for_photovoltaic_system_vat_exemption( $args = 
 				'company'  => '',
 			);
 		}
+	} else {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'country'  => '',
+				'postcode' => '',
+				'company'  => '',
+			)
+		);
 	}
+
+	return $args;
+}
+
+function wc_gzd_customer_applies_for_photovoltaic_system_vat_exemption( $args = array() ) {
+	$args                                   = wc_gzd_get_photovoltaic_system_customer_location( $args );
+	$applies_for_photovoltaic_vat_exemption = false;
 
 	if ( empty( $args['company'] ) || apply_filters( 'woocommerce_gzd_allow_b2b_photovoltaic_system_vat_exemption', false ) ) {
 		/**
 		 * Allow VAT exemption for:
-		 * - shipments to DE (from DE or from another EU country which takes part in OSS procedure).
-		 * - shipments inner EU if base country is DE and not taking part in OSS procedure
+		 * - shipments to a country supporting photovoltaic exempts (from the base country or from another EU country which takes part in OSS procedure).
+		 * - shipments inner EU if base country supports photovoltaic exempts and not taking part in OSS procedure
 		 */
-		if ( wc_gzd_base_country_supports_photovoltaic_system_vat_exempt() && 'DE' === $args['country'] && ! \Vendidero\EUTaxHelper\Helper::is_eu_vat_postcode_exemption( $args['country'], $args['postcode'] ) ) {
+		if ( wc_gzd_base_country_supports_photovoltaic_system_vat_exempt() && wc_gzd_shipping_country_supports_photovoltaic_system_vat_exempt( $args['country'] ) && ! \Vendidero\EUTaxHelper\Helper::is_eu_vat_postcode_exemption( $args['country'], $args['postcode'] ) ) {
 			$applies_for_photovoltaic_vat_exemption = true;
-		} elseif ( 'DE' === wc_gzd_get_base_country() && 'DE' !== $args['country'] && ! \Vendidero\EUTaxHelper\Helper::oss_procedure_is_enabled() && \Vendidero\EUTaxHelper\Helper::is_eu_vat_country( $args['country'], $args['postcode'] ) ) {
+		} elseif ( ! \Vendidero\EUTaxHelper\Helper::oss_procedure_is_enabled() && wc_gzd_base_country_supports_photovoltaic_system_vat_exempt() && \Vendidero\EUTaxHelper\Helper::is_eu_vat_country( $args['country'], $args['postcode'] ) && wc_gzd_get_base_country() !== $args['country'] ) {
 			$applies_for_photovoltaic_vat_exemption = true;
 		}
 	}
 
 	return apply_filters( 'woocommerce_gzd_customer_applies_for_photovoltaic_system_vat_exemption', $applies_for_photovoltaic_vat_exemption, $args );
+}
+
+/**
+ * @param $country
+ *
+ * @return boolean
+ */
+function wc_gzd_shipping_country_supports_photovoltaic_system_vat_exempt( $country ) {
+	return apply_filters( 'woocommerce_gzd_shipping_country_supports_photovoltaic_system_vat_exempt', in_array( $country, array( 'DE', 'AT' ), true ) );
 }

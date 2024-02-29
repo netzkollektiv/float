@@ -49,6 +49,10 @@ class Contact {
 		'email_id'            => 0,
 	);
 
+	protected $current_customer = null;
+
+	protected $current_company = null;
+
 	/**
 	 * @var null|Models
 	 */
@@ -110,6 +114,8 @@ class Contact {
 	}
 
 	public function is_new() {
+		$this->current_customer = null;
+
 		if ( $this->get_id() <= 0 ) {
 			return true;
 		} else {
@@ -118,12 +124,18 @@ class Contact {
 			if ( $this->api->is_404( $api_result ) ) {
 				return true;
 			} else {
+				if ( ! $this->api->has_failed( $api_result ) ) {
+					$this->current_customer = $api_result['objects'][0];
+				}
+
 				return false;
 			}
 		}
 	}
 
 	public function is_new_company() {
+		$this->current_company = null;
+
 		if ( $this->get_company_id() <= 0 ) {
 			return true;
 		} else {
@@ -132,6 +144,10 @@ class Contact {
 			if ( $this->api->is_404( $api_result ) ) {
 				return true;
 			} else {
+				if ( ! $this->api->has_failed( $api_result ) ) {
+					$this->current_company = $api_result['objects'][0];
+				}
+
 				return false;
 			}
 		}
@@ -279,16 +295,40 @@ class Contact {
 	 * @return bool|\WP_Error
 	 */
 	public function save() {
+		/**
+		 * For new customers: Lookup customer data in sevDesk and map a sevDesk user to the new user, e.g. for guest checkouts
+		 * and/or new users. Improve lookup for company data too, e.g. when a new user in WP is being created, mapped to an existing
+		 * sevDesk user and a company name is chosen (which is not yet mapped with a sevDesk company).
+		 */
+		if ( $this->is_new() && apply_filters( 'storeabill_external_sync_sevdesk_contact_enable_account_matching', true ) ) {
+			$contact = $this->api->find_contact( $this );
+
+			if ( ! is_wp_error( $contact ) ) {
+				$this->set_id( $contact['id'] );
+
+				if ( ! empty( $contact['parent'] ) ) {
+					$this->set_company_id( $contact['parent']['id'] );
+				}
+			}
+		}
+
+		if ( $this->has_company() && $this->is_new_company() && apply_filters( 'storeabill_external_sync_sevdesk_contact_enable_account_matching', true ) ) {
+			$company = $this->api->find_company( $this );
+
+			if ( ! is_wp_error( $company ) ) {
+				$this->set_company_id( $company['id'] );
+			}
+		}
+
 		$contact = array(
-			'familyname'  => $this->get_last_name(),
-			'surename'    => $this->get_first_name(),
-			'vatNumber'   => $this->get_vat_id(),
-			'category'    => array(
+			'familyname' => $this->get_last_name(),
+			'surename'   => $this->get_first_name(),
+			'vatNumber'  => $this->get_vat_id(),
+			'gender'     => $this->get_gender(),
+			'category'   => array(
 				'id'         => apply_filters( 'storeabill_external_sync_sevdesk_contact_category_id', 3, $this ),
 				'objectName' => 'Category',
 			),
-			'gender'      => $this->get_gender(),
-			'description' => null,
 		);
 
 		if ( '' !== $this->get_academic_title() ) {
@@ -308,15 +348,21 @@ class Contact {
 			if ( $this->is_new_company() ) {
 				$company['customerNumber'] = $this->get_formatted_company_number();
 
-				$result = $this->api->create_contact( $company );
+				$company = apply_filters( 'storeabill_external_sync_sevdesk_company_contact', $company, $this );
+				$result  = $this->api->create_contact( $company );
 
 				if ( ! is_wp_error( $result ) ) {
 					$this->set_company_id( $result->get( 'objects' )['id'] );
 				} else {
 					$this->set_company_id( 0 );
 				}
+			} elseif ( $this->current_company ) {
+				$company['category'] = $this->current_company['category'];
+
+				$company = apply_filters( 'storeabill_external_sync_sevdesk_company_contact', $company, $this );
+				$result  = $this->api->update_contact( $this->get_company_id(), $company );
 			} else {
-				$result = $this->api->update_contact( $this->get_company_id(), $company );
+				$result = new \WP_Error( 500, 'Error while updating the company.' );
 			}
 
 			if ( $this->get_company_id() > 0 ) {
@@ -332,9 +378,17 @@ class Contact {
 
 			$contact = apply_filters( 'storeabill_external_sync_sevdesk_contact', $contact, $this );
 			$result  = $this->api->create_contact( $contact );
-		} else {
+		} elseif ( $this->current_customer ) {
+			/**
+			 * Every update call overrides the contact's category,
+			 * therefor explicitly include the current category in the update request.
+			 */
+			$contact['category'] = $this->current_customer['category'];
+
 			$contact = apply_filters( 'storeabill_external_sync_sevdesk_contact', $contact, $this );
 			$result  = $this->api->update_contact( $this->get_id(), $contact );
+		} else {
+			$result = new \WP_Error( 500, 'Error while updating the contact.' );
 		}
 
 		if ( ! is_wp_error( $result ) ) {
@@ -355,7 +409,9 @@ class Contact {
 		return $result;
 	}
 
-	protected function is_new_address( $id, $address_data ) {
+	protected function is_new_address( $address_data, $address_type = 'billing' ) {
+		$id = 'shipping' === $address_type ? $this->get_shipping_address_id() : $this->get_address_id();
+
 		if ( empty( $id ) || $id <= 0 ) {
 			return true;
 		} else {
@@ -375,7 +431,54 @@ class Contact {
 		}
 	}
 
-	protected function save_address( $type = '' ) {
+	protected function save_address( $type = 'billing' ) {
+		$id = 'shipping' === $type ? $this->get_shipping_address_id() : $this->get_address_id();
+
+		if ( empty( $id ) || $id <= 0 ) {
+			$addresses = $this->api->get_contact_addresses( $this->get_id() );
+
+			if ( ! is_wp_error( $addresses ) ) {
+				foreach ( $addresses['objects'] as $address ) {
+					$current_address_type = 47 === absint( $address['category']['id'] ) ? 'billing' : 'shipping';
+
+					if ( $current_address_type !== $type ) {
+						continue;
+					}
+
+					$to_compare = array(
+						array(
+							$address['zip'],
+							$this->get_address_prop( 'zip', $type ),
+						),
+						array(
+							$address['street'],
+							$this->get_address_prop( 'street', $type ),
+						),
+					);
+
+					$equals = true;
+
+					foreach ( $to_compare as $pair ) {
+						if ( sanitize_key( $pair[0] ) !== sanitize_key( $pair[1] ) ) {
+							$equals = false;
+							break;
+						}
+					}
+
+					if ( $equals ) {
+						$id = $address['id'];
+
+						if ( 'shipping' === $type ) {
+							$this->set_shipping_address_id( $id );
+						} else {
+							$this->set_address_id( $id );
+						}
+						break;
+					}
+				}
+			}
+		}
+
 		$id           = 'shipping' === $type ? $this->get_shipping_address_id() : $this->get_address_id();
 		$address_data = 'shipping' === $type ? $this->get_shipping_address() : $this->get_address();
 
@@ -394,7 +497,7 @@ class Contact {
 
 		$address_data = apply_filters( 'storeabill_external_sync_sevdesk_address', $address_data, $type, $this );
 
-		if ( ! $this->is_new_address( $id, $address_data ) ) {
+		if ( ! $this->is_new_address( $address_data, $type ) ) {
 			$response = $this->api->update_address( $id, $address_data );
 		} else {
 			$response = $this->api->create_address( $address_data );

@@ -408,7 +408,9 @@ function wc_gzd_cart_product_unit_price( $price, $cart_item, $cart_item_key = ''
 					)
 				);
 
-				$unit_price = wc_gzd_format_unit_price( wc_price( $prices['unit'] ), $gzd_product->get_unit_html(), $gzd_product->get_unit_base_html() );
+				if ( 0.0 !== $total ) {
+					$unit_price = wc_gzd_format_unit_price( wc_price( $prices['unit'] ), $gzd_product->get_unit_html(), $gzd_product->get_unit_base_html() );
+				}
 			} else {
 				$unit_price = wc_gzd_get_product( $product )->get_unit_price_html( false, $tax_display );
 			}
@@ -651,8 +653,33 @@ function wc_gzd_cart_product_units( $title, $cart_item, $cart_item_key = '' ) {
 	return wp_kses_post( $title );
 }
 
-function wc_gzd_cart_applies_for_photovoltaic_system_vat_exemption() {
-	return apply_filters( 'woocommerce_gzd_cart_applies_for_photovoltaic_system_vat_exemption', wc_gzd_cart_customer_applies_for_photovoltaic_system_vat_exemption() && wc_gzd_cart_contains_photovoltaic_system() );
+function wc_gzd_cart_applies_for_photovoltaic_system_vat_exemption( $items = false ) {
+	return apply_filters( 'woocommerce_gzd_cart_applies_for_photovoltaic_system_vat_exemption', wc_gzd_cart_customer_applies_for_photovoltaic_system_vat_exemption() && wc_gzd_cart_contains_photovoltaic_system( $items ) );
+}
+
+function wc_gzd_cart_get_photovoltaic_systems_law_details( $args = array() ) {
+	$args          = wc_gzd_get_photovoltaic_system_customer_location( $args );
+	$base_country  = wc_gzd_get_base_country();
+	$legal_notices = array(
+		'DE' => array(
+			'text' => __( '§12 paragraph 3 UStG', 'woocommerce-germanized' ),
+			'url'  => 'https://www.gesetze-im-internet.de/ustg_1980/__12.html',
+		),
+		'AT' => array(
+			'text' => __( '§ 28 paragraph 62 UStG 1994', 'woocommerce-germanized' ),
+			'url'  => 'https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR40257456/NOR40257456.html',
+		),
+	);
+	$notice_data   = array_key_exists( $base_country, $legal_notices ) ? $legal_notices[ $base_country ] : array(
+		'text' => '',
+		'url'  => '',
+	);
+
+	if ( \Vendidero\EUTaxHelper\Helper::oss_procedure_is_enabled() && array_key_exists( $args['country'], $legal_notices ) ) {
+		$notice_data = $legal_notices[ $args['country'] ];
+	}
+
+	return apply_filters( 'woocommerce_gzd_photovoltaic_systems_vat_exemption_legal_data', $notice_data, $args );
 }
 
 function wc_gzd_cart_customer_applies_for_photovoltaic_system_vat_exemption() {
@@ -872,11 +899,12 @@ function wc_gzd_item_is_tax_share_exempt( $item, $type = 'shipping', $key = fals
 		}
 	}
 
+	/**
+	 * Exclude virtual items from shipping tax share.
+	 */
 	if ( is_a( $_product, 'WC_Product' ) ) {
-		if ( 'shipping' === $type ) {
-			if ( $_product->is_virtual() || wc_gzd_get_product( $_product )->is_virtual_vat_exception() ) {
-				$exempt = true;
-			}
+		if ( 'shipping' === $type && $_product->is_virtual() ) {
+			$exempt = true;
 		}
 	}
 
@@ -1210,7 +1238,6 @@ function wc_gzd_get_legal_text_service_email_notice() {
 }
 
 function wc_gzd_get_chosen_shipping_rates( $args = array() ) {
-
 	$args = wp_parse_args(
 		$args,
 		array(
@@ -1263,11 +1290,26 @@ function wc_gzd_maybe_disable_checkout_adjustments() {
 	}
 
 	if ( wc_gzd_checkout_adjustments_disabled() ) {
-		remove_action( 'woocommerce_review_order_before_cart_contents', 'woocommerce_gzd_template_checkout_table_content_replacement' );
-		remove_action( 'woocommerce_review_order_after_cart_contents', 'woocommerce_gzd_template_checkout_table_product_hide_filter_removal' );
+		add_action(
+			'woocommerce_review_order_before_cart_contents',
+			function() {
+				remove_action( 'woocommerce_review_order_before_cart_contents', 'woocommerce_gzd_template_checkout_table_content_replacement' );
+				remove_action( 'woocommerce_review_order_after_cart_contents', 'woocommerce_gzd_template_checkout_table_product_hide_filter_removal' );
+			}
+		);
 
-		WC_GZD_Hook_Priorities::instance()->update_priority( 'woocommerce_checkout_order_review', 'woocommerce_order_review', WC_GZD_Hook_Priorities::instance()->get_priority( 'woocommerce_checkout_order_review', 'woocommerce_order_review', 10, true ) );
-		WC_GZD_Hook_Priorities::instance()->update_priority( 'woocommerce_checkout_order_review', 'woocommerce_checkout_payment', WC_GZD_Hook_Priorities::instance()->get_priority( 'woocommerce_checkout_order_review', 'woocommerce_checkout_payment', 20, true ) );
+		remove_action( 'woocommerce_checkout_order_review', 'woocommerce_order_review', WC_GZD_Hook_Priorities::instance()->get_priority( 'woocommerce_checkout_order_review', 'woocommerce_order_review', 10 ) );
+		remove_action( 'woocommerce_checkout_order_review', 'woocommerce_checkout_payment', WC_GZD_Hook_Priorities::instance()->get_priority( 'woocommerce_checkout_order_review', 'woocommerce_checkout_payment', 20 ) );
+
+		if ( apply_filters( 'woocommerce_gzd_prevent_checkout_order_review_hook_reset', true ) ) {
+			if ( ! has_action( 'woocommerce_checkout_order_review', 'woocommerce_order_review' ) ) {
+				add_action( 'woocommerce_checkout_order_review', 'woocommerce_order_review', WC_GZD_Hook_Priorities::instance()->get_priority( 'woocommerce_checkout_order_review', 'woocommerce_order_review', 10, true ) );
+			}
+
+			if ( ! has_action( 'woocommerce_checkout_order_review', 'woocommerce_checkout_payment' ) ) {
+				add_action( 'woocommerce_checkout_order_review', 'woocommerce_checkout_payment', WC_GZD_Hook_Priorities::instance()->get_priority( 'woocommerce_checkout_order_review', 'woocommerce_checkout_payment', 20, true ) );
+			}
+		}
 
 		remove_action( 'woocommerce_review_order_before_submit', 'woocommerce_gzd_template_set_order_button_remove_filter', 1500 );
 		remove_action( 'woocommerce_review_order_after_submit', 'woocommerce_gzd_template_set_order_button_show_filter', 1500 );

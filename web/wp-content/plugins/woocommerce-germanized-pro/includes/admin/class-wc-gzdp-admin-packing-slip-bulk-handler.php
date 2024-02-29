@@ -140,10 +140,10 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 					if ( $shipment = wc_gzd_get_shipment( $shipment_id ) ) {
 
 						try {
-							$result = \Vendidero\Germanized\Pro\StoreaBill\PackingSlips::sync_packing_slip( $shipment, true, true );
+							$result = \Vendidero\Germanized\Pro\StoreaBill\PackingSlip\PackingSlips::sync_packing_slip( $shipment, true, true );
 
 							if ( ! is_wp_error( $result ) ) {
-								$packing_slip = \Vendidero\Germanized\Pro\StoreaBill\PackingSlips::get_packing_slip( $shipment );
+								$packing_slip = \Vendidero\Germanized\Pro\StoreaBill\PackingSlip\PackingSlips::get_packing_slip( $shipment );
 							} else {
 								foreach ( $result->get_error_messages() as $message ) {
 									$this->add_notice( sprintf( __( 'An error occurred while creating packing slip for %1$s: %2$s.', 'woocommerce-germanized-pro' ), '<a href="' . esc_url( $shipment->get_edit_shipment_url() ) . '" target="_blank">' . sprintf( __( 'shipment #%d', 'woocommerce-germanized-pro' ), $shipment_id ) . '</a>', $message ), 'error' );

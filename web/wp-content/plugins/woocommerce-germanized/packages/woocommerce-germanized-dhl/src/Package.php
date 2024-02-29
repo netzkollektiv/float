@@ -8,9 +8,8 @@ use Exception;
 use Vendidero\Germanized\DHL\Api\Paket;
 use Vendidero\Germanized\DHL\ShippingProvider\DeutschePost;
 use Vendidero\Germanized\DHL\ShippingProvider\DHL;
-use Vendidero\Germanized\DHL\ShippingProvider\ShippingMethod;
 use Vendidero\Germanized\DHL\Api\Internetmarke;
-use Vendidero\Germanized\Shipments\Interfaces\ShippingProvider;
+use Vendidero\Germanized\Shipments\Registry\Container;
 use Vendidero\Germanized\Shipments\ShippingProvider\Helper;
 
 defined( 'ABSPATH' ) || exit;
@@ -25,7 +24,7 @@ class Package {
 	 *
 	 * @var string
 	 */
-	const VERSION = '1.8.6';
+	const VERSION = '3.0.5';
 
 	public static $upload_dir_suffix = '';
 
@@ -60,16 +59,12 @@ class Package {
 	}
 
 	public static function on_shipments_init() {
-
 		if ( ! self::has_dependencies() ) {
 			return;
 		}
 
 		// Legacy data store
 		add_filter( 'woocommerce_data_stores', array( __CLASS__, 'register_data_stores' ), 10, 1 );
-
-		// Watch provider activation and mark DHL as default provider in case applicable
-		add_action( 'woocommerce_gzd_shipping_provider_activated', array( __CLASS__, 'maybe_set_default_provider' ), 10 );
 
 		self::includes();
 		self::define_tables();
@@ -80,19 +75,6 @@ class Package {
 				self::init_hooks();
 			} else {
 				add_action( 'admin_notices', array( __CLASS__, 'load_dependencies_notice' ) );
-			}
-		}
-	}
-
-	/**
-	 * @param ShippingProvider $provider
-	 */
-	public static function maybe_set_default_provider( $provider ) {
-		if ( 'dhl' === $provider->get_name() ) {
-			$default_provider = wc_gzd_get_default_shipping_provider();
-
-			if ( empty( $default_provider ) ) {
-				update_option( 'woocommerce_gzd_shipments_default_shipping_provider', 'dhl' );
 			}
 		}
 	}
@@ -215,18 +197,12 @@ class Package {
 		return Helper::instance()->is_shipping_provider_activated( 'dhl' );
 	}
 
+	public static function is_rest_api_request() {
+		return defined( 'REST_REQUEST' ) && REST_REQUEST;
+	}
+
 	public static function get_country_iso_alpha3( $country_code ) {
-		if ( empty( self::$iso ) ) {
-			self::$iso = include self::get_path() . '/i18n/iso.php';
-		}
-
-		$iso = self::$iso;
-
-		if ( isset( $iso[ $country_code ] ) ) {
-			return $iso[ $country_code ];
-		}
-
-		return $country_code;
+		return \Vendidero\Germanized\Shipments\Package::get_country_iso_alpha3( $country_code );
 	}
 
 	private static function includes() {
@@ -234,23 +210,36 @@ class Package {
 		include_once self::get_path() . '/includes/wc-gzd-dhl-legacy-functions.php';
 
 		if ( self::is_enabled() ) {
-			if ( is_admin() ) {
-				Admin\Admin::init();
-			}
-
-			if ( ParcelLocator::is_enabled() ) {
-				ParcelLocator::init();
-			}
-
-			/**
-			 * Additional services are only available for DHL products
-			 */
-			if ( self::is_dhl_enabled() && ParcelServices::is_enabled() ) {
-				ParcelServices::init();
-			}
-
-			Ajax::init();
+			self::container()->get( Bootstrap::class );
 		}
+	}
+
+	/**
+	 * Loads the dependency injection container for woocommerce blocks.
+	 *
+	 * @param boolean $reset Used to reset the container to a fresh instance.
+	 *                       Note: this means all dependencies will be
+	 *                       reconstructed.
+	 */
+	public static function container( $reset = false ) {
+		static $container;
+		if (
+			! $container instanceof Container
+			|| $reset
+		) {
+			$container = new Container();
+
+			// register Bootstrap.
+			$container->register(
+				Bootstrap::class,
+				function ( $container ) {
+					return new Bootstrap(
+						$container
+					);
+				}
+			);
+		}
+		return $container;
 	}
 
 	public static function init_hooks() {
@@ -359,8 +348,11 @@ class Package {
 		return self::$api;
 	}
 
+	/**
+	 * @return Internetmarke|null
+	 */
 	public static function get_internetmarke_api() {
-		if ( is_null( self::$im_api ) && self::is_deutsche_post_enabled() ) {
+		if ( is_null( self::$im_api ) ) {
 			self::$im_api = new Internetmarke();
 		}
 
@@ -381,8 +373,26 @@ class Package {
 	 *
 	 * @return string
 	 */
-	public static function get_path() {
-		return dirname( __DIR__ );
+	public static function get_path( $rel_path = '' ) {
+		return trailingslashit( dirname( __DIR__ ) ) . $rel_path;
+	}
+
+	/**
+	 * Return the path to the package.
+	 *
+	 * @return string
+	 */
+	public static function get_i18n_path() {
+		return apply_filters( 'woocommerce_gzd_dhl_get_i18n_path', self::get_path( 'i18n/languages' ) );
+	}
+
+	/**
+	 * Return the path to the package.
+	 *
+	 * @return string
+	 */
+	public static function get_i18n_textdomain() {
+		return apply_filters( 'woocommerce_gzd_dhl_get_i18n_textdomain', 'woocommerce-germanized' );
 	}
 
 	public static function get_template_path() {
@@ -394,12 +404,43 @@ class Package {
 	 *
 	 * @return string
 	 */
-	public static function get_url() {
-		return plugins_url( '', __DIR__ );
+	public static function get_url( $rel_path = '' ) {
+		return trailingslashit( plugins_url( '', __DIR__ ) ) . $rel_path;
 	}
 
 	public static function get_assets_url() {
 		return self::get_url() . '/assets';
+	}
+
+	public static function register_script( $handle, $path, $dep = array(), $ver = '', $in_footer = array( 'strategy' => 'defer' ) ) {
+		global $wp_version;
+
+		if ( version_compare( $wp_version, '6.3', '<' ) ) {
+			$in_footer = true;
+		}
+
+		$ver = empty( $ver ) ? self::get_version() : $ver;
+
+		wp_register_script(
+			$handle,
+			self::get_assets_build_url( $path ),
+			$dep,
+			$ver,
+			$in_footer
+		);
+	}
+
+	public static function get_assets_build_url( $script_or_style ) {
+		$assets_url = self::get_url() . '/build';
+		$is_debug   = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG;
+		$is_style   = '.css' === substr( $script_or_style, -4 );
+		$is_static  = strstr( $script_or_style, 'static/' );
+
+		if ( $is_debug && $is_static && ! $is_style ) {
+			$assets_url = self::get_url() . '/assets/js';
+		}
+
+		return trailingslashit( $assets_url ) . $script_or_style;
 	}
 
 	public static function is_debug_mode() {
@@ -575,9 +616,21 @@ class Package {
 	 * @return mixed|string|void
 	 */
 	public static function get_retoure_api_user() {
-		$user = self::is_debug_mode() ? '2222222222_Customer' : self::get_setting( 'api_username' );
+		$user = self::is_debug_mode() ? '2222222222_customer' : self::get_setting( 'api_username' );
 
 		return strtolower( $user );
+	}
+
+	public static function use_legacy_soap_api() {
+		return apply_filters( 'woocommerce_gzd_dhl_use_legacy_soap_api', ( defined( 'WC_GZD_DHL_LEGACY_SOAP' ) ? WC_GZD_DHL_LEGACY_SOAP : ( 'yes' === get_option( 'woocommerce_gzd_dhl_enable_legacy_soap' ) ) ) );
+	}
+
+	public static function get_label_rest_api_url() {
+		if ( self::is_debug_mode() ) {
+			return 'https://api-sandbox.dhl.com/parcel/de/shipping/v2/';
+		} else {
+			return 'https://api-eu.dhl.com/parcel/de/shipping/v2/';
+		}
 	}
 
 	public static function get_return_receivers() {
@@ -606,12 +659,13 @@ class Package {
 		$fallback_receiver = false;
 
 		foreach ( $receivers as $receiver ) {
+			$receiver_country = empty( $receiver['country'] ) ? $receiver['id'] : $receiver['country'];
 
 			if ( ! $fallback_receiver && empty( $receiver['country'] ) ) {
 				$fallback_receiver = $receiver;
 			}
 
-			if ( $receiver['country'] === $country ) {
+			if ( $receiver_country === $country ) {
 				$country_receiver = $receiver;
 			}
 		}
@@ -650,7 +704,11 @@ class Package {
 	}
 
 	public static function get_gk_api_url() {
-		return self::is_debug_mode() ? 'https://cig.dhl.de/cig-wsdls/com/dpdhl/wsdl/geschaeftskundenversand-api/3.4/geschaeftskundenversand-api-3.4.wsdl' : 'https://cig.dhl.de/cig-wsdls/com/dpdhl/wsdl/geschaeftskundenversand-api/3.4/geschaeftskundenversand-api-3.4.wsdl';
+		return self::is_debug_mode() ? 'https://cig.dhl.de/cig-wsdls/com/dpdhl/wsdl/geschaeftskundenversand-api/3.5/geschaeftskundenversand-api-3.5.wsdl' : 'https://cig.dhl.de/cig-wsdls/com/dpdhl/wsdl/geschaeftskundenversand-api/3.5/geschaeftskundenversand-api-3.5.wsdl';
+	}
+
+	public static function get_dhl_com_api_key() {
+		return 'uwi1SH5bHDdMTdcWXB5JIsDCvBOyIawn';
 	}
 
 	public static function get_business_portal_url() {
@@ -732,13 +790,22 @@ class Package {
 	}
 
 	public static function get_core_wsdl_file( $file ) {
+		$file = basename( $file );
+		$file = str_replace( '?wsdl', '', $file );
+
+		// Add .wsdl as default file extension in case missing (e.g. url)
+		if ( '.wsdl' !== substr( $file, -5 ) && '.xsd' !== substr( $file, -4 ) ) {
+			$file .= '.wsdl';
+		}
+
+		$file       = sanitize_file_name( $file );
 		$local_file = trailingslashit( self::get_path() ) . 'assets/wsdl/' . $file;
 
 		if ( file_exists( $local_file ) ) {
 			return $local_file;
 		}
 
-		return false;
+		return null;
 	}
 
 	/**
@@ -828,7 +895,6 @@ class Package {
 				$wsdl_link = $alternate_file ? $alternate_file : \Vendidero\Germanized\Shipments\Package::get_file_by_path( $file_path );
 			}
 		} else {
-
 			if ( ! function_exists( 'download_url' ) ) {
 				include_once ABSPATH . 'wp-admin/includes/file.php';
 			}
@@ -854,7 +920,6 @@ class Package {
 				$tmp_file = download_url( $file_link, 1500 );
 
 				if ( ! is_wp_error( $tmp_file ) ) {
-
 					$uploads    = \Vendidero\Germanized\Shipments\Package::get_upload_dir();
 					$new_file   = trailingslashit( $uploads['path'] ) . $new_file_name;
 					$has_copied = @copy( $tmp_file, $new_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
@@ -948,13 +1013,29 @@ class Package {
 		return $args;
 	}
 
-	public static function get_participation_number( $product ) {
-		return self::get_setting( 'participation_' . $product );
+	public static function get_participation_number( $product, $args = array() ) {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'gogreen' => false,
+			)
+		);
+
+		$participation = self::get_setting( 'participation_' . $product );
+
+		if ( $args['gogreen'] ) {
+			$participation_gogreen = self::get_setting( 'participation_gogreen_' . $product );
+
+			if ( ! empty( $participation_gogreen ) ) {
+				$participation = $participation_gogreen;
+			}
+		}
+
+		return $participation;
 	}
 
 	/**
 	 * @param $name
-	 * @param bool|ShippingMethod $method
 	 *
 	 * @return mixed|void
 	 */
@@ -981,19 +1062,11 @@ class Package {
 
 		if ( ! $is_dp ) {
 			if ( $provider = self::get_dhl_shipping_provider() ) {
-				if ( $shipment ) {
-					$value = $provider->get_shipment_setting( $shipment, $name, $default );
-				} else {
-					$value = $provider->get_setting( $name, $default );
-				}
+				$value = $provider->get_setting( $name, $default );
 			}
 		} else {
 			if ( $provider = self::get_deutsche_post_shipping_provider() ) {
-				if ( $shipment ) {
-					$value = $provider->get_shipment_setting( $shipment, $name, $default );
-				} else {
-					$value = $provider->get_setting( $name, $default );
-				}
+				$value = $provider->get_setting( $name, $default );
 			}
 		}
 
@@ -1032,9 +1105,6 @@ class Package {
 	}
 
 	public static function get_base_country() {
-		$base_location = wc_get_base_location();
-		$base_country  = $base_location['country'];
-
 		/**
 		 * Filter to adjust the DHL base country.
 		 *
@@ -1043,7 +1113,7 @@ class Package {
 		 * @since 3.0.0
 		 * @package Vendidero/Germanized/DHL
 		 */
-		return apply_filters( 'woocommerce_gzd_dhl_base_country', $base_country );
+		return apply_filters( 'woocommerce_gzd_dhl_base_country', \Vendidero\Germanized\Shipments\Package::get_base_country() );
 	}
 
 	public static function get_us_territories() {

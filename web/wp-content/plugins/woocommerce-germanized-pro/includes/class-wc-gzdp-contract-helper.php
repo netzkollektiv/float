@@ -17,11 +17,12 @@ class WC_GZDP_Contract_Helper {
 
 	public function __construct() {
 		add_filter( 'woocommerce_email_classes', array( $this, 'add_emails' ), 30 );
-		add_filter( 'woocommerce_create_order', array( $this, 'set_default_order_status' ) );
 
 		// Add order confirmation meta
 		add_action( 'woocommerce_checkout_update_order_meta', array( $this, 'set_order_confirmation_needed' ), 0, 1 );
 		add_action( 'woocommerce_before_order_object_save', array( $this, 'set_order_confirmation_needed_3' ), 10, 2 );
+
+		add_filter( 'woocommerce_before_order_object_save', array( $this, 'set_default_order_status' ), 20 );
 
 		// Hide Payment info
 		add_action( 'woocommerce_before_template_part', array( $this, 'hide_payment_info' ), 0, 4 );
@@ -30,7 +31,8 @@ class WC_GZDP_Contract_Helper {
 		add_action( 'woocommerce_before_template_part', array( $this, 'add_payment_link' ), 1, 4 );
 
 		// Remove Payment Method redirect on Checkout
-		add_action( 'woocommerce_checkout_order_processed', array( $this, 'remove_gateway_redirect' ) );
+		add_action( 'woocommerce_checkout_order_processed', array( $this, 'maybe_remove_gateway_redirect' ) );
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'maybe_remove_block_gateway_redirect' ) );
 
 		// This removes Germanized Information (e.g. delivery time etc. as well)
 		add_action( 'woocommerce_email_order_details', array( $this, 'remove_email_payment_instructions' ), 0, 4 );
@@ -41,8 +43,191 @@ class WC_GZDP_Contract_Helper {
 
 		add_filter( 'woocommerce_gzd_is_order_confirmation_email', array( $this, 'register_order_confirmation' ), 10, 2 );
 
+		add_filter( 'woocommerce_gzd_add_force_pay_order_parameter', '__return_true', 10 );
+
 		$this->prevent_transactional_emails();
 		$this->admin_hooks();
+
+		add_action( 'woocommerce_before_calculate_totals', array( $this, 'remove_gateway_filter' ), 0 );
+		add_action( 'woocommerce_after_calculate_totals', array( $this, 'add_gateway_filter' ), 10000 );
+		add_filter( 'woocommerce_available_payment_gateways', array( $this, 'gateway_filter' ), 10000 );
+		add_filter( 'woocommerce_payment_gateways', array( $this, 'maybe_register_placeholder_gateways' ), 10000 );
+
+		// Remove placeholder gateway
+		add_action( 'woocommerce_checkout_create_order', array( $this, 'remove_gateway_placeholder' ), 0 );
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'remove_gateway_placeholder' ), 0 );
+
+		// Prevent Woo from marking non-
+		add_filter( 'woocommerce_valid_order_statuses_for_payment_complete', array( $this, 'maybe_prevent_payment_complete' ), 10, 2 );
+
+		add_action( 'woocommerce_blocks_payment_method_type_registration', array( $this, 'register_gateway_placeholders' ), 10000 );
+	}
+
+	/**
+	 * @param \Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry
+	 *
+	 * @return void
+	 */
+	public function register_gateway_placeholders( $payment_method_registry ) {
+		foreach ( $payment_method_registry->get_all_registered() as $gateway ) {
+			if ( $this->gateway_needs_placeholder( $gateway->get_name() ) ) {
+				if ( \Vendidero\Germanized\Pro\Package::load_blocks() ) {
+					$assets = \Vendidero\Germanized\Pro\Package::container()->get( \Vendidero\Germanized\Pro\Blocks\Assets::class );
+
+					/**
+					 * Mollie register only one pseudo gateway which bundles all the actual gateways.
+					 * As for now there is no other way but use the original available gateways as placeholders.
+					 */
+					if ( is_a( $gateway, 'Mollie\WooCommerce\Assets\MollieCheckoutBlocksSupport' ) ) {
+						$available_gateways = WC()->payment_gateways()->get_available_payment_gateways();
+
+						foreach ( $available_gateways as $key => $t_gateway ) {
+							if ( strstr( $key, 'mollie_wc_gateway_' ) ) {
+								$placeholder = new \Vendidero\Germanized\Pro\Contract\GatewayBlockPlaceholder( $t_gateway, $assets );
+								$payment_method_registry->register( $placeholder );
+							}
+						}
+					} else {
+						$placeholder = new \Vendidero\Germanized\Pro\Contract\GatewayBlockPlaceholder( $gateway, $assets );
+						$payment_method_registry->register( $placeholder );
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * This filter prevents Woo from marking orders as being paid in case the payment method
+	 * is a placeholder still.
+	 *
+	 * @param $statuses
+	 * @param WC_Order $order
+	 *
+	 * @return array
+	 */
+	public function maybe_prevent_payment_complete( $statuses, $order ) {
+		if ( wc_gzdp_order_needs_confirmation( $order ) && $this->gateway_needs_placeholder( $order->get_payment_method() ) ) {
+			$statuses = array();
+			remove_all_actions( 'woocommerce_payment_complete_order_status_' . $order->get_status() );
+		}
+
+		return $statuses;
+	}
+
+	/**
+	 * @param WC_Order $order
+	 *
+	 * @return void
+	 */
+	public function remove_gateway_placeholder( $order ) {
+		if ( ! $order ) {
+			return;
+		}
+
+		if ( $this->payment_method_is_placeholder( $order->get_payment_method() ) ) {
+			$order->set_payment_method( str_replace( 'placeholder_', '', $order->get_payment_method() ) );
+		}
+	}
+
+	protected function payment_method_is_placeholder( $method ) {
+		return 'placeholder_' === substr( $method, 0, 12 );
+	}
+
+	public function remove_gateway_filter() {
+		if ( $this->is_checkout() ) {
+			if ( WC()->session && WC()->session->get( 'chosen_payment_method' ) ) {
+				if ( $this->payment_method_is_placeholder( WC()->session->get( 'chosen_payment_method' ) ) ) {
+					WC()->session->set( 'chosen_payment_method', substr( WC()->session->get( 'chosen_payment_method' ), 12 ) );
+				}
+			}
+		}
+
+		remove_filter( 'woocommerce_available_payment_gateways', array( $this, 'gateway_filter' ), 10000 );
+	}
+
+	protected function is_checkout() {
+		return ( is_checkout() || has_block( 'woocommerce/checkout' ) || WC()->is_rest_api_request() ) && ! is_checkout_pay_page();
+	}
+
+	public function add_gateway_filter() {
+		if ( $this->is_checkout() ) {
+			if ( WC()->session && WC()->session->get( 'chosen_payment_method' ) ) {
+				$gateway = WC()->session->get( 'chosen_payment_method' );
+
+				if ( ! empty( $gateway ) && $this->gateway_needs_placeholder( $gateway ) ) {
+					WC()->session->set( 'chosen_payment_method', 'placeholder_' . WC()->session->get( 'chosen_payment_method' ) );
+				}
+			}
+		}
+
+		add_filter( 'woocommerce_available_payment_gateways', array( $this, 'gateway_filter' ), 10000 );
+	}
+
+	protected function gateway_needs_placeholder( $method ) {
+		$needs_placeholder = true;
+		$whitelist         = array(
+			'bacs',
+			'cod',
+			'invoice',
+			'direct-debit',
+			'cheque',
+		);
+
+		if ( in_array( $method, $whitelist, true ) ) {
+			$needs_placeholder = false;
+		}
+
+		return apply_filters( 'woocommerce_gzdp_manual_contract_gateway_needs_placeholder', $needs_placeholder, $method, $this );
+	}
+
+	/**
+	 * The checkout route uses WC_Payment_Gateways::get_payment_method_ids() to validate
+	 * whether the payment method is available or not. This will not allow us to only
+	 * filter the available gateway. Instead we need to add a tweak to register our placeholder
+	 * methods on load.
+	 *
+	 * @param $load_gateways
+	 *
+	 * @return mixed
+	 */
+	public function maybe_register_placeholder_gateways( $load_gateways ) {
+		if ( WC()->is_rest_api_request() ) {
+			foreach ( $load_gateways as $gateway ) {
+				if ( is_string( $gateway ) && class_exists( $gateway ) ) {
+					$gateway = new $gateway();
+				}
+
+				// Gateways need to be valid and extend WC_Payment_Gateway.
+				if ( ! is_a( $gateway, 'WC_Payment_Gateway' ) ) {
+					continue;
+				}
+
+				if ( $this->gateway_needs_placeholder( $gateway->id ) ) {
+					$load_gateways[ 'placeholder_' . $gateway->id ] = new \Vendidero\Germanized\Pro\Contract\GatewayPlaceholder( $gateway );
+				}
+			}
+		}
+
+		return $load_gateways;
+	}
+
+	public function gateway_filter( $available_gateways ) {
+		if ( $this->is_checkout() ) {
+			$placeholders = array();
+
+			foreach ( $available_gateways as $method => $available_gateway ) {
+				if ( $this->gateway_needs_placeholder( $method ) ) {
+					$placeholder                              = new \Vendidero\Germanized\Pro\Contract\GatewayPlaceholder( $available_gateway );
+					$placeholders[ 'placeholder_' . $method ] = $placeholder;
+				} else {
+					$placeholders[ $method ] = $available_gateway;
+				}
+			}
+
+			return $placeholders;
+		}
+
+		return $available_gateways;
 	}
 
 	public function register_order_confirmation( $is_confirmation, $email_id ) {
@@ -119,6 +304,12 @@ class WC_GZDP_Contract_Helper {
 	public function show_or_hide_pay_now_button( $show_or_hide, $order_id ) {
 		if ( wc_gzdp_order_needs_confirmation( $order_id ) ) {
 			return false;
+		} else {
+			if ( $order = wc_get_order( $order_id ) ) {
+				if ( $order->needs_payment() ) {
+					return true;
+				}
+			}
 		}
 
 		return $show_or_hide;
@@ -229,8 +420,10 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	public function set_order_confirmation_needed_3( $order, $data_store ) {
-		// Makes sure we do only target new admin orders
-		if ( is_admin() && isset( $_POST ) && ! empty( $_POST ) && isset( $_POST['post_status'] ) && 'draft' === $_POST['post_status'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		/**
+		 * Target new orders only.
+		 */
+		if ( $order->get_id() <= 0 ) {
 			$order->update_meta_data( '_order_needs_confirmation', true );
 		}
 	}
@@ -372,8 +565,28 @@ class WC_GZDP_Contract_Helper {
 			if ( is_object( $gateway ) ) {
 				// Stop output
 				ob_start();
-				$result = $gateway->process_payment( $order_id );
+				try {
+					$result = $gateway->process_payment( $order_id );
+				} catch ( Exception $e ) {
+					$result = false;
+				}
 				ob_end_clean();
+			}
+
+			if ( function_exists( 'wc_clear_notices' ) ) {
+				wc_clear_notices();
+			}
+
+			// Retrieve a fresh copy as the gateway may adjust the order.
+			$order = wc_get_order( $order_id );
+
+			if ( ! $order ) {
+				return false;
+			}
+
+			if ( isset( $result['result'] ) && 'failure' === $result['result'] ) {
+				// Update to default to allow receiving (manual) payments
+				$order->update_status( $default_status );
 			}
 		}
 
@@ -382,7 +595,6 @@ class WC_GZDP_Contract_Helper {
 
 		// Trigger Mail
 		if ( $mail = WC_germanized()->emails->get_email_instance_by_id( 'customer_order_confirmation' ) ) {
-
 			/**
 			 * Mark the order as being confirmed
 			 */
@@ -399,6 +611,8 @@ class WC_GZDP_Contract_Helper {
 			add_action( 'woocommerce_order_status_cancelled', 'wc_maybe_increase_stock_levels' );
 			add_action( 'woocommerce_order_status_pending', 'wc_maybe_increase_stock_levels' );
 		}
+
+		return true;
 	}
 
 	/**
@@ -426,10 +640,34 @@ class WC_GZDP_Contract_Helper {
 		return false;
 	}
 
-	public function remove_gateway_redirect( $order_id ) {
-		if ( apply_filters( 'woocommerce_gzdp_exclude_order_from_pre_payment_processing', true, $order_id ) ) {
-			add_filter( 'woocommerce_cart_needs_payment', array( $this, 'cart_needs_payment_filter' ) );
-			add_filter( 'woocommerce_valid_order_statuses_for_payment_complete', array( $this, 'stop_payment_completion' ), 1500 );
+	/**
+	 * @param WC_Order $order
+	 *
+	 * @return void
+	 */
+	public function maybe_remove_block_gateway_redirect( $order ) {
+		if ( apply_filters( 'woocommerce_gzdp_exclude_order_from_pre_payment_processing', true, $order->get_id(), $order ) ) {
+			if ( ! $this->payment_method_is_placeholder( $order->get_payment_method() ) ) {
+				add_filter(
+					'woocommerce_before_order_object_save',
+					function( $order ) {
+						$order->set_status( 'on-hold' );
+					}
+				);
+				add_filter( 'woocommerce_order_needs_payment', array( $this, 'needs_payment_filter' ), 1000 );
+				add_filter( 'woocommerce_valid_order_statuses_for_payment_complete', array( $this, 'stop_payment_completion' ), 1500 );
+			}
+		}
+	}
+
+	public function maybe_remove_gateway_redirect( $order_id ) {
+		$order = wc_get_order( $order_id );
+
+		if ( $order && apply_filters( 'woocommerce_gzdp_exclude_order_from_pre_payment_processing', true, $order_id, $order ) ) {
+			if ( ! $this->payment_method_is_placeholder( $order->get_payment_method() ) ) {
+				add_filter( 'woocommerce_cart_needs_payment', array( $this, 'needs_payment_filter' ) );
+				add_filter( 'woocommerce_valid_order_statuses_for_payment_complete', array( $this, 'stop_payment_completion' ), 1500 );
+			}
 		}
 	}
 
@@ -441,7 +679,7 @@ class WC_GZDP_Contract_Helper {
 		return array();
 	}
 
-	public function cart_needs_payment_filter() {
+	public function needs_payment_filter() {
 		return false;
 	}
 
@@ -496,15 +734,22 @@ class WC_GZDP_Contract_Helper {
 		}
 	}
 
-	public function set_default_order_status( $order_id ) {
+	/**
+	 * @param WC_Order $order
+	 */
+	public function set_default_order_status( $order ) {
 		// Default order status
-		add_filter( 'woocommerce_default_order_status', array( $this, 'default_order_status' ), 1500 );
+		add_filter(
+			'woocommerce_default_order_status',
+			function( $default_status ) use ( $order ) {
+				if ( wc_gzdp_order_needs_confirmation( $order ) && apply_filters( 'woocommerce_gzdp_exclude_order_from_pre_payment_processing', true, $order->get_id(), $order ) ) {
+					$default_status = 'on-hold';
+				}
 
-		return $order_id;
-	}
-
-	public function default_order_status( $status ) {
-		return 'on-hold';
+				return $default_status;
+			},
+			1500
+		);
 	}
 
 	public function add_emails( $emails ) {

@@ -372,7 +372,105 @@ class MpdfRenderer implements PDF {
 		 */
 		$html = preg_replace( '/<p[^>]*>(?:\s|&nbsp;)*<\/p>/', '', $html );
 
+		/**
+		 * Prevent charset issues with mPDF.
+		 */
+		if ( function_exists( 'mb_convert_encoding' ) ) {
+			$html = mb_convert_encoding( $html, 'UTF-8', 'UTF-8' );
+		}
+
+		/**
+		 * mPDF faces performance issues when building cascading CSS support for DOM classes.
+		 * Use the emogrifier library bundled within Woo core to convert all styles (including stylesheets)
+		 * to inline styles before rendering the PDF.
+		 *
+		 * By default, do only use inline styling in case the current memory limit is smaller than 512M.
+		 *
+		 * @see https://github.com/mpdf/mpdf/issues/1753
+		 */
+		if ( self::supports_inline_style_conversion() && apply_filters( 'storeabill_mpdf_convert_to_inline_styles', self::get_current_memory_limit() < 512 ) ) {
+			try {
+				$external_css  = '';
+				$original_html = $html;
+
+				foreach ( sab_document_styles()->done as $handle ) {
+					if ( isset( sab_document_styles()->registered[ $handle ] ) ) {
+						$item = sab_document_styles()->registered[ $handle ];
+
+						if ( isset( $item->src ) && ! empty( $item->src ) ) {
+							$path_or_url = sab_get_asset_path_by_url( $item->src );
+
+							if ( 'http' !== substr( $path_or_url, 0, 4 ) ) {
+								if ( @file_exists( $path_or_url ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+									if ( $external_css_content = @file_get_contents( $path_or_url ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+										$external_css .= ' ' . $external_css_content;
+									}
+								}
+							} else {
+								$response = wp_remote_get( $path_or_url );
+
+								if ( 200 === wp_remote_retrieve_response_code( $response ) ) {
+									$external_css .= ' ' . wp_kses_post( wp_remote_retrieve_body( $response ) );
+								} else {
+									if ( $external_css_content = @file_get_contents( $path_or_url ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+										$external_css .= ' ' . $external_css_content;
+									}
+								}
+							}
+						}
+					}
+				}
+
+				$html = \Pelago\Emogrifier\CssInliner::fromHtml( $html )->inlineCss( $external_css )->render();
+				// Remove all classes from the HTML to improve mPDF performance
+				$html = preg_replace( '/class=".*?"/', '', $html );
+			} catch ( \Exception $e ) {
+				$html = $original_html;
+				Package::log( sprintf( 'Error while inlining HTML styles: %1$s', $e->getMessage() ) );
+			}
+		}
+
 		return $html;
+	}
+
+	protected static function get_current_memory_limit() {
+		$value = ini_get( 'memory_limit' );
+
+		if ( function_exists( 'wp_convert_hr_to_bytes' ) ) {
+			$value_int = wp_convert_hr_to_bytes( $value );
+		} else {
+			$value = strtolower( trim( $value ) );
+			$bytes = (int) $value;
+
+			if ( false !== strpos( $value, 'g' ) ) {
+				$bytes *= GB_IN_BYTES;
+			} elseif ( false !== strpos( $value, 'm' ) ) {
+				$bytes *= MB_IN_BYTES;
+			} elseif ( false !== strpos( $value, 'k' ) ) {
+				$bytes *= KB_IN_BYTES;
+			}
+
+			// Deal with large (float) values which run into the maximum integer size.
+			$value_int = min( $bytes, PHP_INT_MAX );
+		}
+
+		if ( -1 === $value_int ) {
+			$value_int = 64;
+		} else {
+			$value_int = $value_int / MB_IN_BYTES;
+		}
+
+		return absint( $value_int );
+	}
+
+	public static function supports_inline_style_conversion() {
+		$css_inliner_class = \Pelago\Emogrifier\CssInliner::class;
+
+		if ( class_exists( $css_inliner_class ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -421,6 +519,10 @@ class MpdfRenderer implements PDF {
 	 * @throws MpdfException
 	 */
 	protected function render() {
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'pdf' );
+		}
+
 		do_action( 'storeabill_mpdf_before_render_pdf', $this, $this->pdf );
 
 		$this->pdf->WriteHTML( $this->get_html() );

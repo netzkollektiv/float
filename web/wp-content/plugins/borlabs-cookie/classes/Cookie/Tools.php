@@ -3,18 +3,18 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
@@ -22,30 +22,31 @@ namespace BorlabsCookie\Cookie;
 
 class Tools
 {
-
     private static $instance;
-
-    private $generatedStrings = [];
 
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
+    private $generatedStrings = [];
+
+    public function __construct()
     {
     }
 
-    private function __wakeup()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    protected function __construct()
+    public function __wakeup()
     {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
     }
 
     /**
@@ -54,18 +55,15 @@ class Tools
      * By https://stackoverflow.com/users/370290/j-bruni
      * Found at: https://stackoverflow.com/questions/9546181/flatten-multidimensional-array-concatenating-keys
      *
-     * @access public
      * @param mixed $array
      * @param mixed $prefix (default: '')
-     * @return void
      */
     public function arrayFlat($array, $prefix = '')
     {
         $result = [];
 
         foreach ($array as $key => $value) {
-
-            $newKey = $prefix . (!empty($prefix) ? '.' : '' ) . $key;
+            $newKey = $prefix . (!empty($prefix) ? '.' : '') . $key;
 
             if (is_array($value)) {
                 $result = array_merge($result, $this->arrayFlat($value, $newKey));
@@ -80,10 +78,8 @@ class Tools
     /**
      * cleanHostList function.
      *
-     * @access public
      * @param mixed $hosts
-     * @param bool $allowURL (default: false)
-     * @return void
+     * @param bool  $allowURL (default: false)
      */
     public function cleanHostList($hosts, $allowURL = false)
     {
@@ -105,7 +101,6 @@ class Tools
 
                 if (!empty($host)) {
                     if (filter_var($host, FILTER_VALIDATE_URL)) {
-
                         if ($allowURL == false) {
                             $urlInfo = parse_url($host);
                             $host = $urlInfo['host'];
@@ -125,10 +120,9 @@ class Tools
     /**
      * formatTimestamp function.
      *
-     * @access public
-     * @param mixed $timestamp
-     * @param mixed $dateFormat (default: null)
-     * @return void
+     * @param mixed      $timestamp
+     * @param mixed      $dateFormat (default: null)
+     * @param null|mixed $timeFormat
      */
     public function formatTimestamp($timestamp, $dateFormat = null, $timeFormat = null)
     {
@@ -144,7 +138,7 @@ class Tools
             $timeFormat = get_option('time_format');
         }
 
-        $dateFormat = $dateFormat.(isset($timeFormat) ? ' ' : '').$timeFormat;
+        $dateFormat = $dateFormat . (isset($timeFormat) ? ' ' : '') . $timeFormat;
 
         return date_i18n($dateFormat, $timestamp);
     }
@@ -152,9 +146,7 @@ class Tools
     /**
      * generateRandomString function.
      *
-     * @access public
      * @param int $stringLength (default: 32)
-     * @return void
      */
     public function generateRandomString($stringLength = 32)
     {
@@ -166,7 +158,7 @@ class Tools
             $stringLength = 32;
         }
 
-        for ($i=0; $i<$stringLength; $i++) {
+        for ($i = 0; $i < $stringLength; ++$i) {
             $index = 0;
 
             // PHP 7
@@ -194,30 +186,11 @@ class Tools
     /**
      * hexToHsl function.
      *
-     * @access public
      * @param mixed $hex
-     * @return void
      */
-    public function hexToHsl($hex) {
-
-        $hex = str_replace('#', '', $hex);
-
-        if (strlen($hex) == 3) {
-            $hex .= $hex;
-        }
-
-        $hex = [
-            $hex[0].$hex[1],
-            $hex[2].$hex[3],
-            $hex[4].$hex[5]
-        ];
-
-        $rgb = array_map(
-            function($part) {
-                return hexdec($part) / 255;
-            },
-            $hex
-        );
+    public function hexToHsl($hex)
+    {
+        $rgb = $this->hexToRgb($hex);
 
         $max = max($rgb);
         $min = min($rgb);
@@ -230,16 +203,21 @@ class Tools
             $diff = $max - $min;
             $s = $l > 0.5 ? $diff / (2 - $max - $min) : $diff / ($max + $min);
 
-            switch($max) {
-                case $rgb[0]:
-                    $h = ($rgb[1] - $rgb[2]) / $diff + ($rgb[1] < $rgb[2] ? 6 : 0);
+            switch ($max) {
+                case $rgb['r']:
+                    $h = ($rgb['g'] - $rgb['b']) / $diff + ($rgb['g'] < $rgb['b'] ? 6 : 0);
+
                     break;
-                case $rgb[1]:
-                    $h = ($rgb[2] - $rgb[0]) / $diff + 2;
+
+                case $rgb['g']:
+                    $h = ($rgb['b'] - $rgb['r']) / $diff + 2;
+
                     break;
-                case $rgb[2]:
-                    $h = ($rgb[0] - $rgb[1]) / $diff + 4;
-                break;
+
+                case $rgb['b']:
+                    $h = ($rgb['r'] - $rgb['g']) / $diff + 4;
+
+                    break;
             }
 
             $h = round($h * 60);
@@ -249,11 +227,51 @@ class Tools
     }
 
     /**
+     * hexToRgb function.
+     *
+     * @param mixed $hex
+     */
+    public function hexToRgb($hex)
+    {
+        $hex = str_replace('#', '', $hex);
+
+        if (strlen($hex) == 3) {
+            $hex .= $hex;
+        }
+
+        $hex = [
+            $hex[0] . $hex[1],
+            $hex[2] . $hex[3],
+            $hex[4] . $hex[5],
+        ];
+
+        $rgb = array_map(
+            function ($part) {
+                return hexdec($part) / 255;
+            },
+            $hex
+        );
+
+        return [
+            'r' => $rgb[0],
+            'g' => $rgb[1],
+            'b' => $rgb[2],
+        ];
+    }
+
+    public function isObjectEmpty($obj)
+    {
+        foreach ($obj as $property) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * isStringJSON function.
      *
-     * @access public
      * @param mixed $string
-     * @return void
      */
     public function isStringJSON($string)
     {
@@ -265,9 +283,7 @@ class Tools
     /**
      * validateHexColor function.
      *
-     * @access public
      * @param mixed $color
-     * @return void
      */
     public function validateHexColor($color)
     {

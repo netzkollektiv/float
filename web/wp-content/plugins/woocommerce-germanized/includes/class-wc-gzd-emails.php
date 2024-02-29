@@ -29,6 +29,11 @@ class WC_GZD_Emails {
 	private $current_email_instance = false;
 
 	/**
+	 * @var bool|WC_Order
+	 */
+	private $current_order_instance = false;
+
+	/**
 	 * Adds legal page ids to different options and adds a hook to the email footer
 	 */
 	public function __construct() {
@@ -50,9 +55,29 @@ class WC_GZD_Emails {
 			/**
 			 * Support WooCommerce Gutenberg checkout block
 			 */
-			if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '6.4.0', '>=' ) ) {
+			$wc_version = defined( 'WC_VERSION' ) ? WC_VERSION : false;
+
+			if ( $wc_version && version_compare( $wc_version, '7.0.0', '>=' ) ) {
+				/**
+				 * The issue with the woocommerce_store_api_checkout_order_processed hook is that it is executed
+				 * before updating the order status + payment information. That's why we need to tweak
+				 * ourselves in hooks/filters applied on a later stage based on whether the order needs payment or not.
+				 *
+				 * @see \Automattic\WooCommerce\StoreApi\Routes\V1\Checkout
+				 */
+				add_action(
+					'woocommerce_store_api_checkout_order_processed',
+					function( $order ) {
+						if ( $order->needs_payment() ) {
+							add_action( 'woocommerce_rest_checkout_process_payment_with_context', array( $this, 'checkout_block_payment_context_confirmation_callback' ), 1005, 2 );
+						} else {
+							add_filter( 'woocommerce_get_checkout_order_received_url', array( $this, 'checkout_block_no_payment_context_confirmation_callback' ), 1005, 2 );
+						}
+					}
+				);
+			} elseif ( $wc_version && version_compare( $wc_version, '6.4.0', '>=' ) ) {
 				add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'confirm_order' ) );
-			} elseif ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '6.0.0', '>=' ) ) {
+			} elseif ( $wc_version && version_compare( $wc_version, '6.0.0', '>=' ) ) {
 				add_action( 'woocommerce_blocks_checkout_order_processed', array( $this, 'confirm_order' ) );
 			} else {
 				add_action( '__experimental_woocommerce_blocks_checkout_order_processed', array( $this, 'confirm_order' ) );
@@ -109,25 +134,7 @@ class WC_GZD_Emails {
 		);
 
 		// Disable paid order email for certain gateways (e.g. COD or invoice)
-		add_filter(
-			'woocommerce_allow_send_queued_transactional_email',
-			array(
-				$this,
-				'maybe_disable_order_paid_email_notification_queued',
-			),
-			10,
-			3
-		);
-
-		add_action(
-			'woocommerce_order_status_processing',
-			array(
-				$this,
-				'maybe_disable_order_paid_email_notification',
-			),
-			5,
-			2
-		);
+		add_filter( 'woocommerce_email_enabled_customer_paid_for_order', array( $this, 'maybe_disable_order_paid_email' ), 10, 2 );
 
 		// Change email template path if is germanized email template
 		add_filter( 'woocommerce_template_directory', array( $this, 'set_woocommerce_template_dir' ), 10, 2 );
@@ -175,6 +182,21 @@ class WC_GZD_Emails {
 		if ( is_admin() ) {
 			$this->admin_hooks();
 		}
+	}
+
+	public function checkout_block_payment_context_confirmation_callback( $context, $payment_result ) {
+		$order = $context->order;
+		$this->confirm_order( $order );
+
+		remove_action( 'woocommerce_rest_checkout_process_payment_with_context', array( $this, 'checkout_block_payment_context_confirmation_callback' ), 1005 );
+	}
+
+	public function checkout_block_no_payment_context_confirmation_callback( $redirect, $order ) {
+		$this->confirm_order( $order );
+
+		remove_filter( 'woocommerce_get_checkout_order_received_url', array( $this, 'checkout_block_no_payment_context_confirmation_callback' ), 1005 );
+
+		return $redirect;
 	}
 
 	public function register_confirmation_fallback( $order_id ) {
@@ -464,11 +486,9 @@ class WC_GZD_Emails {
 	}
 
 	public function maybe_set_gettext_email_filter( $template_name, $template_path, $located, $args ) {
-
 		if ( 'emails/customer-processing-order.php' === $template_name || 'emails/plain/customer-processing-order.php' === $template_name ) {
-			if ( isset( $args['order'] ) ) {
-				$GLOBALS['wc_gzd_processing_order'] = $args['order'];
-
+			if ( isset( $args['order'] ) && is_a( $args['order'], 'WC_Order' ) ) {
+				$this->current_order_instance = $args['order'];
 				add_filter( 'gettext', array( $this, 'replace_processing_email_text' ), 9999, 3 );
 			}
 		}
@@ -484,11 +504,9 @@ class WC_GZD_Emails {
 		 * @param bool $disable Whether to disable email title replacement or not.
 		 *
 		 * @since 3.0.0
-		 *
 		 */
-		if ( strpos( $template_name, 'emails/' ) !== false && isset( $args['order'] ) && get_option( 'woocommerce_gzd_email_title_text' ) && apply_filters( 'woocommerce_gzd_replace_email_titles', true ) ) {
-			$GLOBALS['wc_gzd_email_order'] = $args['order'];
-
+		if ( strpos( $template_name, 'emails/' ) !== false && isset( $args['order'] ) && is_a( $args['order'], 'WC_Order' ) && get_option( 'woocommerce_gzd_email_title_text' ) && apply_filters( 'woocommerce_gzd_replace_email_titles', true ) ) {
+			$this->current_order_instance = $args['order'];
 			add_filter( 'gettext', array( $this, 'replace_title_email_text' ), 9999, 3 );
 		}
 	}
@@ -502,8 +520,8 @@ class WC_GZD_Emails {
 			);
 
 			if ( in_array( $original, $search, true ) ) {
-				if ( isset( $GLOBALS['wc_gzd_processing_order'] ) ) {
-					$order = $GLOBALS['wc_gzd_processing_order'];
+				if ( is_a( $this->current_order_instance, 'WC_Order' ) ) {
+					$order = $this->current_order_instance;
 
 					return $this->get_processing_email_text( $order );
 				}
@@ -514,10 +532,27 @@ class WC_GZD_Emails {
 	}
 
 	public function replace_title_email_text( $translated, $original, $domain ) {
-		if ( 'woocommerce' === $domain ) {
-			if ( 'Hi %s,' === $original ) {
-				if ( isset( $GLOBALS['wc_gzd_email_order'] ) ) {
-					$order         = $GLOBALS['wc_gzd_email_order'];
+		/**
+		 * Filters whether to replace the email title for a given textdomain.
+		 * By default, only email titles from the Woo core are replaced.
+		 *
+		 * @param bool $enable Whether to enable searching or not.
+		 * @param string $domain The textdomain.
+		 *
+		 * @since 3.12.3
+		 */
+		if ( apply_filters( 'woocommerce_gzd_replace_email_title_for_textdomain', ( 'woocommerce' === $domain ), $domain ) ) {
+			/**
+			 * Filters which string to replace with the actual email title.
+			 *
+			 * @param string $search The search phrase to be replaced.
+			 * @param string $domain The textdomain.
+			 *
+			 * @since 3.12.3
+			 */
+			if ( apply_filters( 'woocommerce_gzd_email_title_search_for', 'Hi %s,', $domain ) === $original ) {
+				if ( is_a( $this->current_order_instance, 'WC_Order' ) ) {
+					$order         = $this->current_order_instance;
 					$title_text    = get_option( 'woocommerce_gzd_email_title_text' );
 					$title_options = array(
 						'{first_name}' => $order->get_billing_first_name(),
@@ -792,7 +827,7 @@ class WC_GZD_Emails {
 	public function maybe_prevent_queued_confirmation_email_sending( $send, $filter, $args ) {
 		if ( isset( $args[0] ) && is_numeric( $args[0] ) ) {
 			if ( $order = wc_get_order( absint( $args[0] ) ) ) {
-				if ( wc_gzd_send_instant_order_confirmation( $order ) ) {
+				if ( is_a( $order, 'WC_Order' ) && wc_gzd_send_instant_order_confirmation( $order ) ) {
 					$this->prevent_confirmation_email_sending();
 				}
 			}
@@ -801,52 +836,44 @@ class WC_GZD_Emails {
 		return $send;
 	}
 
-	public function maybe_disable_order_paid_email_notification_queued( $send, $filter, $args ) {
-		if ( isset( $args[0] ) && is_numeric( $args[0] ) ) {
-			if ( $order = wc_get_order( absint( $args[0] ) ) ) {
-				$this->maybe_prevent_order_paid_email_notification( $args[0] );
+	/**
+	 * @param boolean $enable_mail
+	 * @param WC_Order $order
+	 *
+	 * @return boolean
+	 */
+	public function maybe_disable_order_paid_email( $enable_mail, $order ) {
+		if ( is_callable( array( $order, 'get_payment_method' ) ) ) {
+			$method               = $order->get_payment_method();
+			$disable_for_gateways = $this->get_gateways_disabling_paid_for_order_mail();
+			$disable_notification = ( in_array( $method, $disable_for_gateways, true ) || $order->get_total() <= 0 ) ? true : false;
+
+			/**
+			 * Filter to adjust whether to disable the paid for order notification based on order data.
+			 *
+			 * @param bool    $disable Whether to disable notification or not.
+			 * @param integer $order_id The order id.
+			 *
+			 * @since 3.2.3
+			 */
+			if ( apply_filters( 'woocommerce_gzd_disable_paid_for_order_notification', $disable_notification, $order->get_id() ) ) {
+				$enable_mail = false;
 			}
 		}
+
+		return $enable_mail;
+	}
+
+	public function maybe_disable_order_paid_email_notification_queued( $send, $filter, $args ) {
+		wc_deprecated_function( __METHOD__, '3.15.2' );
 
 		return $send;
 	}
 
 	public function maybe_disable_order_paid_email_notification( $order_id, $order = false ) {
-		$this->maybe_prevent_order_paid_email_notification( $order_id );
-	}
+		wc_deprecated_function( __METHOD__, '3.15.2' );
 
-	protected function maybe_prevent_order_paid_email_notification( $order_id ) {
-		if ( $order = wc_get_order( $order_id ) ) {
-			if ( is_callable( array( $order, 'get_payment_method' ) ) ) {
-				$method               = $order->get_payment_method();
-				$disable_for_gateways = $this->get_gateways_disabling_paid_for_order_mail();
-				$disable_notification = ( in_array( $method, $disable_for_gateways, true ) || $order->get_total() <= 0 ) ? true : false;
-
-				/**
-				 * Filter to adjust whether to disable the paid for order notification based on order data.
-				 *
-				 * @param bool    $disable Whether to disable notification or not.
-				 * @param integer $order_id The order id.
-				 *
-				 * @since 3.2.3
-				 */
-				if ( apply_filters( 'woocommerce_gzd_disable_paid_for_order_notification', $disable_notification, $order_id ) ) {
-					$emails = WC()->mailer()->emails;
-
-					if ( isset( $emails['WC_GZD_Email_Customer_Paid_For_Order'] ) ) {
-						// Remove notification
-						remove_action(
-							'woocommerce_order_status_pending_to_processing_notification',
-							array(
-								$emails['WC_GZD_Email_Customer_Paid_For_Order'],
-								'trigger',
-							),
-							30
-						);
-					}
-				}
-			}
-		}
+		return $order_id;
 	}
 
 	public function resend_order_emails( $emails ) {
@@ -1124,11 +1151,11 @@ class WC_GZD_Emails {
 						continue;
 					}
 
-					if ( wc_gzd_is_revocation_exempt( $_product ) || apply_filters( 'woocommerce_gzd_product_is_revocation_exception', false, $_product, 'digital' ) ) {
+					if ( wc_gzd_is_revocation_exempt( $_product, 'digital', $item ) || apply_filters( 'woocommerce_gzd_product_is_revocation_exception', false, $_product, 'digital', $item ) ) {
 						$is_downloadable = true;
 					}
 
-					if ( wc_gzd_is_revocation_exempt( $_product, 'service' ) || apply_filters( 'woocommerce_gzd_product_is_revocation_exception', false, $_product, 'service' ) ) {
+					if ( wc_gzd_is_revocation_exempt( $_product, 'service', $item ) || apply_filters( 'woocommerce_gzd_product_is_revocation_exception', false, $_product, 'service', $item ) ) {
 						$is_service = true;
 					}
 

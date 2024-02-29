@@ -3,57 +3,54 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
 namespace BorlabsCookie\Cookie\Frontend;
 
-use BorlabsCookie\Cookie\Config;
-
 class Post
 {
     private static $instance;
 
-    public $customCode = '';
-
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
+    public $customCode = '';
+
+    public function __construct()
     {
     }
 
-    private function __wakeup()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    protected function __construct()
+    public function __wakeup()
     {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
     }
 
     /**
      * embedCustomCode function.
-     *
-     * @access public
-     * @return void
      */
     public function embedCustomCode()
     {
@@ -65,9 +62,7 @@ class Post
     /**
      * getCustomCode function.
      *
-     * @access public
      * @param mixed $query
-     * @return void
      */
     public function getCustomCode($query)
     {
@@ -78,7 +73,7 @@ class Post
         if (!empty($post->ID)) {
             if (is_front_page()) {
                 $postId = $post->ID;
-            } elseif(is_single()) {
+            } elseif (is_single()) {
                 $postId = $post->ID;
             } elseif (is_page()) {
                 $postId = $post->ID;

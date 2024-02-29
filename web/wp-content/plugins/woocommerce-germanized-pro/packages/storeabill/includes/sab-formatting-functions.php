@@ -483,7 +483,13 @@ function sab_format_tax_rate_percentage( $number, $args = array() ) {
  * @return string
  */
 function sab_trim_zeros( $number ) {
-	return ! empty( $number ) ? rtrim( strval( $number ), '0' ) : strval( $number );
+	$result = strval( $number );
+
+	if ( ! empty( $number ) ) {
+		$result = rtrim( rtrim( $result, '0' ), '\.,' );
+	}
+
+	return $result;
 }
 
 function sab_format_country_name( $country_code ) {

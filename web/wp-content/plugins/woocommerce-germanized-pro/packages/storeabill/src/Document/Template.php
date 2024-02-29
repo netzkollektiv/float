@@ -179,7 +179,6 @@ abstract class Template extends Data {
 			$this->footer_blocks  = array();
 
 			foreach ( $this->blocks as $block ) {
-
 				if ( 'storeabill/header' === $block['blockName'] ) {
 					$this->header_blocks = $block['innerBlocks'];
 				} elseif ( 'storeabill/footer' === $block['blockName'] ) {

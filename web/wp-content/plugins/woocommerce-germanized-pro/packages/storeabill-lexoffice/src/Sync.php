@@ -29,6 +29,11 @@ class Sync extends SyncHandler {
 	 */
 	protected $api = null;
 
+	/**
+	 * @var bool|Customer
+	 */
+	protected $invoice_customer = false;
+
 	public static function get_name() {
 		return 'lexoffice';
 	}
@@ -178,7 +183,7 @@ class Sync extends SyncHandler {
 		/**
 		 * Maybe force individual customers for some invoices
 		 */
-		if ( $invoice && ( $this->invoice_supports_eu_taxation( $invoice ) || $this->is_reverse_charge( $invoice ) || $this->is_third_country( $invoice ) ) ) {
+		if ( $invoice && ( $this->invoice_supports_eu_taxation( $invoice ) || $this->is_vat_exempt( $invoice ) || $this->is_third_country( $invoice ) ) ) {
 			$use_collective_customer = false;
 		}
 
@@ -284,6 +289,20 @@ class Sync extends SyncHandler {
 			}
 		}
 
+		if ( ! $this->has_synced( $customer ) && apply_filters( "{$this->get_hook_prefix()}contact_enable_account_matching", true ) ) {
+			$existing = $this->get_api()->find_contact( $customer );
+
+			if ( ! $this->get_api()->has_failed( $existing ) ) {
+				$customer->update_external_sync_handler(
+					static::get_name(),
+					array(
+						'id'      => $existing['id'],
+						'version' => $existing['version'],
+					)
+				);
+			}
+		}
+
 		if ( $this->has_synced( $customer ) ) {
 			$data        = $customer->get_external_sync_handler_data( static::get_name() );
 			$remote_data = $this->get_api()->get_contact( $data->get_id() );
@@ -325,8 +344,8 @@ class Sync extends SyncHandler {
 	/**
 	 * @param Invoice $invoice
 	 */
-	protected function is_reverse_charge( $invoice ) {
-		return $invoice->is_reverse_charge();
+	protected function is_vat_exempt( $invoice ) {
+		return $invoice->is_vat_exempt();
 	}
 
 	/**
@@ -338,9 +357,18 @@ class Sync extends SyncHandler {
 
 	/**
 	 * @param Invoice $invoice
+	 *
+	 * @return boolean
+	 */
+	protected function voucher_needs_contact( $invoice ) {
+		return ( ! $this->is_small_business() && ( $this->is_vat_exempt( $invoice ) || $this->is_third_country( $invoice ) ) );
+	}
+
+	/**
+	 * @param Invoice $invoice
 	 */
 	protected function force_company_contact_existence( $invoice ) {
-		return ( ! $this->is_small_business() && ( $this->is_reverse_charge( $invoice ) || $this->is_third_country( $invoice ) ) );
+		return ( ! $this->is_small_business() && ( $this->is_vat_exempt( $invoice ) || $this->is_third_country( $invoice ) ) );
 	}
 
 	/**
@@ -380,17 +408,19 @@ class Sync extends SyncHandler {
 			'remark'               => '',
 		);
 
-		$remark_data = $this->get_invoice_remark_data( $invoice );
+		$remark_data            = $this->get_invoice_remark_data( $invoice );
+		$this->invoice_customer = false;
 
 		if ( ! $this->use_collective_customer( $invoice ) ) {
 			$request['contactId'] = '';
-			$force_valid_customer = $this->invoice_supports_eu_taxation( $invoice ) || $this->is_reverse_charge( $invoice ) || $this->is_third_country( $invoice );
+			$force_valid_customer = $this->invoice_supports_eu_taxation( $invoice ) || $this->is_vat_exempt( $invoice ) || $this->is_third_country( $invoice );
+			$invoice_customer     = false;
 
 			/**
 			 * (Re)sync the customer
 			 */
 			if ( $customer = $invoice->get_customer() ) {
-				$invoice_customer = new \Vendidero\StoreaBill\Lexoffice\Customer( $customer, $this->force_company_contact_existence( $invoice ) ? array( 'is_business' => true ) : array() );
+				$invoice_customer = new \Vendidero\StoreaBill\Lexoffice\Customer( $customer );
 				/**
 				 * Prefer current invoice data when syncing customer
 				 */
@@ -409,8 +439,8 @@ class Sync extends SyncHandler {
 						}
 					}
 				}
-			} elseif ( $this->force_company_contact_existence( $invoice ) || $this->force_creating_customers() || $force_valid_customer ) {
-				$invoice_customer = new \Vendidero\StoreaBill\Lexoffice\Customer( $invoice, $this->force_company_contact_existence( $invoice ) ? array( 'is_business' => true ) : array() );
+			} elseif ( $this->voucher_needs_contact( $invoice ) || $this->force_creating_customers() || $force_valid_customer ) {
+				$invoice_customer = new \Vendidero\StoreaBill\Lexoffice\Customer( $invoice );
 				$customer_result  = $this->sync_customer( $invoice_customer );
 
 				if ( ! is_wp_error( $customer_result ) && ( $customer_sync_data = $invoice_customer->get_external_sync_handler_data( self::get_name() ) ) ) {
@@ -432,6 +462,8 @@ class Sync extends SyncHandler {
 			if ( empty( $request['contactId'] ) ) {
 				$request['useCollectiveContact'] = true;
 				unset( $request['contactId'] );
+			} elseif ( $invoice_customer ) {
+				$this->invoice_customer = $invoice_customer;
 			}
 		}
 
@@ -453,8 +485,8 @@ class Sync extends SyncHandler {
 		 */
 		foreach ( $invoice->get_items( $invoice->get_item_types_for_totals() ) as $item ) {
 			$category_id = $this->get_category_id( $item, $invoice, $main_category_ids );
-			$total_tax   = Numbers::round_to_precision( $item->get_total_tax() );
-			$item_total  = Numbers::round_to_precision( $item->get_total() );
+			$total_tax   = Numbers::round_to_precision( $item->get_total_tax(), 2 );
+			$item_total  = Numbers::round_to_precision( $item->get_total(), 2 );
 
 			/**
 			 * Lexoffice cannot handle free items
@@ -475,6 +507,10 @@ class Sync extends SyncHandler {
 
 					$total      = sab_add_number_precision( $total, false );
 					$tax_amount = sab_add_number_precision( $tax->get_total_tax(), false );
+
+					if ( 0.0 === $total ) {
+						continue;
+					}
 
 					if ( array_key_exists( $voucher_item_key, $items ) ) {
 						$items[ $voucher_item_key ]['amount']    += $total;
@@ -541,6 +577,8 @@ class Sync extends SyncHandler {
 			$items[ $voucher_item_key ]['taxAmount'] = sab_format_decimal( $items[ $voucher_item_key ]['taxAmount'], 2 );
 		}
 
+		$total_tax_diff = Numbers::round_to_precision( $total_tax_diff, 2 );
+
 		/**
 		 * Add remark containing tax rounding difference.
 		 */
@@ -561,17 +599,31 @@ class Sync extends SyncHandler {
 						$request['totalTaxAmount']   = sab_format_decimal( $request['totalTaxAmount'] - abs( $total_tax_diff ), 2 );
 						$request['totalGrossAmount'] = sab_format_decimal( $gross_total, 2 );
 					} else {
-						$items[] = array(
-							'amount'         => $total_tax_diff,
-							'taxAmount'      => sab_format_decimal( 0.0, 2 ),
-							'taxRatePercent' => strval( 0.0 ),
-							'categoryId'     => 'aba9020f-d0a6-47ca-ace6-03d6ed492351',
-						);
+						if ( ! $invoice->is_oss() ) {
+							$items[] = array(
+								'amount'         => sab_format_decimal( $total_tax_diff, 2 ),
+								'taxAmount'      => sab_format_decimal( 0.0, 2 ),
+								'taxRatePercent' => strval( 0.0 ),
+								'categoryId'     => 'aba9020f-d0a6-47ca-ace6-03d6ed492351',
+							);
+						} else {
+							$request['totalTaxAmount']   = sab_format_decimal( $request['totalTaxAmount'] + $total_tax_diff, 2 );
+							$request['totalGrossAmount'] = sab_format_decimal( $gross_total, 2 );
+						}
 					}
 				}
 			}
 
 			$remark_data[] = sprintf( _x( 'Tax round difference: %s', 'lexoffice', 'woocommerce-germanized-pro' ), $total_tax_diff );
+		} elseif ( Numbers::round_to_precision( $gross_total, 2 ) !== Numbers::round_to_precision( $request['totalGrossAmount'], 2 ) ) {
+			$gross_total_diff = Numbers::round_to_precision( Numbers::round_to_precision( $gross_total, 2 ) - Numbers::round_to_precision( $request['totalGrossAmount'], 2 ), 2 );
+
+			/**
+			 * There is no other option available than reducing the actual gross amount of the voucher.
+			 */
+			$request['totalGrossAmount'] = sab_format_decimal( $gross_total, 2 );
+
+			$remark_data[] = sprintf( _x( 'Gross total rounding difference: %s', 'lexoffice', 'woocommerce-germanized-pro' ), $gross_total_diff );
 		}
 
 		/**
@@ -635,6 +687,8 @@ class Sync extends SyncHandler {
 					if ( ! $this->get_api()->has_failed( $remote_data ) ) {
 						$version = absint( $remote_data['version'] );
 					}
+				} else {
+					\Vendidero\StoreaBill\Package::extended_log( sprintf( 'Error while updating voucher file %1$s to %2$s', $invoice->get_path(), $invoice->get_title() ) );
 				}
 			}
 
@@ -721,9 +775,27 @@ class Sync extends SyncHandler {
 
 				if ( $item->is_virtual() ) {
 					$is_digital = true;
+
+					/**
+					 * Non-virtual bundle compatibility.
+					 */
+					if ( $product = $item->get_product() ) {
+						$wc_product = $product->get_object();
+
+						if ( is_a( $wc_product, 'WC_Product_Bundle' ) && is_callable( array( $wc_product, 'is_virtual_bundle' ) ) && ! $wc_product->is_virtual_bundle() ) {
+							$is_digital = false;
+						}
+					}
 				}
 
 				if ( $item->is_photovoltaic_system() && 'DE' === $invoice->get_taxable_country() && 0.0 === $item->get_total_tax() ) {
+					$category_name = 'solar_products';
+				}
+			} else {
+				/**
+				 * Book additional items, e.g. shipping costs as solar_products too.
+				 */
+				if ( in_array( $categories['solar_products'], $main_category_ids, true ) && 0.0 === $item->get_total_tax() ) {
 					$category_name = 'solar_products';
 				}
 			}
@@ -749,9 +821,10 @@ class Sync extends SyncHandler {
 				 * a revenue that won't work. Tweak: Book fees as digital too in case a digital product is included.
 				 */
 				if ( 'fee' === $item->get_item_type() && ! empty( $main_category_ids ) ) {
-					$digital_category = $invoice->is_oss() ? 'eu_digital_oss' : 'eu_digital';
+					$digital_category    = $invoice->is_oss() ? 'eu_digital_oss' : 'eu_digital';
+					$digital_category_id = $categories[ $digital_category ];
 
-					if ( in_array( $digital_category, $main_category_ids, true ) ) {
+					if ( in_array( $digital_category_id, $main_category_ids, true ) ) {
 						$category_name = $digital_category;
 					}
 				}
@@ -763,15 +836,32 @@ class Sync extends SyncHandler {
 			 *
 			 * @see https://developers.lexoffice.io/partner/cookbooks/bookkeeping/#kategorien-haufige-sonderfalle
 			 */
-			if ( $this->is_reverse_charge( $invoice ) ) {
+			if ( $this->is_vat_exempt( $invoice ) ) {
 				$category_name = 'reverse_charge';
 			}
 
 			if ( $this->is_third_country( $invoice ) ) {
 				$category_name = 'third_party';
+				$is_business   = $this->invoice_customer ? $this->invoice_customer->is_business() : false;
 
+				/**
+				 * The third_party_services may only be available for business customers.
+				 * As a fallback use the normal services category which expects that the service
+				 * is to be taxed at the base location for B2C transactions (e.g. Germany).
+				 */
 				if ( $is_service ) {
-					$category_name = 'third_party_service';
+					if ( $is_business ) {
+						$category_name = 'third_party_services';
+					} else {
+						$category_name = 'services';
+					}
+				}
+
+				/**
+				 * Book additional items as services too in case it's a service
+				 */
+				if ( in_array( $categories['third_party_services'], $main_category_ids, true ) ) {
+					$category_name = 'third_party_services';
 				}
 			}
 		}

@@ -7,6 +7,7 @@ defined( 'ABSPATH' ) || exit;
 use Vendidero\StoreaBill\Document\AsyncExporter;
 use Vendidero\StoreaBill\Document\Document;
 use Vendidero\StoreaBill\Document\Item;
+use Vendidero\StoreaBill\Document\Total;
 use Vendidero\StoreaBill\Invoice;
 use Vendidero\StoreaBill\Invoice\TaxableItem;
 use Vendidero\StoreaBill\References\Product;
@@ -782,6 +783,137 @@ abstract class DocumentController extends Controller {
 	}
 
 	/**
+	 * @param Document $document
+	 * @param  \WP_REST_Request $request Request object.
+	 */
+	protected function sync( &$document, $request ) {
+
+	}
+
+	protected function is_sync( $request ) {
+		if ( isset( $request['sync'] ) && true === sab_string_to_bool( $request['sync'] ) ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	protected function prepare_object_for_database( $request, $creating = false ) {
+		$id        = isset( $request['id'] ) ? absint( $request['id'] ) : 0;
+		$object    = $this->get_object( $id );
+		$schema    = $this->get_item_schema();
+		$data_keys = array_keys( array_filter( $schema['properties'], array( $this, 'filter_writable_props' ) ) );
+
+		if ( $this->is_sync( $request ) ) {
+			$this->sync( $object, $request );
+		} else {
+			// Handle all writable props.
+			foreach ( $data_keys as $key ) {
+				$value = $request[ $key ];
+
+				if ( ! is_null( $value ) ) {
+					if ( strpos( $key, '_items' ) !== false ) {
+						$item_type = str_replace( '_items', '', $key );
+						$this->prepare_items_for_database( $object, $value, $item_type );
+						continue;
+					}
+
+					switch ( $key ) {
+						case 'status':
+							// Change should be done later so transitions have new data.
+							break;
+						case 'meta_data':
+							if ( is_array( $value ) ) {
+								foreach ( $value as $meta ) {
+									$object->update_meta_data( $meta['key'], $meta['value'], isset( $meta['id'] ) ? $meta['id'] : '' );
+								}
+							}
+							break;
+						default:
+							if ( is_callable( array( $object, "set_{$key}" ) ) ) {
+								$object->{"set_{$key}"}( $value );
+							}
+							break;
+					}
+				}
+			}
+		}
+
+		/**
+		 * Filters an object before it is inserted via the REST API.
+		 *
+		 * The dynamic portion of the hook name, `$this->object_type`,
+		 * refers to the object type slug.
+		 *
+		 * @param \WC_Data         $object   The object.
+		 * @param \WP_REST_Request $request  Request object.
+		 * @param bool             $creating If is creating a new object.
+		 */
+		return apply_filters( "storeabill_rest_pre_insert_{$this->get_data_type()}_object", $object, $request, $creating );
+	}
+
+	/**
+	 * @param Document $object
+	 * @param boolean $creating
+	 *
+	 * @return void
+	 */
+	protected function save_data_object( $object, $creating = false ) {
+		$has_changes = ! empty( $object->get_changes() );
+		$id          = $object->save();
+
+		if ( $id > 0 && ( $creating || $has_changes ) ) {
+			$object->render();
+		}
+	}
+
+	/**
+	 * Save an object data.
+	 *
+	 * @since  3.0.0
+	 * @throws WC_REST_Exception But all errors are validated before returning any data.
+	 * @param  WP_REST_Request $request  Full details about the request.
+	 * @param  bool            $creating If is creating a new object.
+	 * @return \WC_Data|WP_Error
+	 */
+	protected function save_object( $request, $creating = false ) {
+		try {
+			$object = $this->prepare_object_for_database( $request, $creating );
+
+			if ( is_wp_error( $object ) ) {
+				return $object;
+			}
+
+			if ( ! is_null( $request['customer_id'] ) && 0 !== $request['customer_id'] ) {
+				// Make sure customer exists.
+				if ( false === get_user_by( 'id', $request['customer_id'] ) ) {
+					throw new WC_REST_Exception( 'storeabill_rest_invalid_customer_id', _x( 'Customer ID is invalid.', 'storeabill-core', 'woocommerce-germanized-pro' ), 400 );
+				}
+
+				// Make sure customer is part of blog.
+				if ( is_multisite() && ! is_user_member_of_blog( $request['customer_id'] ) ) {
+					add_user_to_blog( get_current_blog_id(), $request['customer_id'], 'customer' );
+				}
+			}
+
+			if ( $creating ) {
+				$object->set_created_via( 'rest-api' );
+			}
+
+			// Set status.
+			if ( ! empty( $request['status'] ) ) {
+				$object->set_status( $request['status'] );
+			}
+
+			$this->save_data_object( $object );
+
+			return $this->get_object( $object->get_id() );
+		} catch ( \WC_REST_Exception $e ) {
+			return new WP_Error( $e->getErrorCode(), $e->getMessage(), array( 'status' => $e->getCode() ) );
+		}
+	}
+
+	/**
 	 * Create or update a line item.
 	 *
 	 * @param array               $posted Line item data.
@@ -953,12 +1085,20 @@ abstract class DocumentController extends Controller {
 		return $statuses;
 	}
 
+	protected function get_decimal_fields() {
+		return array();
+	}
+
 	protected function get_price_fields() {
 		return array( 'discount_total', 'discount_tax', 'shipping_total', 'shipping_tax', 'product_total', 'product_tax', 'fee_total', 'fee_tax', 'total', 'total_tax' );
 	}
 
 	protected function get_date_fields() {
 		return array( 'date_created', 'date_modified', 'date_sent' );
+	}
+
+	protected function get_item_decimal_fields() {
+		return array();
 	}
 
 	protected function get_item_price_fields() {
@@ -1009,6 +1149,7 @@ abstract class DocumentController extends Controller {
 	protected function get_formatted_item_data( $object ) {
 		$data                 = $object->get_data();
 		$format_price         = $this->get_price_fields();
+		$decimal_fields       = $this->get_decimal_fields();
 		$format_date          = $this->get_date_fields();
 		$item_types           = $object->get_item_types();
 		$is_preview           = $this->is_preview_request();
@@ -1016,6 +1157,14 @@ abstract class DocumentController extends Controller {
 
 		foreach ( $item_types as $type ) {
 			$item_types_postfixed[] = $type . '_items';
+		}
+
+		foreach ( $decimal_fields as $key ) {
+			if ( ! array_key_exists( $key, $data ) ) {
+				continue;
+			}
+
+			$data[ $key ] = sab_format_decimal( $data[ $key ], $this->request['dp'] );
 		}
 
 		// Format decimal values.
@@ -1058,7 +1207,36 @@ abstract class DocumentController extends Controller {
 			);
 		}
 
+		if ( isset( $data['totals'] ) ) {
+			$data['totals'] = $this->get_totals_data( $data['totals'], $object );
+		}
+
 		return $data;
+	}
+
+	/**
+	 * @param Total[] $t_totals
+	 * @param Document $object
+	 *
+	 * @return array
+	 */
+	protected function get_totals_data( $t_totals, $object ) {
+		foreach ( $t_totals as $key => $totals ) {
+			if ( is_a( $totals, 'Vendidero\StoreaBill\Document\Total' ) ) {
+				$totals           = $totals->get_data();
+				$t_totals[ $key ] = $totals;
+
+				foreach ( $totals as $inner_key => $total ) {
+					if ( 'total' === $inner_key ) {
+						$total = sab_format_decimal( $total, $this->request['dp'] );
+					}
+
+					$t_totals[ $key ][ $inner_key ] = $total;
+				}
+			}
+		}
+
+		return $t_totals;
 	}
 
 	/**
@@ -1085,7 +1263,7 @@ abstract class DocumentController extends Controller {
 	 */
 	protected function get_item_data( $item, $object ) {
 		$data           = $item->get_data();
-		$format_decimal = $this->get_item_price_fields();
+		$format_decimal = array_merge( $this->get_item_price_fields(), $this->get_item_decimal_fields() );
 		$is_preview     = $this->is_preview_request();
 
 		// Format decimal values.
@@ -1113,4 +1291,441 @@ abstract class DocumentController extends Controller {
 		return $data;
 	}
 
+	protected function get_address_property_schema() {
+		return array(
+			'first_name' => array(
+				'description' => _x( 'First name.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'last_name'  => array(
+				'description' => _x( 'Last name.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'company'    => array(
+				'description' => _x( 'Company name.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'address_1'  => array(
+				'description' => _x( 'Address line 1', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'address_2'  => array(
+				'description' => _x( 'Address line 2', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'city'       => array(
+				'description' => _x( 'City name.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'state'      => array(
+				'description' => _x( 'ISO code or name of the state, province or district.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'State', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+			),
+			'postcode'   => array(
+				'description' => _x( 'Postal code.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'country'    => array(
+				'description' => _x( 'Country code in ISO 3166-1 alpha-2 format.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'label'       => _x( 'Country code', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'email'      => array(
+				'description' => _x( 'Email address.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'format'      => 'email',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'phone'      => array(
+				'description' => _x( 'Phone number.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'vat_id'     => array(
+				'description' => _x( 'Address VAT ID.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+		);
+	}
+
+	protected function get_item_properties_schema() {
+		return array(
+			'id'           => array(
+				'description' => _x( 'Item ID.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'reference_id' => array(
+				'description' => _x( 'Item reference ID.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'parent_id'    => array(
+				'description' => _x( 'Item parent ID.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'name'         => array(
+				'description' => _x( 'Item name.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => array( 'string', 'null' ),
+				'context'     => array( 'view', 'edit' ),
+			),
+			'document_id'  => array(
+				'description' => _x( 'Item document ID.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'quantity'     => array(
+				'description' => _x( 'Item Quantity.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'meta_data'    => array(
+				'description' => _x( 'Meta data.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'array',
+				'context'     => array( 'view', 'edit' ),
+				'items'       => array(
+					'type'       => 'object',
+					'properties' => $this->get_meta_property_schema(),
+				),
+			),
+			'attributes'   => array(
+				'description' => _x( 'Item attributes.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'array',
+				'context'     => array( 'view', 'edit' ),
+				'items'       => array(
+					'type'       => 'object',
+					'properties' => $this->get_item_attributes_property_schema(),
+				),
+			),
+		);
+	}
+
+	protected function get_item_attributes_property_schema() {
+		return array(
+			'value'           => array(
+				'description' => _x( 'Attribute value.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'key'             => array(
+				'description' => _x( 'Attribute key.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'label'           => array(
+				'description' => _x( 'Attribute label.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'formatted_label' => array(
+				'description' => _x( 'Attribute formatted label.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'formatted_value' => array(
+				'description' => _x( 'Attribute formatted value.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+		);
+	}
+
+	protected function get_meta_property_schema() {
+		return array(
+			'id'    => array(
+				'description' => _x( 'Meta ID.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'key'   => array(
+				'description' => _x( 'Meta key.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'value' => array(
+				'description' => _x( 'Meta value.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => array( 'string', 'null' ),
+				'context'     => array( 'view', 'edit' ),
+			),
+		);
+	}
+
+	protected function get_totals_property_schema() {
+		return array(
+			'type'            => array(
+				'description' => _x( 'Total type.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'total'           => array(
+				'description' => _x( 'Total amount.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'total_formatted' => array(
+				'description' => _x( 'Total formatted amount.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'label'           => array(
+				'description' => _x( 'Total label.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'label_formatted' => array(
+				'description' => _x( 'Formatted label.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'unit'            => array(
+				'description' => _x( 'The total\'s unit.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'unit_type'       => array(
+				'description' => _x( 'The total\'s unit type, e.g. currency.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'placeholders'    => array(
+				'description' => _x( 'Total placeholders.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'array',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+		);
+	}
+
+	public function get_document_base_properties_schema() {
+		$default_status = 'draft';
+
+		if ( $document_type = sab_get_document_type( $this->get_document_type() ) ) {
+			$default_status = $document_type->default_status;
+		}
+
+		return array(
+			'id'                => array(
+				'description' => _x( 'Unique identifier for the resource.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'label'       => _x( 'ID', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'parent_id'         => array(
+				'description' => _x( 'Parent document ID.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'label'       => _x( 'Parent ID', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+			),
+			'reference_id'      => array(
+				'description' => _x( 'The reference id linked to the document.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'label'       => _x( 'Reference ID', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => 0,
+				'context'     => array( 'view', 'edit' ),
+			),
+			'reference_type'    => array(
+				'description' => _x( 'The reference type linked to the document.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Reference type', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => '',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'reference_number'  => array(
+				'description' => _x( 'The reference formatted number linked to the document.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Reference number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => '',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'number'            => array(
+				'description' => _x( 'The document number.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'formatted_number'  => array(
+				'description' => _x( 'The formatted document number.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Formatted number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'created_via'       => array(
+				'description' => _x( 'Shows where the document was created.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Created via', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'status'            => array(
+				'description' => _x( 'The current document status.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Status', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => $default_status,
+				'enum'        => $this->get_document_statuses(),
+				'context'     => array( 'view', 'edit' ),
+			),
+			'date_created'      => array(
+				'description' => _x( "The date the document was created, in the site's timezone.", 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'format'      => 'date-time',
+				'label'       => _x( 'Date', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'date_created_gmt'  => array(
+				'description' => _x( 'The date the document was created, as GMT.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'format'      => 'date-time',
+				'label'       => _x( 'Date (GMT)', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'date_modified'     => array(
+				'description' => _x( "The date the document was last modified, in the site's timezone.", 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'format'      => 'date-time',
+				'label'       => _x( 'Date modified', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'date_modified_gmt' => array(
+				'description' => _x( 'The date the document was last modified, as GMT.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'format'      => 'date-time',
+				'label'       => _x( 'Date modified (GMT)', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'date_sent'         => array(
+				'description' => _x( "The date the document was sent, in the site's timezone.", 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'format'      => 'date-time',
+				'label'       => _x( 'Date sent', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+			),
+			'date_sent_gmt'     => array(
+				'description' => _x( 'The date the document was sent, as GMT.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'format'      => 'date-time',
+				'label'       => _x( 'Date sent (GMT)', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+			),
+			'customer_id'       => array(
+				'description' => _x( 'User ID linked to the document. 0 for guests.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'label'       => _x( 'Customer ID', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => 0,
+				'context'     => array( 'view', 'edit' ),
+			),
+			'author_id'         => array(
+				'description' => _x( 'Author ID linked to the document.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'integer',
+				'label'       => _x( 'Author ID', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => 0,
+				'context'     => array( 'view', 'edit' ),
+			),
+			'relative_path'     => array(
+				'description' => _x( 'Relative path to PDF file.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Relative path', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => '',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'path'              => array(
+				'description' => _x( 'Absolute path to PDF file.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Absolute path', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => '',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'journal_type'      => array(
+				'description' => _x( 'The journal type for numbering purposes.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Journal type', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => '',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'version'           => array(
+				'description' => _x( 'The document version.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Version', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => '',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'country'           => array(
+				'description' => _x( 'The document country.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Country', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'default'     => '',
+				'context'     => array( 'view', 'edit' ),
+			),
+			'formatted_address' => array(
+				'description' => _x( 'Formatted address data.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'string',
+				'label'       => _x( 'Formatted address', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
+			'address'           => array(
+				'description' => _x( 'Address data.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'object',
+				'context'     => array( 'view', 'edit' ),
+				'properties'  => $this->get_address_property_schema(),
+			),
+			'meta_data'         => array(
+				'description' => _x( 'Meta data.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'        => 'array',
+				'context'     => array( 'view', 'edit' ),
+				'items'       => array(
+					'type'       => 'object',
+					'properties' => $this->get_meta_property_schema(),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Get the document default schema, conforming to JSON Schema.
+	 *
+	 * @return array
+	 */
+	public function get_item_schema() {
+		$schema = array(
+			'$schema'    => 'http://json-schema.org/draft-04/schema#',
+			'title'      => $this->get_document_type(),
+			'type'       => 'object',
+			'properties' => $this->get_document_base_properties_schema(),
+		);
+
+		return $this->add_additional_fields_schema( $schema );
+	}
 }

@@ -576,6 +576,11 @@ table.sab-item-field {
     }
   }
 
+  tr.has-border-color {
+    border-left-width: 0;
+    border-right-width: 0;
+  }
+
   tr.without-has-border-color {
     border-color: $default-border-color;
   }

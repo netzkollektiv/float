@@ -3,59 +3,60 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
 namespace BorlabsCookie\Cookie;
 
+use stdClass;
+
 class Update
 {
-
     private static $instance;
-
-    private $currentBlogId = '';
 
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
-    {
-    }
-
-    private function __wakeup()
-    {
-    }
+    private $currentBlogId = '';
 
     public function __construct()
     {
     }
 
+    public function __clone()
+    {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
+    }
+
+    public function __wakeup()
+    {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
+    }
+
     /**
      * handlePluginAPI function.
      *
-     * @access public
-     * @param mixed $result Default is false
+     * @param mixed  $result Default is false
      * @param string $action Type of information
-     * @param object $args Plugin API arguments
-     * @return void
+     * @param object $args   Plugin API arguments
      */
     public function handlePluginAPI($result, $action, $args)
     {
@@ -72,9 +73,7 @@ class Update
     /**
      * handleTransientUpdatePlugins function.
      *
-     * @access public
      * @param mixed $transient
-     * @return void
      */
     public function handleTransientUpdatePlugins($transient)
     {
@@ -88,35 +87,20 @@ class Update
 
         if (!empty($updateInformation)) {
             if (version_compare(BORLABS_COOKIE_VERSION, $updateInformation->new_version, '<')) {
+                // $transient can be null if third party plugins force a plugin refresh an kill the object
+                if (!is_object($transient) && !isset($transient->response)) {
+                    $transient = new stdClass();
+                    $transient->response = [];
+                }
                 $transient->response[BORLABS_COOKIE_BASENAME] = $updateInformation;
             }
         }
+
         return $transient;
     }
 
     /**
-     * upgradeComplete function.
-     *
-     * @access public
-     * @param mixed $upgraderObject
-     * @param mixed $options
-     * @return void
-     */
-    public function upgradeComplete($upgraderObject, $options)
-    {
-        if ($options['action'] == 'update' && $options['type'] == 'plugin' && !empty($options['plugins'])) {
-            // Check if Borlabs Cookie was updated
-            if (in_array(BORLABS_COOKIE_BASENAME, $options['plugins'])) {
-                $this->processUpgrade();
-            }
-        }
-    }
-
-    /**
      * processUpgrade function.
-     *
-     * @access public
-     * @return void
      */
     public function processUpgrade()
     {
@@ -125,12 +109,14 @@ class Update
         $lastVersion = get_option('BorlabsCookieVersion', false);
 
         if (is_multisite()) {
-            $allBlogs = $wpdb->get_results('
+            $allBlogs = $wpdb->get_results(
+                '
                 SELECT
                     `blog_id`
                 FROM
-                    `'.$wpdb->base_prefix.'blogs`
-            ');
+                    `' . $wpdb->base_prefix . 'blogs`
+            '
+            );
         }
 
         $versionUpgrades = Upgrade::getInstance()->getVersionUpgrades();
@@ -139,7 +125,6 @@ class Update
             foreach ($versionUpgrades as $upgradeFunction => $version) {
                 if (version_compare($lastVersion, $version, '<')) {
                     if (method_exists(Upgrade::getInstance(), $upgradeFunction)) {
-
                         // Call upgrade function
                         call_user_func([Upgrade::getInstance(), $upgradeFunction]);
 
@@ -164,6 +149,22 @@ class Update
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * upgradeComplete function.
+     *
+     * @param mixed $upgraderObject
+     * @param mixed $options
+     */
+    public function upgradeComplete($upgraderObject, $options)
+    {
+        if ($options['action'] == 'update' && $options['type'] == 'plugin' && !empty($options['plugins'])) {
+            // Check if Borlabs Cookie was updated
+            if (in_array(BORLABS_COOKIE_BASENAME, $options['plugins'], true)) {
+                $this->processUpgrade();
             }
         }
     }

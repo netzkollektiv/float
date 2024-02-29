@@ -58,11 +58,11 @@ function wc_gzdp_order_has_differing_shipping_address( $order ) {
 		return false;
 	}
 
-	// In case the order has a shipping_vat_id - make sure that the order has a different shipping address
-	$shipping_vat_id = $order->get_meta( '_shipping_vat_id', true );
-	$billing_vat_id  = $order->get_meta( '_billing_vat_id', true );
+	// In case the vat ids do not match, mark the shipping address as different.
+	$shipping_vat_id = trim( $order->get_meta( '_shipping_vat_id', true ) );
+	$billing_vat_id  = trim( $order->get_meta( '_billing_vat_id', true ) );
 
-	if ( ! empty( $shipping_vat_id ) && empty( $billing_vat_id ) ) {
+	if ( $shipping_vat_id !== $billing_vat_id ) {
 		return true;
 	}
 

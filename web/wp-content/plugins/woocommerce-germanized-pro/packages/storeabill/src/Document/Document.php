@@ -938,8 +938,17 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		return apply_filters( 'storeabill_document_has_number', $has_number, $this );
 	}
 
-	public function get_title( $with_type = true ) {
+	public function get_type_title() {
+		$type_title = '';
 
+		if ( $type = sab_get_document_type( $this->get_type() ) ) {
+			$type_title = sab_get_document_type_label( $this->get_type() );
+		}
+
+		return $type_title;
+	}
+
+	public function get_title( $with_type = true ) {
 		$id = $this->get_id() > 0 ? $this->get_id() : '';
 
 		if ( $this->has_number() ) {
@@ -948,9 +957,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 			$title = sprintf( _x( 'Draft %s', 'storeabill-core', 'woocommerce-germanized-pro' ), $id );
 		}
 
-		if ( $with_type && ( $type = sab_get_document_type( $this->get_type() ) ) ) {
-			$type_title = sab_get_document_type_label( $this->get_type() );
-
+		if ( $with_type && ( $type_title = $this->get_type_title() ) ) {
 			/**
 			 * Do only include type title in case it is not already included
 			 * within the formatted number title.

@@ -22,22 +22,65 @@ abstract class REST {
 		return 'application/json';
 	}
 
-	protected function maybe_encode_body( $body_args ) {
-		if ( 'application/json' === $this->get_content_type() ) {
+	protected function maybe_encode_body( $body_args, $content_type = '' ) {
+		if ( empty( $content_type ) ) {
+			$content_type = $this->get_content_type();
+		}
+
+		if ( 'application/json' === $content_type ) {
 			return wp_json_encode( $body_args, JSON_PRETTY_PRINT );
 		}
 
 		return $body_args;
 	}
 
+	protected function build_multipart_data( $boundary, $fields, $files ) {
+		$data = '';
+		$eol  = "\r\n";
+
+		$delimiter = '--' . $boundary;
+
+		foreach ( $fields as $name => $content ) {
+			$data .= $delimiter . "\r\nContent-Disposition: form-data; name=\"{$name}\"{$eol}{$eol}{$content}\r\n";
+		}
+
+		foreach ( $files as $name => $file_data ) {
+			$param_name = $name;
+			$filename   = $name;
+			$binary     = $file_data;
+
+			if ( is_array( $file_data ) ) {
+				$file_data = wp_parse_args(
+					$file_data,
+					array(
+						'filename' => '',
+						'binary'   => '',
+					)
+				);
+
+				$filename = $file_data['filename'];
+				$binary   = $file_data['binary'];
+			}
+
+			$data .= $delimiter . $eol . 'Content-Disposition: form-data; name="' . $param_name . '"; filename="' . $filename . '"' . $eol . 'Content-Transfer-Encoding: binary' . $eol;
+			$data .= $eol;
+			$data .= $binary . $eol;
+		}
+
+		$data .= $delimiter . '--' . $eol;
+
+		return $data;
+	}
+
 	protected function get_response( $url, $type = 'GET', $body_args = array(), $header = array() ) {
+		$header   = $this->get_header( $header );
 		$response = false;
 
 		if ( 'GET' === $type ) {
 			$response = wp_remote_get(
 				esc_url_raw( $url ),
 				array(
-					'headers' => $this->get_header( $header ),
+					'headers' => $header,
 					'timeout' => $this->get_timeout( $type ),
 				)
 			);
@@ -45,18 +88,18 @@ abstract class REST {
 			$response = wp_remote_post(
 				esc_url_raw( $url ),
 				array(
-					'headers' => $this->get_header( $header ),
+					'headers' => $header,
 					'timeout' => $this->get_timeout( $type ),
-					'body'    => $this->maybe_encode_body( $body_args ),
+					'body'    => $this->maybe_encode_body( $body_args, $header['Content-Type'] ),
 				)
 			);
 		} elseif ( 'PUT' === $type ) {
 			$response = wp_remote_request(
 				esc_url_raw( $url ),
 				array(
-					'headers' => $this->get_header( $header ),
+					'headers' => $header,
 					'timeout' => $this->get_timeout( $type ),
-					'body'    => $this->maybe_encode_body( $body_args ),
+					'body'    => $this->maybe_encode_body( $body_args, $header['Content-Type'] ),
 					'method'  => 'PUT',
 				)
 			);
@@ -102,6 +145,18 @@ abstract class REST {
 	 */
 	public function post( $endpoint = '', $body_args = array(), $header = array() ) {
 		return $this->get_response( $this->get_request_url( $endpoint ), 'POST', $body_args, $header );
+	}
+
+	protected function uses_curl() {
+		global $wp_version;
+
+		if ( class_exists( '\WpOrg\Requests\Transport\Curl' ) ) {
+			return \WpOrg\Requests\Transport\Curl::test();
+		} elseif ( version_compare( $wp_version, '6.4.0', '<' ) ) {
+			return \WP_Http_Curl::test();
+		}
+
+		return false;
 	}
 
 	/**

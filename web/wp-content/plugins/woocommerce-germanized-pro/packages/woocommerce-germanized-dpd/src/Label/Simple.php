@@ -19,7 +19,6 @@ class Simple extends Label {
 	 */
 	protected $extra_data = array(
 		'mps_id'        => '',
-		'page_format'   => '',
 		'customs_terms' => '',
 		'customs_paper' => '',
 		'pickup_date'   => '',
@@ -30,7 +29,14 @@ class Simple extends Label {
 	}
 
 	public function get_page_format( $context = 'view' ) {
-		return $this->get_prop( 'page_format', $context );
+		$page_format = $this->get_print_format( $context );
+
+		if ( 'view' === $context && empty( $page_format ) ) {
+			$page_format = $this->get_prop( 'page_format', $context );
+
+		}
+
+		return $page_format;
 	}
 
 	public function get_customs_terms( $context = 'view' ) {
@@ -46,7 +52,7 @@ class Simple extends Label {
 	}
 
 	public function set_page_format( $value ) {
-		$this->set_prop( 'page_format', $value );
+		$this->set_prop( 'print_format', $value );
 	}
 
 	public function set_customs_terms( $value ) {

@@ -91,7 +91,7 @@ class Api {
 	public function get_label( $label ) {
 		$shipment                      = $label->get_shipment();
 		$provider                      = $shipment->get_shipping_provider_instance();
-		$label_supports_email_transmit = ( $label->supports_third_party_email_notification() || apply_filters( 'woocommerce_gzd_gls_label_force_email_notification', wc_string_to_bool( $provider->get_setting( 'label_force_email_transfer', 'no' ) ), $label ) );
+		$label_supports_email_transmit = ( $label->supports_third_party_email_notification() || apply_filters( 'woocommerce_gzd_gls_label_force_email_notification', false, $label ) );
 		$is_return                     = 'return' === $label->get_type();
 		$services                      = $label->get_services();
 
@@ -99,12 +99,20 @@ class Api {
 			$label_supports_email_transmit = true;
 		}
 
+		$name_1 = $shipment->get_company() ? $shipment->get_company() : $shipment->get_formatted_full_name();
+		$name_2 = $shipment->get_company() ? $shipment->get_formatted_full_name() : $shipment->get_company();
+
+		if ( $is_return ) {
+			$name_1 = $shipment->get_sender_company() ? $shipment->get_sender_company() : $shipment->get_formatted_sender_full_name();
+			$name_2 = $shipment->get_sender_company() ? $shipment->get_formatted_sender_full_name() : $shipment->get_sender_company();
+		}
+
 		/**
 		 * GLS takes care of switching consignee address in case of returns.
 		 */
 		$recipient_address = array(
-			'Name1'                => $is_return ? $shipment->get_formatted_sender_full_name() : $shipment->get_formatted_full_name(),
-			'Name2'                => $is_return ? $shipment->get_sender_company() : $shipment->get_company(),
+			'Name1'                => $name_1,
+			'Name2'                => $name_2,
 			'Name3'                => $is_return ? $shipment->get_sender_address_2() : $shipment->get_address_2(),
 			'CountryCode'          => $is_return ? $shipment->get_sender_country() : $shipment->get_country(),
 			'ZIPCode'              => $is_return ? $shipment->get_sender_postcode() : $shipment->get_postcode(),
@@ -119,37 +127,18 @@ class Api {
 		$shipment_services      = array();
 
 		foreach ( $label->get_services() as $service ) {
+			$service_obj        = $provider->get_service( $service );
 			$clean_service_name = str_replace( 'service', '', strtolower( $service ) );
-			$service_fields     = Package::get_service_fields( $service );
 			$inner_service      = array(
 				'ServiceName' => 'service_' . $clean_service_name,
 			);
 
-			if ( ! empty( $service_fields ) ) {
-				foreach ( $service_fields as $field ) {
-					$field_value = '';
-
-					if ( ! is_null( $field['default_callback'] ) ) {
-						$field_value = Package::get_callback_value( $label, $field['default_callback'], $field['formatting_api_callback'] );
-					}
-
-					if ( $label->get_meta( $service . '_' . $field['api_name'] ) ) {
-						$field_value = $label->get_meta( $service . '_' . $field['api_name'] );
-
-						if ( ! empty( $field_value ) && $field['formatting_api_callback'] ) {
-							$field_value = call_user_func_array( $field['formatting_api_callback'], array( $field_value ) );
-						}
-					} elseif ( ! is_null( $field['value_callback'] ) ) {
-						$field_value = Package::get_callback_value( $label, $field['value_callback'], $field['formatting_api_callback'] );
-					}
-
-					if ( '' !== $field_value ) {
-						$inner_service[ $field['api_name'] ] = $field_value;
-					}
-				}
+			if ( 'AddonLiability' === $service ) {
+				$inner_service['Amount']   = wc_format_decimal( $label->get_service_prop( 'AddonLiability', 'Amount' ) );
+				$inner_service['Currency'] = $label->get_service_prop( 'AddonLiability', 'Currency' );
 			}
 
-			if ( 'unit' === Package::get_service_level( $service ) || ! empty( $service_fields ) ) {
+			if ( 'unit' === $service_obj->get_level() ) {
 				$the_service = array(
 					$service => $inner_service,
 				);
@@ -159,7 +148,7 @@ class Api {
 				);
 			}
 
-			if ( 'shipment' === Package::get_service_level( $service ) ) {
+			if ( 'shipment' === $service_obj->get_level() ) {
 				$shipment_services[] = $the_service;
 			} else {
 				$shipment_unit_services[] = $the_service;
@@ -189,7 +178,7 @@ class Api {
 				'ShipmentReference' => array( $shipment->get_id() ),
 				'Product'           => $label->get_product_id(),
 				'ShippingDate'      => $label->get_shipping_date(),
-				'IncotermCode'      => '',
+				'IncotermCode'      => $label->get_incoterms(),
 				'Middleware'        => 'vendideroGermanizedviaGLS',
 				'Consignee'         => array(
 					'Address'  => $recipient_address,
@@ -290,7 +279,8 @@ class Api {
 	 * @return array|\WP_Error
 	 */
 	protected function get_response( $endpoint, $type = 'GET', $body_args = array() ) {
-		$url = untrailingslashit( trailingslashit( self::get_api_base_url() ) . $endpoint );
+		$url  = untrailingslashit( trailingslashit( self::get_api_base_url() ) . $endpoint );
+		$code = 400;
 
 		if ( 'GET' === $type ) {
 			$response = wp_remote_get(
@@ -321,7 +311,7 @@ class Api {
 			$headers = wp_remote_retrieve_headers( $response );
 
 			if ( (int) $code >= 300 ) {
-				return $this->parse_error( $body, $headers );
+				return $this->parse_error( $body, $headers, $code );
 			}
 
 			return array(
@@ -332,7 +322,7 @@ class Api {
 			);
 		}
 
-		return new \WP_Error( 'error', sprintf( esc_html_x( 'Error while querying GLS endpoint %s', 'gls', 'woocommerce-germanized-pro' ), esc_url_raw( $endpoint ) ) );
+		return new \WP_Error( absint( $code ), sprintf( esc_html_x( 'Error while querying GLS endpoint %s', 'gls', 'woocommerce-germanized-pro' ), esc_url_raw( $endpoint ) ) );
 	}
 
 	protected function post( $endpoint, $data = array() ) {
@@ -345,11 +335,11 @@ class Api {
 	 *
 	 * @return \WP_Error
 	 */
-	protected function parse_error( $body, $headers ) {
+	protected function parse_error( $body, $headers, $code ) {
 		$error = new \WP_Error();
 
 		if ( isset( $headers['message'] ) ) {
-			$error->add( isset( $headers['error'] ) ? wc_clean( $headers['error'] ) : 'error', wp_kses_post( htmlentities( $headers['message'] ) ) );
+			$error->add( $code, wp_kses_post( htmlentities( utf8_encode( $headers['message'] ) ) ) );
 		} elseif ( is_string( $body ) ) {
 			$body = wp_strip_all_tags( $body );
 
@@ -357,9 +347,9 @@ class Api {
 				$body = substr( $body, 5 );
 			}
 
-			$error->add( 'error', wp_kses_post( $body ) );
+			$error->add( $code, wp_kses_post( $body ) );
 		} else {
-			$error->add( 'error', _x( 'There was an unkown error calling the GLS API.', 'gls', 'woocommerce-germanized-pro' ) );
+			$error->add( $code, _x( 'There was an unknown error calling the GLS API.', 'gls', 'woocommerce-germanized-pro' ) );
 		}
 
 		return $error;

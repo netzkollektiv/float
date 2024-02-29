@@ -2,10 +2,10 @@
 /**
  * Plugin Name: WPCode Lite
  * Plugin URI: https://www.wpcode.com/
- * Version: 2.0.11
+ * Version: 2.1.9
  * Requires at least: 4.6
  * Requires PHP: 5.5
- * Tested up to: 6.1
+ * Tested up to: 6.4
  * Author: WPCode
  * Author URI: https://www.wpcode.com/
  * Description: Easily add code snippets in WordPress. Insert scripts to the header and footer, add PHP code snippets with conditional logic, insert ads pixel, custom content, and more.
@@ -267,6 +267,13 @@ class WPCode {
 	public $logger;
 
 	/**
+	 * Load the smart tags.
+	 *
+	 * @var WPCode_Smart_Tags
+	 */
+	public $smart_tags;
+
+	/**
 	 * Main instance of WPCode.
 	 *
 	 * @return WPCode
@@ -287,8 +294,6 @@ class WPCode {
 		$this->setup_constants();
 		$this->includes();
 		add_action( 'plugins_loaded', array( $this, 'load_components' ), - 1 );
-
-		add_action( 'init', array( $this, 'load_plugin_textdomain' ), 15 );
 	}
 
 	/**
@@ -346,10 +351,16 @@ class WPCode {
 		require_once WPCODE_PLUGIN_PATH . 'includes/class-wpcode-settings.php';
 		// Custom capabilities.
 		require_once WPCODE_PLUGIN_PATH . 'includes/class-wpcode-capabilities.php';
+		// Map capabilities for backwards compatibility.
+		require_once WPCODE_PLUGIN_PATH . 'includes/capabilities.php';
 		// Install routines.
 		require_once WPCODE_PLUGIN_PATH . 'includes/class-wpcode-install.php';
 		// Logging class.
 		require_once WPCODE_PLUGIN_PATH . 'includes/class-wpcode-file-logger.php';
+		// Smart tags class.
+		require_once WPCODE_PLUGIN_PATH . 'includes/class-wpcode-smart-tags.php';
+		// Admin bar info class.
+		require_once WPCODE_PLUGIN_PATH . 'includes/class-wpcode-admin-bar-info.php';
 
 		if ( is_admin() || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
 			require_once WPCODE_PLUGIN_PATH . 'includes/icons.php'; // This is not needed in the frontend atm.
@@ -387,6 +398,18 @@ class WPCode {
 	}
 
 	/**
+	 * Load the Generator on demand.
+	 *
+	 * @return WPCode_Generator
+	 */
+	public function generator() {
+		if ( ! isset( $this->generator ) ) {
+			$this->generator = new WPCode_Generator();
+		}
+		return $this->generator;
+	}
+
+	/**
 	 * Load components in the main plugin instance.
 	 *
 	 * @return void
@@ -404,11 +427,11 @@ class WPCode {
 			$this->file_cache        = new WPCode_File_Cache();
 			$this->library           = new WPCode_Library();
 			$this->library_auth      = new WPCode_Library_Auth();
-			$this->generator         = new WPCode_Generator();
 			$this->importers         = new WPCode_Importers();
 			$this->notifications     = new WPCode_Notifications();
 			$this->admin_page_loader = new WPCode_Admin_Page_Loader_Lite();
 			$this->notice            = new WPCode_Notice();
+			$this->smart_tags        = new WPCode_Smart_Tags_Lite();
 
 			// Metabox class.
 			new WPCode_Metabox_Snippets_Lite();
@@ -416,20 +439,12 @@ class WPCode {
 			new WPCode_Usage_Tracking_Lite();
 		}
 
+		new WPCode_Admin_Bar_Info_Lite();
+
 		do_action( 'wpcode_loaded' );
-	}
 
-	/**
-	 * Load the plugin translations.
-	 *
-	 * @return void
-	 */
-	public function load_plugin_textdomain() {
-		if ( is_user_logged_in() ) {
-			unload_textdomain( 'insert-headers-and-footers' );
-		}
-
-		load_plugin_textdomain( 'insert-headers-and-footers', false, dirname( plugin_basename( WPCODE_FILE ) ) . '/languages/' );
+		// Load the pluggable functions late to allow plugins to hook in.
+		require_once WPCODE_PLUGIN_PATH . 'includes/pluggable.php';
 	}
 }
 

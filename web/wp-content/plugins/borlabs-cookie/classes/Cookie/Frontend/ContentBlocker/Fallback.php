@@ -3,18 +3,18 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
@@ -28,43 +28,54 @@ class Fallback
 
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
+    public function __construct()
     {
     }
 
-    private function __wakeup()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    protected function __construct()
+    public function __wakeup()
     {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
     }
 
     /**
      * getDefault function.
-     *
-     * @access public
-     * @return void
      */
     public function getDefault()
     {
-        $data = [
+        return [
             'contentBlockerId' => 'default',
             'name' => _x('Default', 'Frontend / Content Blocker / Default / Text', 'borlabs-cookie'),
-            'description' => _x('The <strong><em>Default</em> Content Blocker</strong> is a special type that is always used when no specific <strong>Content Blocker</strong> was found.<br>Therefore it is not possible to use the <strong>Unblock all</strong> feature.', 'Frontend / Content Blocker / Default / Alert Message', 'borlabs-cookie'),
+            'description' => _x(
+                'The <strong><em>Default</em> Content Blocker</strong> is a special type that is always used when no specific <strong>Content Blocker</strong> was found.<br>Therefore it is not possible to use the <strong>Unblock all</strong> feature.',
+                'Frontend / Content Blocker / Default / Alert Message',
+                'borlabs-cookie'
+            ),
             'privacyPolicyURL' => '',
             'hosts' => [],
             'previewHTML' => '<div class="_brlbs-content-blocker">
     <div class="_brlbs-default">
-        <p>' . _x("Click on the button to load the content from %%name%%.", 'Frontend / Content Blocker / Default / Text', 'borlabs-cookie') .'</p>
-        <p><a class="_brlbs-btn" href="#" data-borlabs-cookie-unblock role="button">' . _x('Load content', 'Frontend / Content Blocker / Default / Text', 'borlabs-cookie') . '</a></p>
+        <p>' . _x(
+                'Click on the button to load the content from %%name%%.',
+                'Frontend / Content Blocker / Default / Text',
+                'borlabs-cookie'
+            ) . '</p>
+        <p><a class="_brlbs-btn" href="#" data-borlabs-cookie-unblock role="button">' . _x(
+                'Load content',
+                'Frontend / Content Blocker / Default / Text',
+                'borlabs-cookie'
+            ) . '</a></p>
     </div>
 </div>',
             'previewCSS' => '',
@@ -76,17 +87,13 @@ class Fallback
             'status' => true,
             'undeletable' => true,
         ];
-
-        return $data;
     }
 
     /**
      * modify function.
      *
-     * @access public
      * @param mixed $content
-     * @param mixed $atts (default: [])
-     * @return void
+     * @param mixed $atts    (default: [])
      */
     public function modify($content, $atts = [])
     {
@@ -103,9 +110,12 @@ class Fallback
 
         // Replace text variables
         if (!empty($atts)) {
-
             foreach ($atts as $key => $value) {
-                $contentBlockerData['previewHTML'] = str_replace('%%'.$key.'%%', $value, $contentBlockerData['previewHTML']);
+                $contentBlockerData['previewHTML'] = str_replace(
+                    '%%' . $key . '%%',
+                    $value,
+                    $contentBlockerData['previewHTML']
+                );
             }
         }
 

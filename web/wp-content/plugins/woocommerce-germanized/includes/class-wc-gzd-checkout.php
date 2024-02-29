@@ -115,8 +115,7 @@ class WC_GZD_Checkout {
 		}
 
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'order_meta' ), 5, 1 );
-		add_action( 'woocommerce_checkout_create_order', array( $this, 'order_store_checkbox_data' ), 10, 2 );
-		add_action( 'woocommerce_checkout_create_order', array( $this, 'order_age_verification' ), 20, 2 );
+		add_action( 'woocommerce_checkout_create_order', array( $this, 'order_store_checkbox_data' ), 10, 1 );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'add_order_notes' ), 20 );
 
 		// Make sure that, just like in Woo core, the order submit button gets refreshed
@@ -178,51 +177,68 @@ class WC_GZD_Checkout {
 	public function get_checkout_value( $key ) {
 		$value = null;
 
-		if ( is_null( $this->checkout_data ) ) {
-			/**
-			 * Use raw post data in case available as only certain billing/shipping address
-			 * specific data is available during AJAX requests in get_posted_data.
-			 */
-			if ( isset( $_POST['post_data'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				$posted = array();
-				parse_str( $_POST['post_data'], $posted ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.ValidatedSanitizedInput.MissingUnslash
-				$this->checkout_data = wc_clean( wp_unslash( $posted ) );
-			} elseif ( isset( $_POST['woocommerce-process-checkout-nonce'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( WC_germanized()->is_rest_api_request() ) {
+			$getter   = "get_{$key}";
+			$customer = WC()->customer;
+
+			if ( $customer && is_callable( array( $customer, $getter ) ) ) {
+				$value = $customer->{ $getter }();
+			}
+		} else {
+			if ( is_null( $this->checkout_data ) ) {
 				/**
-				 * get_posted_data() does only include core Woo data, no third-party data included.
+				 * Use raw post data in case available as only certain billing/shipping address
+				 * specific data is available during AJAX requests in get_posted_data.
 				 */
-				$this->checkout_data = WC()->checkout()->get_posted_data();
-			}
-		}
+				if ( isset( $_POST['post_data'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					$posted = array();
 
-		/**
-		 * Fallback to customer data (or posted data in case available).
-		 */
-		if ( null === $value ) {
-			$value = WC()->checkout()->get_value( $key );
-		}
-
-		/**
-		 * If checkout data is available - force overriding
-		 */
-		if ( $this->checkout_data ) {
-			if ( isset( $_POST['woocommerce-process-checkout-nonce'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				$value = isset( $this->checkout_data[ $key ] ) ? $this->checkout_data[ $key ] : WC()->checkout()->get_value( $key );
-			} else {
-				$value = isset( $this->checkout_data[ $key ] ) ? $this->checkout_data[ $key ] : null;
+					if ( is_string( $_POST['post_data'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						parse_str( $_POST['post_data'], $posted ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+						$this->checkout_data = wc_clean( wp_unslash( $posted ) );
+					} elseif ( is_array( $_POST['post_data'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$this->checkout_data = wc_clean( wp_unslash( $_POST['post_data'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					}
+				} elseif ( isset( $_POST['woocommerce-process-checkout-nonce'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					/**
+					 * get_posted_data() does only include core Woo data, no third-party data included.
+					 * Prevent calling get_posted_data() before fields were loaded to prevent infinite loops.
+					 */
+					if ( did_action( 'woocommerce_checkout_fields' ) ) {
+						$this->checkout_data = WC()->checkout()->get_posted_data();
+					}
+				}
 			}
 
 			/**
-			 * Do only allow retrieving shipping-related data in case shipping address is activated
+			 * Fallback to customer data (or posted data in case available).
 			 */
-			if ( 'shipping_' === substr( $key, 0, 9 ) ) {
-				if ( ! isset( $this->checkout_data['ship_to_different_address'] ) || ! $this->checkout_data['ship_to_different_address'] || wc_ship_to_billing_address_only() ) {
-					$value = null;
+			if ( null === $value ) {
+				$value = WC()->checkout()->get_value( $key );
+			}
+
+			/**
+			 * If checkout data is available - force overriding
+			 */
+			if ( $this->checkout_data ) {
+				if ( isset( $_POST['woocommerce-process-checkout-nonce'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					$value = isset( $this->checkout_data[ $key ] ) ? $this->checkout_data[ $key ] : WC()->checkout()->get_value( $key );
+				} else {
+					$value = isset( $this->checkout_data[ $key ] ) ? $this->checkout_data[ $key ] : null;
+				}
+
+				/**
+				 * Do only allow retrieving shipping-related data in case shipping address is activated
+				 */
+				if ( 'shipping_' === substr( $key, 0, 9 ) ) {
+					if ( ! isset( $this->checkout_data['ship_to_different_address'] ) || ! $this->checkout_data['ship_to_different_address'] || wc_ship_to_billing_address_only() ) {
+						$value = null;
+					}
 				}
 			}
 		}
 
-		return $value;
+		return apply_filters( 'woocommerce_gzd_get_checkout_value', $value, $key );
 	}
 
 	public function refresh_photovoltaic_systems_notice( $fragments ) {
@@ -244,6 +260,28 @@ class WC_GZD_Checkout {
 	}
 
 	/**
+	 * @param WC_GZD_Legal_Checkbox|string $checkbox_id
+	 *
+	 * @return boolean
+	 */
+	public function checkbox_is_checked( $checkbox_id ) {
+		$is_checked = false;
+		$checkbox   = is_a( $checkbox_id, 'WC_GZD_Legal_Checkbox' ) ? $checkbox_id : WC_GZD_Legal_Checkbox_Manager::instance()->get_checkbox( $checkbox_id );
+
+		if ( is_a( $checkbox, 'WC_GZD_Legal_Checkbox' ) ) {
+			$checkbox_id = $checkbox->get_id();
+			$value       = $this->get_checkout_value( $checkbox->get_html_name() ) ? self::instance()->get_checkout_value( $checkbox->get_html_name() ) : '';
+			$visible     = ! empty( $this->get_checkout_value( $checkbox->get_html_name() . '-field' ) ) ? true : false;
+
+			if ( $visible && ( ! empty( $value ) || $checkbox->hide_input() ) ) {
+				$is_checked = true;
+			}
+		}
+
+		return apply_filters( 'woocommerce_gzd_checkout_checkbox_is_checked', $is_checked, $checkbox_id );
+	}
+
+	/**
 	 * @param WC_Cart $cart
 	 *
 	 * @return void
@@ -255,10 +293,7 @@ class WC_GZD_Checkout {
 
 		if ( $checkbox = wc_gzd_get_legal_checkbox( 'photovoltaic_systems' ) ) {
 			if ( $checkbox->is_enabled() ) {
-				$value   = self::instance()->get_checkout_value( $checkbox->get_html_name() ) ? self::instance()->get_checkout_value( $checkbox->get_html_name() ) : '';
-				$visible = ! empty( self::instance()->get_checkout_value( $checkbox->get_html_name() . '-field' ) ) ? true : false;
-
-				if ( $visible && ( ! empty( $value ) || $checkbox->hide_input() ) && wc_gzd_cart_applies_for_photovoltaic_system_vat_exemption() ) {
+				if ( $this->checkbox_is_checked( $checkbox ) && wc_gzd_cart_applies_for_photovoltaic_system_vat_exemption( $cart->get_cart() ) ) {
 					foreach ( $cart->get_cart() as $cart_item_key => $values ) {
 						$_product = apply_filters( 'woocommerce_cart_item_product', $values['data'], $values, $cart_item_key );
 
@@ -382,7 +417,6 @@ class WC_GZD_Checkout {
 	 */
 	public function maybe_remove_shopmark_filters() {
 		if ( is_cart() || is_checkout() ) {
-
 			foreach ( wc_gzd_get_checkout_shopmarks() as $shopmark ) {
 				$shopmark->remove();
 			}
@@ -537,41 +571,46 @@ class WC_GZD_Checkout {
 
 	/**
 	 * @param WC_Order $order
-	 * @param $posted
 	 */
-	public function order_store_checkbox_data( $order, $posted ) {
+	public function order_store_checkbox_data( $order ) {
 		if ( $checkbox = wc_gzd_get_legal_checkbox( 'parcel_delivery' ) ) {
-			if ( $checkbox->is_enabled() && $order->has_shipping_address() && wc_gzd_is_parcel_delivery_data_transfer_checkbox_enabled( wc_gzd_get_chosen_shipping_rates( array( 'value' => 'id' ) ) ) ) {
-				$selected = false;
+			if ( $checkbox->is_enabled() && $order->has_shipping_address() ) {
+				$method_ids = array();
+				$items      = $order->get_shipping_methods();
 
-				if ( isset( $_POST[ $checkbox->get_html_name() ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-					$selected = true;
-				} elseif ( $checkbox->hide_input() ) {
-					$selected = true;
+				foreach ( $items as $item ) {
+					$constructed_method_id = $item->get_method_id();
+
+					if ( is_callable( array( $item, 'get_instance_id' ) ) ) {
+						$constructed_method_id .= ':' . $item->get_instance_id();
+					}
+
+					$method_ids[] = $constructed_method_id;
 				}
 
-				$order->update_meta_data( '_parcel_delivery_opted_in', $selected ? 'yes' : 'no' );
+				if ( wc_gzd_is_parcel_delivery_data_transfer_checkbox_enabled( $method_ids ) ) {
+					$selected = $this->checkbox_is_checked( $checkbox );
 
-				/**
-				 * Parcel delivery notification.
-				 *
-				 * Execute whenever the parcel delivery notification data is stored for a certain order.
-				 *
-				 * @param int $order_id The order id.
-				 * @param bool $selected True if the checkbox was checked. False otherwise.
-				 *
-				 * @since 1.7.2
-				 */
-				do_action( 'woocommerce_gzd_parcel_delivery_order_opted_in', $order->get_id(), $selected );
+					$order->update_meta_data( '_parcel_delivery_opted_in', $selected ? 'yes' : 'no' );
+
+					/**
+					 * Parcel delivery notification.
+					 *
+					 * Execute whenever the parcel delivery notification data is stored for a certain order.
+					 *
+					 * @param int $order_id The order id.
+					 * @param bool $selected True if the checkbox was checked. False otherwise.
+					 *
+					 * @since 1.7.2
+					 */
+					do_action( 'woocommerce_gzd_parcel_delivery_order_opted_in', $order->get_id(), $selected );
+				}
 			}
 		}
 
 		if ( $checkbox = wc_gzd_get_legal_checkbox( 'photovoltaic_systems' ) ) {
 			if ( $checkbox->is_enabled() && wc_gzd_cart_contains_photovoltaic_system() ) {
-				$value   = WC()->checkout()->get_value( $checkbox->get_html_name() );
-				$visible = WC()->checkout()->get_value( $checkbox->get_html_name() . '-field' );
-
-				if ( $visible && ( ! empty( $value ) || $checkbox->hide_input() ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				if ( $this->checkbox_is_checked( $checkbox ) ) {
 					$order->update_meta_data( '_photovoltaic_systems_opted_in', 'yes' );
 
 					/**
@@ -589,6 +628,18 @@ class WC_GZD_Checkout {
 				}
 			}
 		}
+
+		if ( $checkbox = wc_gzd_get_legal_checkbox( 'age_verification' ) ) {
+			if ( $checkbox->is_enabled() && wc_gzd_cart_needs_age_verification( $order->get_items() ) ) {
+				if ( $min_age = wc_gzd_cart_get_age_verification_min_age( $order->get_items() ) ) {
+					if ( $this->checkbox_is_checked( $checkbox ) ) {
+						$order->update_meta_data( '_min_age', $min_age );
+					}
+				}
+			}
+		}
+
+		do_action( 'woocommerce_gzd_checkout_store_checkbox_data', $order, $this );
 	}
 
 	/**
@@ -607,36 +658,6 @@ class WC_GZD_Checkout {
 
 		if ( $order->get_meta( '_min_age' ) ) {
 			$order->add_order_note( sprintf( __( 'A minimum age of %s years is required for this order.', 'woocommerce-germanized' ), wc_gzd_get_order_min_age( $order ) ) );
-		}
-	}
-
-	/**
-	 * @param WC_Order $order
-	 * @param $posted
-	 */
-	public function order_age_verification( $order, $posted ) {
-		if ( $checkbox = wc_gzd_get_legal_checkbox( 'age_verification' ) ) {
-
-			if ( ! $checkbox->is_enabled() ) {
-				return;
-			}
-
-			if ( ! wc_gzd_cart_needs_age_verification( $order->get_items() ) ) {
-				return;
-			}
-
-			$min_age = wc_gzd_cart_get_age_verification_min_age( $order->get_items() );
-
-			if ( ! $min_age ) {
-				return;
-			}
-
-			// Checkbox has not been checked
-			if ( ! isset( $_POST[ $checkbox->get_html_name() ] ) && ! $checkbox->hide_input() ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				return;
-			}
-
-			$order->update_meta_data( '_min_age', $min_age );
 		}
 	}
 
@@ -848,9 +869,8 @@ class WC_GZD_Checkout {
 			 * @param int $order_id The order id.
 			 *
 			 * @since 1.9.10
-			 *
 			 */
-			if ( apply_filters( 'woocommerce_gzd_add_force_pay_order_parameter', true, $order_id ) ) {
+			if ( apply_filters( 'woocommerce_gzd_add_force_pay_order_parameter', false, $order_id ) ) {
 				$url = esc_url_raw( add_query_arg( array( 'force_pay_order' => true ), $url ) );
 			}
 
@@ -875,6 +895,7 @@ class WC_GZD_Checkout {
 				'before'   => 'first_name',
 				'group'    => array( 'billing', 'shipping' ),
 				'priority' => 0,
+				'class'    => array( 'form-row-wide' ),
 			);
 
 			$this->custom_fields_admin['title'] = array(
@@ -885,6 +906,7 @@ class WC_GZD_Checkout {
 				'label'    => __( 'Title', 'woocommerce-germanized' ),
 				'show'     => false,
 				'priority' => 0,
+				'class'    => 'form-row-wide',
 			);
 		}
 
@@ -1015,14 +1037,63 @@ class WC_GZD_Checkout {
 		 * Prevent shipping methods from individually calculating taxes (e.g. as per custom incl/excl tax settings)
 		 * as Germanized handles tax calculation globally for all shipping methods.
 		 */
-		if ( wc_gzd_enable_additional_costs_split_tax_calculation() ) {
+		if ( 'none' !== wc_gzd_get_additional_costs_tax_calculation_mode() ) {
 			if ( ! empty( $args['taxes'] ) && apply_filters( 'woocommerce_gzd_disable_custom_shipping_method_tax_calculation', true, $method ) ) {
-				$args['cost']  = $args['cost'] + array_sum( $args['taxes'] );
+				$taxes      = $args['taxes'];
+				$total_cost = is_array( $args['cost'] ) ? array_sum( $args['cost'] ) : $args['cost'];
+
+				// Taxes - if not an array and not set to false, calc tax based on cost and passed calc_tax variable. This saves shipping methods having to do complex tax calculations.
+				if ( ! is_array( $taxes ) && false !== $taxes && $total_cost > 0 && $method->is_taxable() ) {
+					$taxes = 'per_item' === $args['calc_tax'] ? $this->get_shipping_taxes_per_item( $args['cost'] ) : WC_Tax::calc_shipping_tax( $total_cost, WC_Tax::get_shipping_tax_rates() );
+				}
+
+				$args['cost']  = $total_cost + ( is_array( $taxes ) ? array_sum( $taxes ) : 0 );
 				$args['taxes'] = '';
 			}
 		}
 
 		return $args;
+	}
+
+	/**
+	 * Calc taxes per item being shipping in costs array.
+	 *
+	 * @since 2.6.0
+	 * @param  array $costs Costs.
+	 * @return array of taxes
+	 */
+	protected function get_shipping_taxes_per_item( $costs ) {
+		$taxes = array();
+
+		// If we have an array of costs we can look up each items tax class and add tax accordingly.
+		if ( is_array( $costs ) ) {
+			$cart = WC()->cart->get_cart();
+
+			foreach ( $costs as $cost_key => $amount ) {
+				if ( ! isset( $cart[ $cost_key ] ) ) {
+					continue;
+				}
+
+				$item_taxes = WC_Tax::calc_shipping_tax( $amount, WC_Tax::get_shipping_tax_rates( $cart[ $cost_key ]['data']->get_tax_class() ) );
+
+				// Sum the item taxes.
+				foreach ( array_keys( $taxes + $item_taxes ) as $key ) {
+					$taxes[ $key ] = ( isset( $item_taxes[ $key ] ) ? $item_taxes[ $key ] : 0 ) + ( isset( $taxes[ $key ] ) ? $taxes[ $key ] : 0 );
+				}
+			}
+
+			// Add any cost for the order - order costs are in the key 'order'.
+			if ( isset( $costs['order'] ) ) {
+				$item_taxes = WC_Tax::calc_shipping_tax( $costs['order'], WC_Tax::get_shipping_tax_rates() );
+
+				// Sum the item taxes.
+				foreach ( array_keys( $taxes + $item_taxes ) as $key ) {
+					$taxes[ $key ] = ( isset( $item_taxes[ $key ] ) ? $item_taxes[ $key ] : 0 ) + ( isset( $taxes[ $key ] ) ? $taxes[ $key ] : 0 );
+				}
+			}
+		}
+
+		return $taxes;
 	}
 
 	/**
@@ -1334,7 +1405,7 @@ class WC_GZD_Checkout {
 
 			if ( ! empty( $package['rates'] ) ) {
 				foreach ( $package['rates'] as $key => $rate ) {
-					if ( $key !== $chosen_method ) {
+					if ( (string) $key !== (string) $chosen_method ) {
 						unset( WC()->shipping->packages[ $i ]['rates'][ $key ] );
 					}
 				}

@@ -98,8 +98,14 @@ class ItemTable extends DynamicBlock {
 					$spans = $dom->getElementsByTagName( 'span' );
 
 					if ( ! empty( $spans ) ) {
-						$span                  = $spans[0];
-						$new_column['heading'] = $span->ownerDocument->saveXML( $span ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+						$span = $spans[0];
+						$html = sab_get_dom_html_content( $span );
+
+						if ( is_wp_error( $html ) ) {
+							$html = $column['innerHTML'];
+						}
+
+						$new_column['heading'] = $html;
 					}
 				} else {
 					preg_match( '#<\s*?span\b[^>]* class="item-column-heading-text">(.*?)</span\b[^>]*>#s', $column['innerHTML'], $matches );
@@ -142,6 +148,8 @@ class ItemTable extends DynamicBlock {
 			if ( ! isset( $GLOBALS['document'] ) ) {
 				return $content;
 			}
+
+			$columns = apply_filters( 'storeabill_document_item_table_columns', $columns, $GLOBALS['document'] );
 
 			$content = sab_get_template_html(
 				'blocks/item-table/table.php',

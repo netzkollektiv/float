@@ -118,7 +118,7 @@ class Users {
 			$finished    = ( isset( $_GET['bulk_action_handling'] ) && 'finished' === $_GET['bulk_action_handling'] ) ? true : false;
 			$bulk_action = ( isset( $_GET['current_bulk_action'] ) ) ? sab_clean( wp_unslash( $_GET['current_bulk_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-			if ( $finished && ( $handler = \Vendidero\StoreaBill\Admin\Admin::get_bulk_action_handler( $bulk_action, 'customer' ) ) && check_admin_referer( $handler->get_done_nonce_action() ) ) {
+			if ( $finished && ( $handler = \Vendidero\StoreaBill\Admin\Admin::get_bulk_action_handler( $bulk_action, 'customer' ) ) && check_admin_referer( $handler->get_done_nonce_action(), 'sab_bulk_action_nonce' ) ) {
 				$handler->finish();
 			}
 			?>

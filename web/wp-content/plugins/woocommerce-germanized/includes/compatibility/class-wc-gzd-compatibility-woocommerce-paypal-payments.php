@@ -25,9 +25,11 @@ class WC_GZD_Compatibility_WooCommerce_PayPal_Payments extends WC_GZD_Compatibil
 		add_filter( 'woocommerce_paypal_payments_checkout_button_renderer_hook', array( $this, 'move_paypal_payment_button' ), 10 );
 
 		add_action(
-			'woocommerce_gzd_review_order_before_submit',
+			'woocommerce_gzd_review_order_after_submit',
 			function() {
-				do_action( 'woocommerce_gzd_render_paypal_payments_smart_button' );
+				if ( ! wp_doing_ajax() ) {
+					do_action( 'woocommerce_gzd_render_paypal_payments_smart_button' );
+				}
 			}
 		);
 
@@ -39,6 +41,27 @@ class WC_GZD_Compatibility_WooCommerce_PayPal_Payments extends WC_GZD_Compatibil
 				}
 			}
 		);
+
+		add_filter(
+			'woocommerce_paypal_payments_tracking_data_before_update',
+			function( $shipment_data ) {
+				if ( isset( $shipment_data['carrier'] ) ) {
+					if ( strstr( $shipment_data['carrier'], 'dpd' ) ) {
+						$shipment_data['carrier'] = 'DPD';
+					} elseif ( strstr( $shipment_data['carrier'], 'gls' ) ) {
+						$shipment_data['carrier'] = 'GLS';
+					} elseif ( strstr( $shipment_data['carrier'], 'hermes' ) ) {
+						$shipment_data['carrier'] = 'HERMES';
+					} elseif ( strstr( $shipment_data['carrier'], 'ups' ) ) {
+						$shipment_data['carrier'] = 'UPS';
+					}
+				}
+
+				return $shipment_data;
+			},
+			10,
+			1
+		);
 	}
 
 	public function after_plugins_loaded() {
@@ -49,7 +72,7 @@ class WC_GZD_Compatibility_WooCommerce_PayPal_Payments extends WC_GZD_Compatibil
 		add_filter(
 			'woocommerce_gzd_instant_order_confirmation',
 			function( $send_confirmation, $order = null ) {
-				if ( $order && 'ppcp-pay-upon-invoice-gateway' === $order->get_payment_method() ) {
+				if ( is_a( $order, 'WC_Order' ) && 'ppcp-pay-upon-invoice-gateway' === $order->get_payment_method() ) {
 					$send_confirmation = false;
 				}
 

@@ -21,7 +21,8 @@ class Tax {
 			add_action( 'woocommerce_before_save_order_item', array( __CLASS__, 'maybe_filter_order_item_tax_class' ) );
 
 			add_filter( 'woocommerce_adjust_non_base_location_prices', array( __CLASS__, 'disable_location_price' ), 250 );
-			add_filter( 'woocommerce_customer_taxable_address', array( __CLASS__, 'vat_exempt_taxable_address' ), 10 );
+			add_filter( 'woocommerce_customer_taxable_address', array( __CLASS__, 'b2b_eu_taxable_customer_location' ), 10 );
+			add_filter( 'woocommerce_order_get_tax_location', array( __CLASS__, 'b2b_eu_taxable_order_location' ), 10, 2 );
 
 			add_action( 'woocommerce_before_calculate_totals', array( __CLASS__, 'invalidate_shipping_session' ), 100 );
 		}
@@ -100,17 +101,86 @@ class Tax {
 	 *
 	 * @return array|mixed
 	 */
-	public static function vat_exempt_taxable_address( $location ) {
-		if ( Helper::current_request_has_vat_exempt() && apply_filters( 'oss_woocommerce_force_base_tax_rate_for_vat_exempt_net_calculation', true ) ) {
-			$location = array(
-				WC()->countries->get_base_country(),
-				WC()->countries->get_base_state(),
-				WC()->countries->get_base_postcode(),
-				WC()->countries->get_base_city(),
-			);
+	public static function b2b_eu_taxable_customer_location( $location ) {
+		if ( Helper::is_eu_vat_country( $location[0], $location[2] ) ) {
+			if (
+				( Helper::current_request_has_vat_exempt() && apply_filters( 'oss_woocommerce_force_base_tax_rate_for_vat_exempt_net_calculation', true ) ) ||
+				( Helper::current_request_is_b2b() && apply_filters( 'oss_woocommerce_force_base_tax_rate_for_b2b', true ) )
+			) {
+				$location = array(
+					WC()->countries->get_base_country(),
+					WC()->countries->get_base_state(),
+					WC()->countries->get_base_postcode(),
+					WC()->countries->get_base_city(),
+				);
+			}
 		}
 
 		return $location;
+	}
+
+	/**
+	 * @param \WC_Order $order
+	 *
+	 * @return mixed
+	 */
+	public static function order_has_taxable_company( $order ) {
+		if ( ! is_callable( array( $order, 'get_shipping_company' ) ) ) {
+			return false;
+		}
+
+		$taxable_type        = $order->has_shipping_address() ? 'shipping' : 'billing';
+		$taxable_company     = 'shipping' === $taxable_type ? $order->get_shipping_company() : $order->get_billing_company();
+		$has_taxable_company = false;
+
+		if ( ! empty( $taxable_company ) ) {
+			$has_taxable_company = true;
+		}
+
+		if ( ! apply_filters( 'oss_woocommerce_force_base_tax_rate_for_b2b', true ) ) {
+			$has_taxable_company = false;
+		}
+
+		return apply_filters( 'oss_woocommerce_order_has_taxable_company', $has_taxable_company, $order );
+	}
+
+	/**
+	 * @param array $args
+	 * @param \WC_Order $order
+	 *
+	 * @return array
+	 */
+	public static function b2b_eu_taxable_order_location( $args, $order ) {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'country'  => '',
+				'postcode' => '',
+			)
+		);
+
+		if ( Helper::is_eu_vat_country( $args['country'], $args['postcode'] ) ) {
+			$has_vat_exempt = apply_filters( 'woocommerce_order_is_vat_exempt', 'yes' === $order->get_meta( 'is_vat_exempt' ), $order );
+
+			if ( isset( $args['company'] ) ) {
+				$has_company = apply_filters( 'oss_woocommerce_order_has_taxable_company', ! empty( $args['company'] ), $order );
+			} else {
+				$has_company = self::order_has_taxable_company( $order );
+			}
+
+			if (
+				( $has_vat_exempt && apply_filters( 'oss_woocommerce_force_base_tax_rate_for_vat_exempt_net_calculation', true ) ) ||
+				( $has_company && apply_filters( 'oss_woocommerce_force_base_tax_rate_for_b2b', true ) )
+			) {
+				$args['country'] = Helper::get_base_country();
+
+				$args['state']    = WC()->countries->get_base_state();
+				$args['postcode'] = WC()->countries->get_base_postcode();
+				$args['city']     = WC()->countries->get_base_city();
+			}
+		}
+
+		return $args;
 	}
 
 	/**
@@ -439,9 +509,10 @@ class Tax {
 			)
 		);
 
-		$tax_class        = false !== $default ? $default : $product->get_tax_class();
-		$postcode         = wc_normalize_postcode( $address['postcode'] );
-		$filter_tax_class = true;
+		$tax_class          = false !== $default ? $default : $product->get_tax_class();
+		$original_tax_class = $tax_class;
+		$postcode           = wc_normalize_postcode( $address['postcode'] );
+		$filter_tax_class   = true;
 
 		/**
 		 * Prevent tax class adjustment for GB (except Norther Ireland via postcode detection)
@@ -457,7 +528,28 @@ class Tax {
 			$matched_tax_cache = wp_cache_get( $cache_key_tax, 'taxes' );
 			$matched_tax_class = false !== $matched_tax_cache ? wp_cache_get( $cache_key, 'products' ) : false;
 
-			if ( false === $matched_tax_class ) {
+			if ( false !== $matched_tax_class ) {
+				if ( ! is_array( $matched_tax_class ) ) {
+					$matched_tax_class = array(
+						'tax_class'          => $matched_tax_class,
+						'original_tax_class' => $matched_tax_class,
+					);
+				}
+
+				$matched_tax_class = wp_parse_args(
+					$matched_tax_class,
+					array(
+						'tax_class'          => '',
+						'original_tax_class' => '',
+					)
+				);
+			}
+
+			/**
+			 * Prevent caching in case the original tax rate (now applied to the product) does not
+			 * match the original tax class retrieved from the cached data.
+			 */
+			if ( false === $matched_tax_class || $matched_tax_class['original_tax_class'] !== $original_tax_class ) {
 				$tax_classes               = self::get_product_tax_classes( $product );
 				$tax_class_slugs           = Helper::get_tax_class_slugs();
 				$translated_legacy_eu_slug = _x( 'EU-wide', 'oss', 'one-stop-shop-woocommerce' );
@@ -531,9 +623,16 @@ class Tax {
 				 * This cache entry depends on both the tax and product data.
 				 */
 				wp_cache_set( $cache_key_tax, $cache_key, 'taxes' );
-				wp_cache_set( $cache_key, $tax_class, 'products' );
+				wp_cache_set(
+					$cache_key,
+					array(
+						'tax_class'          => $tax_class,
+						'original_tax_class' => $original_tax_class,
+					),
+					'products'
+				);
 			} else {
-				$tax_class = $matched_tax_class;
+				$tax_class = $matched_tax_class['tax_class'];
 			}
 		}
 

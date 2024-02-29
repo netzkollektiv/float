@@ -49,7 +49,7 @@ class Customer implements \Vendidero\StoreaBill\Interfaces\Customer {
 			array(
 				'is_business'      => false,
 				'id'               => '',
-				'is_vat_exempt'    => $invoice->is_reverse_charge(),
+				'is_vat_exempt'    => $invoice->is_vat_exempt(),
 				'billing_address'  => $invoice->get_address(),
 				'shipping_address' => $invoice->get_shipping_address(),
 				'vat_id'           => $invoice->get_vat_id(),

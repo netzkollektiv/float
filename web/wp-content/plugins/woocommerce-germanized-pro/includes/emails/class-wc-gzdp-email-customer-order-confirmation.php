@@ -41,8 +41,9 @@ if ( ! class_exists( 'WC_GZDP_Email_Customer_Order_Confirmation' ) ) :
 			$this->enabled    = $this->get_option( 'enabled' );
 
 			// Remove default actions
-			remove_action( 'woocommerce_order_status_pending_to_processing_notification', array( $this, 'trigger' ), 10 );
-			remove_action( 'woocommerce_order_status_pending_to_on-hold_notification', array( $this, 'trigger' ), 10 );
+			remove_action( 'woocommerce_order_status_cancelled_to_processing_notification', array( $this, 'trigger' ), 10 );
+			remove_action( 'woocommerce_order_status_failed_to_processing_notification', array( $this, 'trigger' ), 10 );
+			remove_action( 'woocommerce_order_status_on-hold_to_processing_notification', array( $this, 'trigger' ), 10 );
 			remove_action( 'woocommerce_order_status_pending_to_processing_notification', array( $this, 'trigger' ), 10 );
 
 			// Save settings hook

@@ -52,12 +52,12 @@ class Helper {
 
 		add_action( 'init', array( __CLASS__, 'register_meta' ) );
 
-		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'add_style_data' ), 30 );
+		add_action( 'enqueue_block_assets', array( __CLASS__, 'add_style_data' ), 30 );
 		add_action( 'wp_print_footer_scripts', array( __CLASS__, 'enqueue_asset_data' ), 1 );
 		add_action( 'admin_print_footer_scripts', array( __CLASS__, 'enqueue_asset_data' ), 1 );
 
 		/**
-		 * Lets remove third party specific editor styles for our templates.
+		 * Let's remove third party specific editor styles for our templates.
 		 */
 		add_action( 'enqueue_block_editor_assets', array( __CLASS__, 'prevent_third_party_assets' ), 999 );
 		add_action( 'enqueue_block_assets', array( __CLASS__, 'prevent_third_party_assets' ), 999 );
@@ -75,7 +75,7 @@ class Helper {
 		 */
 		add_filter( 'block_editor_settings_all', array( __CLASS__, 'override_theme_settings' ), PHP_INT_MAX, 2 );
 
-		add_action( 'admin_footer', array( __CLASS__, 'add_footer_styles' ), 150 );
+		add_action( 'admin_footer', array( __CLASS__, 'add_inline_styles' ), 150 );
 
 		/**
 		 * Creating new posts support
@@ -474,7 +474,7 @@ class Helper {
 		return self::$font_embed;
 	}
 
-	public static function add_footer_styles() {
+	public static function add_inline_styles() {
 		global $post;
 
 		if ( self::is_document_template( $post ) ) {
@@ -494,17 +494,17 @@ class Helper {
 
 			foreach ( sab_get_document_font_sizes() as $size ) {
 				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $size['slug'] ) . '-font-size, .has-' . sanitize_key( $size['slug'] ) . '-font-size {
-					font-size: ' . esc_attr( $size['size'] ) . 'px;
+					font-size: ' . esc_attr( $size['size'] ) . 'px !important;
 				} ';
 			}
 
 			foreach ( sab_get_color_names() as $color_name => $color ) {
 				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $color_name ) . '-color, .has-' . sanitize_key( $color_name ) . '-color {
-					color: ' . esc_attr( $color ) . ';
+					color: ' . esc_attr( $color ) . ' !important;
 				} ';
 
 				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $color_name ) . '-background-color, .has-' . sanitize_key( $color_name ) . '-background-color {
-					background-color: ' . esc_attr( $color ) . ';
+					background-color: ' . esc_attr( $color ) . ' !important;
 				} ';
 			}
 
@@ -519,10 +519,35 @@ class Helper {
 			if ( $template = sab_get_document_template( $post ) ) {
 				if ( $embed = self::get_font_embed( $template ) ) {
 					$facet_css = $embed->get_font_facets_css();
+					$font_css  = $embed->get_inline_css();
 
 					wp_add_inline_style( 'sab-block-editor', $facet_css );
+					wp_add_inline_style( 'sab-block-editor-inline-fonts', $font_css );
+
+					wp_enqueue_style( 'sab-block-editor-inline-fonts' );
 				}
 			}
+
+			$inline_css = '';
+
+			foreach ( sab_get_document_font_sizes() as $size ) {
+				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $size['slug'] ) . '-font-size, .has-' . sanitize_key( $size['slug'] ) . '-font-size {
+					font-size: ' . esc_attr( $size['size'] ) . 'px;
+				} ';
+			}
+
+			foreach ( sab_get_color_names() as $color_name => $color ) {
+				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $color_name ) . '-color, .has-' . sanitize_key( $color_name ) . '-color {
+					color: ' . esc_attr( $color ) . ';
+				} ';
+
+				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $color_name ) . '-background-color, .has-' . sanitize_key( $color_name ) . '-background-color {
+					background-color: ' . esc_attr( $color ) . ';
+				} ';
+			}
+
+			wp_add_inline_style( 'sab-block-editor-inline', $inline_css );
+			wp_enqueue_style( 'sab-block-editor-inline' );
 		}
 	}
 
@@ -539,6 +564,8 @@ class Helper {
 		global $post;
 
 		if ( $post && self::is_document_template( $post ) && ( $template = sab_get_document_template( $post, true ) ) ) {
+			do_action( 'storeabill_editor_before_load_editor_preview_assets', $template );
+
 			$document_type    = sab_get_document_type( $template->get_document_type() );
 			$default_template = sab_get_document_template( $post );
 			$preview          = sab_get_document_preview( $template->get_document_type(), true );
@@ -575,7 +602,7 @@ class Helper {
 			self::$asset_data['marginTypesSupported']   = $template->is_first_page() ? array( 'top', 'bottom' ) : array( 'top', 'left', 'bottom', 'right' );
 			self::$asset_data['defaultMargins']         = $template->get_default_margins();
 			self::$asset_data['lineItemTypes']          = $current_line_item_types;
-			self::$asset_data['mainLineItemType']       = $document_type->main_line_item_types[0];
+			self::$asset_data['mainLineItemType']       = count( $document_type->main_line_item_types ) > 0 ? $document_type->main_line_item_types[0] : '';
 			self::$asset_data['availableLineItemTypes'] = $line_item_type_options;
 			self::$asset_data['dateFormat']             = sab_date_format();
 			self::$asset_data['dateTypes']              = apply_filters( 'storeabill_document_template_editor_date_types', $document_type->date_types, $document_type );
@@ -682,6 +709,8 @@ class Helper {
 
 				self::$asset_data['preview'] = json_decode( $data );
 			}
+
+			do_action( 'storeabill_editor_after_load_editor_preview_assets', $template );
 		}
 	}
 
@@ -886,7 +915,7 @@ class Helper {
 	public static function conditionally_load_template( $replace, $post ) {
 		if ( self::is_document_template( $post ) ) {
 			// Setup custom filters
-			add_theme_support( 'editor-font-sizes', array_values( sab_get_document_font_sizes() ) );
+			add_theme_support( 'editor-font-sizes', array_values( sab_get_document_font_sizes( true ) ) );
 
 			// Remove custom theme supports
 			remove_theme_support( 'align-wide' );
@@ -917,7 +946,9 @@ class Helper {
 			unset( $args['gradients'] );
 
 			$args['styles']                 = array();
+			$args['layout']                 = array();
 			$args['disableCustomColors']    = false;
+			$args['disableCustomFontSizes'] = false;
 			$args['disableCustomGradients'] = true;
 			$args['enableCustomSpacing']    = false;
 			$args['supportsLayout']         = false;
@@ -938,26 +969,36 @@ class Helper {
 				unset( $args['color']['palette']['theme'] );
 			}
 
-			$args['fontSizes'] = array_values( sab_get_document_font_sizes() );
+			$args['fontSizes'] = array_values( sab_get_document_font_sizes( true ) );
 
 			if ( isset( $args['__experimentalFeatures']['typography']['fontSizes'] ) ) {
+				/**
+				 * Newer Gutenberg versions seem to have issues, e.g. showing font size types twice
+				 * in case using default + theme with same values.
+				 */
 				$args['__experimentalFeatures']['typography']['fontSizes'] = array(
-					'default' => array_values( sab_get_document_font_sizes() ),
-					'theme'   => array_values( sab_get_document_font_sizes() ),
+					'default' => array(),
+					'theme'   => array_values( sab_get_document_font_sizes( true ) ),
 				);
 
 				$args['__experimentalFeatures']['typography']['fontStyle']     = false;
 				$args['__experimentalFeatures']['typography']['fontWeight']    = false;
 				$args['__experimentalFeatures']['typography']['letterSpacing'] = false;
+				$args['__experimentalFeatures']['typography']['fluid']         = false;
 			} elseif ( isset( $args['typography']['fontSizes'] ) ) {
+				/**
+				 * Newer Gutenberg versions seem to have issues, e.g. showing font size types twice
+				 * in case using default + theme with same values.
+				 */
 				$args['typography']['fontSizes'] = array(
-					'default' => array_values( sab_get_document_font_sizes() ),
-					'theme'   => array_values( sab_get_document_font_sizes() ),
+					'default' => array(),
+					'theme'   => array_values( sab_get_document_font_sizes( true ) ),
 				);
 
 				$args['typography']['fontStyle']     = false;
 				$args['typography']['fontWeight']    = false;
 				$args['typography']['letterSpacing'] = false;
+				$args['typography']['fluid']         = false;
 			}
 
 			if ( isset( $args['__experimentalFeatures']['spacing'] ) ) {
@@ -979,6 +1020,7 @@ class Helper {
 				remove_theme_support( 'wp-block-styles' );
 				remove_theme_support( 'editor-color-palette' );
 				remove_theme_support( 'disable-custom-font-sizes' );
+				remove_theme_support( 'dark-theme' );
 
 				add_theme_support( 'disable-custom-colors' );
 			}
@@ -1008,7 +1050,7 @@ class Helper {
 	 */
 	public static function prevent_valid_theme_json_file( $stylesheet_dir, $file ) {
 		if ( $file && 'theme.json' === $file ) {
-			$stylesheet_dir = trailingslashit( WP_CONTENT_DIR ) . 'themes';
+			$stylesheet_dir = trailingslashit( Package::get_path() ) . 'assets/editor/theme/' . $file;
 		}
 
 		return $stylesheet_dir;
@@ -1080,6 +1122,12 @@ class Helper {
 		self::register_style( 'sab-block-editor', Package::get_url() . '/build/editor/editor.css', array( 'wp-edit-blocks' ) );
 		wp_style_add_data( 'sab-block-editor', 'rtl', 'replace' );
 
+		/**
+		 * Empty placeholder styles to allow using inline styles.
+		 */
+		self::register_style( 'sab-block-editor-inline-fonts', '', array( 'sab-block-editor' ) );
+		self::register_style( 'sab-block-editor-inline', '', array( 'sab-block-editor' ) );
+
 		self::register_script( 'sab-settings', Package::get_url() . '/build/editor/settings.js' );
 		self::register_script( 'sab-blocks', Package::get_url() . '/build/editor/blocks.js' );
 		self::register_script( 'sab-vendors', Package::get_url() . '/build/editor/vendors.js', array(), false );
@@ -1096,7 +1144,6 @@ class Helper {
 	}
 
 	public static function register_meta() {
-
 		register_post_meta(
 			'document_template',
 			'_pdf_template_id',
@@ -1359,6 +1406,7 @@ class Helper {
 				'ReverseChargeNotice',
 				'ShippingAddress',
 				'SenderAddress',
+				'PreferentialOriginDeclaration',
 			);
 
 			if ( empty( self::$blocks ) ) {

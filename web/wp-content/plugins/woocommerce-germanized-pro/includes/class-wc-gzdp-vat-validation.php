@@ -68,6 +68,7 @@ class WC_GZDP_VAT_Validation {
 						'address'    => $this->parse_string( isset( $rs->traderAddress ) ? $rs->traderAddress : '' ), // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 						'date'       => date_i18n( 'Y-m-d H:i:s' ),
 						'raw'        => (array) $rs,
+						'vat_id'     => $country . $nr,
 					);
 				} else {
 					$instance->log( sprintf( 'VAT is invalid: %s', $args['countryCode'] . $args['vatNumber'] ), 'info', 'vat-validation' );
@@ -90,6 +91,9 @@ class WC_GZDP_VAT_Validation {
 		return apply_filters( 'woocommerce_gzdp_vat_validation_result', $this->valid, $country, $nr, $rs, $this->options, $this->errors );
 	}
 
+	/**
+	 * @return bool|WP_Error
+	 */
 	public function get_error_messages() {
 		return ( is_wp_error( $this->errors ) && wc_gzd_wp_error_has_errors( $this->errors ) ) ? $this->errors : false;
 	}

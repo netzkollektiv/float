@@ -32,12 +32,6 @@ class Simple extends Invoice {
 		return 'simple';
 	}
 
-	protected function get_additional_number_placeholders() {
-		return array(
-			'{order_number}' => $this->get_order_number(),
-		);
-	}
-
 	protected function maybe_set_paid() {
 		if ( 'complete' === $this->get_payment_status() ) {
 			$this->set_date_paid( time() );
@@ -359,14 +353,19 @@ class Simple extends Invoice {
 								$item_data['line_total'] = $items_left[ $item_id ]['line_total'];
 							}
 
-							if ( empty( $item_data['subtotal'] ) && ! empty( $item_data['quantity'] ) ) {
+							/**
+							 * Calculate a share to be cancelled to prevent rounding issues with interpolating subtotal amounts.
+							 */
+							if ( empty( $item_data['subtotal'] ) ) {
+								$share_to_cancel = 0.0 !== $items_left[ $item_id ]['total'] ? abs( $item_data['total'] ) / abs( $items_left[ $item_id ]['total'] ) : 1.0;
+
 								if ( $item = $this->get_item( $item_id ) ) {
-									$item_data['subtotal']      = $item_data['quantity'] * $item->get_price_subtotal();
-									$item_data['line_subtotal'] = $item_data['quantity'] * ( $this->prices_include_tax() ? $item->get_price_subtotal() : $item->get_price_subtotal_net() );
+									$item_data['subtotal']      = $item->get_subtotal() * $share_to_cancel;
+									$item_data['line_subtotal'] = $item->get_line_subtotal() * $share_to_cancel;
+								} else {
+									$item_data['subtotal']      = $items_left[ $item_id ]['total'];
+									$item_data['line_subtotal'] = $items_left[ $item_id ]['line_total'];
 								}
-							} elseif ( empty( $item_data['subtotal'] ) ) {
-								$item_data['subtotal']      = $items_left[ $item_id ]['subtotal'];
-								$item_data['line_subtotal'] = $items_left[ $item_id ]['line_subtotal'];
 							}
 
 							$item_data['quantity'] = empty( $item_data['quantity'] ) ? 1 : $item_data['quantity'];
@@ -434,7 +433,7 @@ class Simple extends Invoice {
 				$cancellation->set_round_tax_at_subtotal( $this->get_round_tax_at_subtotal() );
 				$cancellation->set_customer_id( $this->get_customer_id() );
 				$cancellation->set_currency( $this->get_currency() );
-				$cancellation->set_is_reverse_charge( $this->is_reverse_charge() );
+				$cancellation->set_is_vat_exempt( $this->get_is_vat_exempt() );
 				$cancellation->set_is_oss( $this->is_oss() );
 				$cancellation->set_vat_id( $this->get_vat_id() );
 				$cancellation->set_payment_method_name( $this->get_payment_method_name() );
@@ -461,7 +460,6 @@ class Simple extends Invoice {
 
 				foreach ( $items_to_cancel as $item_id => $item_data ) {
 					if ( $parent_item = $this->get_item( $item_id ) ) {
-
 						$new_item = sab_get_document_item( 0, $parent_item->get_type() );
 						$props    = array_diff_key( $parent_item->get_data(), array_flip( array( 'id', 'document_id', 'parent_id', 'taxes', 'quantity', 'total_tax', 'subtotal_tax', 'price', 'price_subtotal', 'line_subtotal', 'line_total' ) ) );
 
@@ -470,10 +468,22 @@ class Simple extends Invoice {
 						$new_item->set_parent_id( $item_id );
 						$new_item->set_props( $props );
 
+						$meta_data = array();
+
+						foreach ( $parent_item->get_meta_data() as $meta ) {
+							$meta_data[] = new \WC_Meta_Data(
+								array(
+									'id'    => 0,
+									'key'   => $meta->key,
+									'value' => $meta->value,
+								)
+							);
+						}
+
 						/**
 						 * Copy meta data
 						 */
-						$new_item->set_meta_data( $parent_item->get_meta_data() );
+						$new_item->set_meta_data( $meta_data );
 
 						/**
 						 * Calculate based on net total in case invoice prices do not include tax.
@@ -549,10 +559,22 @@ class Simple extends Invoice {
 					}
 				}
 
+				$meta_data = array();
+
+				foreach ( $this->get_meta_data() as $meta ) {
+					$meta_data[] = new \WC_Meta_Data(
+						array(
+							'id'    => 0,
+							'key'   => $meta->key,
+							'value' => $meta->value,
+						)
+					);
+				}
+
 				/**
 				 * Copy meta data
 				 */
-				$cancellation->set_meta_data( $this->get_meta_data() );
+				$cancellation->set_meta_data( $meta_data );
 
 				/**
 				 * Set additional props

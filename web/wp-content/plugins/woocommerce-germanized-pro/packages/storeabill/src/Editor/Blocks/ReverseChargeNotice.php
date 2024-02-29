@@ -52,21 +52,28 @@ class ReverseChargeNotice extends DynamicBlock {
 		$this->content    = '';
 
 		if ( is_a( $document, 'Vendidero\StoreaBill\Invoice\Invoice' ) ) {
-			if ( $document->is_reverse_charge() ) {
+			if ( $document->is_reverse_charge() || $document->is_vat_exempt() ) {
 				/**
-				 * Special case for virtual invoices: Use a separate notice from the block settings.
+				 * Special case for reversal of charge: Use a separate notice from the block settings.
 				 */
-				if ( $document->is_virtual() ) {
+				if ( $document->is_reverse_charge() ) {
 					$has_updated_dom = false;
 
 					if ( $dom = sab_load_html_dom( $content ) ) {
 						$main_node = $dom->getElementsByTagName( 'p' );
 
 						if ( count( $main_node ) > 0 ) {
-							$main_node->item( 0 )->nodeValue = wp_kses_post( $this->attributes['virtualNotice'] );
+							$node = $main_node->item( 0 );
 
-							$content         = $dom->saveXML( $main_node->item( 0 ) );
-							$has_updated_dom = true;
+							if ( ! is_null( $node ) ) {
+								$node->nodeValue = wp_kses_post( $this->attributes['virtualNotice'] ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+								$the_content     = sab_get_dom_html_content( $node );
+
+								if ( ! is_wp_error( $the_content ) ) {
+									$has_updated_dom = true;
+									$content         = $the_content;
+								}
+							}
 						}
 					}
 

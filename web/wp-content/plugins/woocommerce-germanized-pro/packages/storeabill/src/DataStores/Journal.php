@@ -273,7 +273,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 				throw new Exception( _x( 'Journal has to be saved in DB before updating numbers.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 			}
 
-			CacheHelper::prevent_caching();
+			CacheHelper::prevent_caching( 'numbering' );
 
 			global $wpdb;
 
@@ -283,7 +283,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 			 * Use separate requests for sqlite to update and retrieve the latest, incremented sequential number as
 			 * sqlite does not support last_insert_id() during updates.
 			 */
-			if ( is_a( $wpdb, 'WP_SQLite_DB\wpsqlitedb' ) ) {
+			if ( is_a( $wpdb, 'WP_SQLite_DB' ) ) {
 				if ( $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}storeabill_journals SET journal_last_number=journal_last_number+1 WHERE journal_id = %d", $journal->get_id() ) ) === false ) {
 					throw new Exception( _x( 'Error updating journal sequential number.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 				}
@@ -319,7 +319,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 				throw new Exception( _x( 'Journal has to be saved in DB before updating numbers.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 			}
 
-			CacheHelper::prevent_caching();
+			CacheHelper::prevent_caching( 'numbering' );
 
 			global $wpdb;
 
@@ -349,7 +349,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 	public function get_last_number( $journal ) {
 		global $wpdb;
 
-		CacheHelper::prevent_caching();
+		CacheHelper::prevent_caching( 'numbering' );
 
 		$data = $wpdb->get_var( $wpdb->prepare( "SELECT journal_last_number FROM {$wpdb->prefix}storeabill_journals WHERE journal_id = %d LIMIT 1;", $journal->get_id() ) );
 

@@ -239,7 +239,16 @@ class WC_GZD_AJAX {
 		$remove_taxes = WC_Tax::calc_tax( $price, $tax_rates, true );
 		$price        = $price - array_sum( $remove_taxes ); // Unrounded since we're dealing with tax inclusive prices. Matches logic in cart-totals class. @see adjust_non_base_location_price.
 
-		return $price;
+		return \Vendidero\Germanized\Utilities\NumberUtil::round( $price, wc_get_price_decimals() );
+	}
+
+	protected static function get_price_including_tax( $price, $product ) {
+		// If prices are shown excl. tax, add taxes to match the prices stored in the DB.
+		$tax_rates = WC_Tax::get_rates( $product->get_tax_class() );
+		$taxes     = WC_Tax::calc_tax( $price, $tax_rates, false );
+		$price     = $price + array_sum( $taxes );
+
+		return \Vendidero\Germanized\Utilities\NumberUtil::round( $price, wc_get_price_decimals() );
 	}
 
 	public static function gzd_refresh_cart_vouchers() {
@@ -263,45 +272,198 @@ class WC_GZD_AJAX {
 	public static function gzd_refresh_unit_price() {
 		check_ajax_referer( 'wc-gzd-refresh-unit-price', 'security' );
 
-		if ( ! isset( $_POST['product_id'], $_POST['price'] ) ) {
+		if ( ! isset( $_POST['products'] ) ) {
 			wp_send_json( array( 'result' => 'failure' ) );
 		}
 
-		$product_id = absint( wp_unslash( $_POST['product_id'] ) );
-		$price      = (float) wc_clean( wp_unslash( $_POST['price'] ) );
-		$price_sale = isset( $_POST['price_sale'] ) && '' !== wc_clean( wp_unslash( $_POST['price_sale'] ) ) ? (float) wc_clean( wp_unslash( $_POST['price_sale'] ) ) : '';
+		$products = (array) wc_clean( wp_unslash( $_POST['products'] ) );
+		$response = array();
 
-		if ( ! $product = wc_gzd_get_product( $product_id ) ) {
-			wp_send_json( array( 'result' => 'failure' ) );
-		}
-
-		/**
-		 * In case net prices are used and prices are being shown including tax
-		 * we will need to manually remove taxes from price before recalculating the unit price.
-		 */
-		if ( wc_tax_enabled() && ! wc_prices_include_tax() && 'incl' === get_option( 'woocommerce_tax_display_shop' ) ) {
-			$price = (float) self::get_price_excluding_tax( $price, $product->get_wc_product() );
-
-			if ( '' !== $price_sale ) {
-				$price_sale = (float) self::get_price_excluding_tax( $price_sale, $product->get_wc_product() );
+		foreach ( $products as $product_data ) {
+			if ( ! isset( $product_data['product_id'], $product_data['price'], $product_data['key'] ) ) {
+				continue;
 			}
+
+			$product_id = absint( $product_data['product_id'] );
+			$key        = wc_clean( wp_unslash( $product_data['key'] ) );
+
+			if ( ! $product = wc_gzd_get_product( $product_id ) ) {
+				continue;
+			}
+
+			$args = self::get_db_prices_by_display_prices(
+				$product,
+				array(
+					'price'      => (float) wc_clean( wp_unslash( $product_data['price'] ) ),
+					'sale_price' => isset( $product_data['price_sale'] ) && '' !== wc_clean( wp_unslash( $product_data['price_sale'] ) ) ? (float) wc_clean( wp_unslash( $product_data['price_sale'] ) ) : '',
+				)
+			);
+
+			$product->recalculate_unit_price( $args );
+
+			$response[ $key ] = array(
+				'unit_price_html' => $product->get_unit_price_html(),
+				'product_id'      => $product_id,
+			);
 		}
-
-		$args = array(
-			'regular_price' => $price,
-			'sale_price'    => '' !== $price_sale ? $price_sale : $price,
-			'price'         => '' !== $price_sale ? $price_sale : $price,
-		);
-
-		$product->recalculate_unit_price( $args );
 
 		wp_send_json(
 			array(
-				'result'          => 'success',
-				'unit_price_html' => $product->get_unit_price_html(),
-				'product_id'      => $product_id,
+				'result'   => 'success',
+				'products' => $response,
 			)
 		);
+	}
+
+	/**
+	 * @param WC_GZD_Product|WC_Product $product
+	 * @param $prices
+	 *
+	 * @return array
+	 */
+	public static function get_db_prices_by_display_prices( $product, $prices ) {
+		$prices = wp_parse_args(
+			$prices,
+			array(
+				'price'      => 0,
+				'sale_price' => '',
+			)
+		);
+
+		if ( is_a( $product, 'WC_GZD_Product' ) ) {
+			$product = $product->get_wc_product();
+		}
+
+		$price            = (float) $prices['price'];
+		$sale_price       = '' === $prices['sale_price'] ? '' : (float) $prices['sale_price'];
+		$tax_display_mode = get_option( 'woocommerce_tax_display_shop' );
+
+		/**
+		 * The issue with the price passed to the unit price recalculation is that the price
+		 * reflects the actual display price, e.g. a price which already includes taxes.
+		 *
+		 * We do need to restore the actual price stored within the DB (based on whether
+		 * prices are stored including tax or not) to make sure that taxes are not added/subtracted twice.
+		 */
+		if ( wc_tax_enabled() && $product->is_taxable() ) {
+			$price_before = $prices['price'];
+
+			if ( 'incl' === $tax_display_mode ) {
+				$price_after = wc_get_price_including_tax(
+					$product,
+					array(
+						'price' => $price,
+						'qty'   => 1,
+					)
+				);
+			} else {
+				$price_after = wc_get_price_excluding_tax(
+					$product,
+					array(
+						'price' => $price,
+						'qty'   => 1,
+					)
+				);
+			}
+
+			$tax_diff = abs( (float) $price_before - (float) $price_after );
+
+			if ( $tax_diff > 0 ) {
+				$sale_price_incl_taxes = '';
+
+				/**
+				 * Ugly tweaks to make sure we do not need to replicate
+				 * the whole tax calculation behaviour included in wc_get_price_including_tax().
+				 *
+				 * The whole idea of this is to revert the tax calculation done to the display price
+				 * and then add/subtract the difference to the price passed to this script.
+				 *
+				 * @see wc_get_price_including_tax()
+				 */
+				add_filter( 'wc_get_price_decimals', array( __CLASS__, 'tmp_increase_price_decimals' ), 9999 );
+				add_filter( 'woocommerce_calc_tax', array( __CLASS__, 'tmp_manipulate_tax_calculation' ), 9999, 4 );
+
+				if ( 'incl' === $tax_display_mode ) {
+					$price_incl_taxes = wc_get_price_including_tax(
+						$product,
+						array(
+							'price' => $price,
+							'qty'   => 1,
+						)
+					);
+
+					if ( '' !== $sale_price ) {
+						$sale_price_incl_taxes = wc_get_price_including_tax(
+							$product,
+							array(
+								'price' => $sale_price,
+								'qty'   => 1,
+							)
+						);
+					}
+				} else {
+					$price_incl_taxes = wc_get_price_excluding_tax(
+						$product,
+						array(
+							'price' => $price,
+							'qty'   => 1,
+						)
+					);
+
+					if ( '' !== $sale_price ) {
+						$sale_price_incl_taxes = wc_get_price_excluding_tax(
+							$product,
+							array(
+								'price' => $sale_price,
+								'qty'   => 1,
+							)
+						);
+					}
+				}
+
+				remove_filter( 'wc_get_price_decimals', array( __CLASS__, 'tmp_increase_price_decimals' ), 9999 );
+				remove_filter( 'woocommerce_calc_tax', array( __CLASS__, 'tmp_manipulate_tax_calculation' ), 9999 );
+
+				if ( wc_prices_include_tax() ) {
+					$price = \Vendidero\Germanized\Utilities\NumberUtil::round( $price + abs( $price - $price_incl_taxes ), wc_get_price_decimals() );
+
+					if ( '' !== $sale_price_incl_taxes ) {
+						$sale_price = \Vendidero\Germanized\Utilities\NumberUtil::round( $sale_price + abs( $sale_price - $sale_price_incl_taxes ), wc_get_price_decimals() );
+					}
+				} else {
+					$price = \Vendidero\Germanized\Utilities\NumberUtil::round( $price - abs( $price - $price_incl_taxes ), wc_get_price_decimals() );
+
+					if ( '' !== $sale_price_incl_taxes ) {
+						$sale_price = \Vendidero\Germanized\Utilities\NumberUtil::round( $sale_price - abs( $sale_price - $sale_price_incl_taxes ), wc_get_price_decimals() );
+					}
+				}
+			}
+		}
+
+		return apply_filters(
+			'woocommerce_gzd_db_prices_by_display_prices',
+			array(
+				'regular_price' => $price,
+				'sale_price'    => '' !== $sale_price ? $sale_price : $price,
+				'price'         => '' !== $sale_price ? $sale_price : $price,
+			),
+			$prices,
+			$product
+		);
+	}
+
+	public static function tmp_increase_price_decimals() {
+		return absint( WC_ROUNDING_PRECISION );
+	}
+
+	public static function tmp_manipulate_tax_calculation( $taxes, $price, $rates, $price_includes_tax ) {
+		if ( true === $price_includes_tax ) {
+			$taxes = WC_Tax::calc_exclusive_tax( $price, $rates );
+		} else {
+			$taxes = WC_Tax::calc_inclusive_tax( $price, $rates );
+		}
+
+		return $taxes;
 	}
 
 	/**

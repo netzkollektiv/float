@@ -53,6 +53,7 @@
     > [data-type="storeabill/item-table-column"] .block-core-columns {
       display: flex;
       flex-direction: column;
+      transform: none !important;
 
       // This flex rule fixes an issue in IE11.
       flex: 1 1 auto;

@@ -32,7 +32,7 @@ class WC_GZD_Compatibility_WPML extends WC_GZD_Compatibility {
 	}
 
 	public static function is_activated() {
-		return parent::is_activated() && \Vendidero\Germanized\PluginsHelper::is_plugin_active( 'woocommerce-multilingual' );
+		return parent::is_activated() && \Vendidero\Germanized\PluginsHelper::is_plugin_active( 'woocommerce-multilingual/wpml-woocommerce.php' );
 	}
 
 	public function load() {
@@ -447,7 +447,7 @@ class WC_GZD_Compatibility_WPML extends WC_GZD_Compatibility {
 	}
 
 	public function register_email_options( $options ) {
-		$email_options = $this->get_email_options();
+		$email_options = array_values( $this->get_email_options() );
 
 		return array_merge( $options, $email_options );
 	}

@@ -3,18 +3,18 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
@@ -22,36 +22,21 @@ namespace BorlabsCookie;
 
 class Autoloader
 {
-
     /**
-     * prefixes
+     * prefixes.
      *
      * (default value: [])
      *
      * @var mixed
-     * @access protected
      */
     protected $prefixes = [];
 
     /**
-     * register function.
-     *
-     * @access public
-     * @return void
-     */
-    public function register()
-    {
-        spl_autoload_register([$this, 'loadClass']);
-    }
-
-    /**
      * addNamespace function.
      *
-     * @access public
      * @param mixed $prefix
      * @param mixed $baseDir
-     * @param bool $prepend (default: false)
-     * @return void
+     * @param bool  $prepend (default: false)
      */
     public function addNamespace($prefix, $baseDir, $prepend = false)
     {
@@ -73,9 +58,7 @@ class Autoloader
     /**
      * loadClass function.
      *
-     * @access public
      * @param mixed $class
-     * @return void
      */
     public function loadClass($class)
     {
@@ -99,10 +82,8 @@ class Autoloader
     /**
      * loadFile function.
      *
-     * @access public
      * @param mixed $prefix
      * @param mixed $relativeClass
-     * @return void
      */
     public function loadFile($prefix, $relativeClass)
     {
@@ -124,16 +105,23 @@ class Autoloader
     }
 
     /**
+     * register function.
+     */
+    public function register()
+    {
+        spl_autoload_register([$this, 'loadClass']);
+    }
+
+    /**
      * requireFile function.
      *
-     * @access public
      * @param mixed $file
-     * @return void
      */
     public function requireFile($file)
     {
         if (file_exists($file)) {
             require $file;
+
             return true;
         }
 

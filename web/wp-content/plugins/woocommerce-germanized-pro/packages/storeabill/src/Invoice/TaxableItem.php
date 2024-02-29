@@ -432,6 +432,17 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 				$tax_shares = $this->get_tax_shares();
 
 				foreach ( $tax_shares as $tax_rate_key => $share ) {
+					/**
+					 * Make sure that the shipping/fee item includes the actual
+					 * tax rate referenced by the tax shares.
+					 */
+					if ( ! isset( $rates[ $tax_rate_key ] ) ) {
+						if ( $tax_rate = $document->get_tax_rate( $tax_rate_key ) ) {
+							$this->add_tax_rate( $tax_rate );
+							$rates[ $tax_rate_key ] = $tax_rate;
+						}
+					}
+
 					if ( isset( $rates[ $tax_rate_key ] ) ) {
 						$total_amount    = $this->get_line_total_taxable() * (float) $share;
 						$subtotal_amount = $this->get_line_subtotal() * (float) $share;

@@ -22,6 +22,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 function sab_get_journal( $journal_data ) {
 	if ( ! is_numeric( $journal_data ) ) {
 		$journal_id = sab_load_data_store( 'journal' )->get_id( $journal_data );
+	} else {
+		$journal_id = $journal_data;
 	}
 
 	/**

@@ -50,8 +50,9 @@ class CsvExporter extends \Vendidero\StoreaBill\Document\CsvExporter {
 
 	protected function get_additional_default_column_names() {
 		return array(
-			'tax_totals' => _x( 'Tax totals', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'net_totals' => _x( 'Net totals', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'tax_totals'   => _x( 'Tax totals', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'net_totals'   => _x( 'Net totals', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'gross_totals' => _x( 'Gross totals', 'storeabill-core', 'woocommerce-germanized-pro' ),
 		);
 	}
 
@@ -65,7 +66,7 @@ class CsvExporter extends \Vendidero\StoreaBill\Document\CsvExporter {
 	}
 
 	protected function get_columns_with_extra_handling() {
-		return array_merge( parent::get_columns_with_extra_handling(), array( 'net_totals', 'tax_totals', 'shipping_address' ) );
+		return array_merge( parent::get_columns_with_extra_handling(), array( 'net_totals', 'tax_totals', 'gross_totals', 'shipping_address' ) );
 	}
 
 	protected function prepare_extra_data_for_export( $document, &$row ) {
@@ -97,6 +98,22 @@ class CsvExporter extends \Vendidero\StoreaBill\Document\CsvExporter {
 					$this->column_names[ $column_key ] = sprintf( _x( '%1$s Total Net: %2$s', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_item_type_title( 'accounting_' . $item_type ), $tax_total_data['rate']['percent'] );
 
 					$row[ $column_key ] = $this->format_localized_decimal( $net_total );
+				}
+			}
+		}
+
+		if ( $this->is_column_exporting( 'gross_totals' ) ) {
+			foreach ( $document['tax_totals'] as $rate_merge_key => $tax_total_data ) {
+				$column_key                        = 'gross_totals:' . esc_attr( $tax_total_data['rate']['percent'] );
+				$this->column_names[ $column_key ] = sprintf( _x( 'Total Gross: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), $tax_total_data['rate']['percent'] );
+
+				$row[ $column_key ] = $this->format_localized_decimal( $tax_total_data['total_gross'] );
+
+				foreach ( $tax_total_data['gross_totals'] as $item_type => $gross_total ) {
+					$column_key                        = 'gross_totals:' . esc_attr( $item_type ) . ':' . esc_attr( $tax_total_data['rate']['percent'] );
+					$this->column_names[ $column_key ] = sprintf( _x( '%1$s Total Gross: %2$s', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_item_type_title( 'accounting_' . $item_type ), $tax_total_data['rate']['percent'] );
+
+					$row[ $column_key ] = $this->format_localized_decimal( $gross_total );
 				}
 			}
 		}

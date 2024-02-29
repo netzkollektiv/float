@@ -199,6 +199,8 @@ function wpcode_get_auto_insert_locations_with_number() {
 		'after_paragraph',
 		'archive_before_post',
 		'archive_after_post',
+		'after_words',
+		'every_words',
 	);
 }
 
@@ -339,4 +341,17 @@ function wpcode_maybe_load_library() {
 		}
 		wpcode()->library = new WPCode_Library();
 	}
+}
+
+/**
+ * Helper function for testing mode.
+ *
+ * @return bool
+ */
+function wpcode_testing_mode_enabled() {
+	if ( ! class_exists( 'WPCode_Testing_Mode' ) ) {
+		return false;
+	}
+
+	return WPCode_Testing_Mode::get_instance()->testing_mode_enabled();
 }

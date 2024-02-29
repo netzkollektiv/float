@@ -63,7 +63,7 @@ class WC_GZDP_Admin {
 		add_action( 'admin_init', array( $this, 'check_import_legacy_templates' ) );
 		add_action( 'admin_init', array( $this, 'check_create_food_terms' ) );
 
-		$this->wizward = require WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/class-wc-gzdp-admin-setup-wizard.php';
+		$this->wizard = require WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/class-wc-gzdp-admin-setup-wizard.php';
 	}
 
 	public function get_order_screen_id() {

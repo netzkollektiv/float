@@ -49,6 +49,7 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 				add_action( 'admin_menu', array( $this, 'admin_menus' ), 20 );
 				add_action( 'admin_init', array( $this, 'initialize' ), 10 );
 				add_action( 'admin_init', array( $this, 'setup_wizard' ), 20 );
+
 				// Load after base has registered scripts
 				add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ), 20 );
 				add_action( 'admin_post_wc_gzdp_setup', array( $this, 'save' ) );
@@ -475,10 +476,9 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 				$success = false;
 
 				add_filter( 'vendidero_updateable_products', array( $gzdp, 'register_updates' ) );
-				VD()->load();
 
 				if ( $plugin = $gzdp->get_vd_product() ) {
-					if ( VD()->api->register( $plugin, $license_key ) ) {
+					if ( \Vendidero\VendideroHelper\Package::get_api()->register( $plugin, $license_key ) ) {
 						$success = true;
 					}
 				}

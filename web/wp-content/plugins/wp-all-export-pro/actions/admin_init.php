@@ -14,13 +14,29 @@ function pmxe_admin_init()
     foreach ($custom_types as $slug => $type) {
 
         if ($slug) {
-            add_action('publish_' . $slug, function ($post_id) {
+			// The 'wp_insert_post-type' hook fires after all metadata is saved.
+            add_action('wp_insert_' . $slug, function ($post_id) {
 
                 if (wp_is_post_revision($post_id)) {
                     return;
                 }
 
+	            // If it's not published, don't proceed
+	            if (get_post_status($post_id) != 'publish') {
+		            return;
+	            }
+
                 $post = get_post($post_id);
+
+	            // Calculate difference between post date and modified date
+	            $post_date = strtotime($post->post_date_gmt);
+	            $modified_date = strtotime($post->post_modified_gmt);
+	            $date_diff = abs($post_date - $modified_date);
+
+	            // If the difference is 5 seconds or less, we can consider it as a newly published post.
+	            if ($date_diff > 5) {
+					return;
+	            }
 
                 if ($post->post_type === 'shop_order' || ($post->post_type === 'property' && class_exists('Easy_Real_Estate'))) {
                     return;

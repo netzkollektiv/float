@@ -28,65 +28,6 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 		delete_transient( $transient_name );
 	}
 
-	public function get_domestic_products( $shipment = false ) {
-		return array(
-			'CL'   => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
-			'E830' => _x( 'DPD 8:30', 'dpd', 'woocommerce-germanized-pro' ),
-			'E10'  => _x( 'DPD 10:00', 'dpd', 'woocommerce-germanized-pro' ),
-			'E12'  => _x( 'DPD 12:00', 'dpd', 'woocommerce-germanized-pro' ),
-			'E18'  => _x( 'DPD 18:00', 'dpd', 'woocommerce-germanized-pro' ),
-			'IE2'  => _x( 'DPD Express', 'dpd', 'woocommerce-germanized-pro' ),
-			'MAX'  => _x( 'DPD MAX', 'dpd', 'woocommerce-germanized-pro' ),
-			'PL'   => _x( 'DPD PARCELLetter', 'dpd', 'woocommerce-germanized-pro' ),
-			'PM4'  => _x( 'DPD Priority', 'dpd', 'woocommerce-germanized-pro' ),
-		);
-	}
-
-	/**
-	 * @param false|Shipment $shipment
-	 *
-	 * @return array
-	 */
-	public function get_international_products( $shipment = false ) {
-		$products = array(
-			'IE2' => _x( 'DPD Express', 'dpd', 'woocommerce-germanized-pro' ),
-			'E18' => _x( 'DPD 18:00', 'dpd', 'woocommerce-germanized-pro' ),
-			'CL'  => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
-		);
-
-		if ( $shipment ) {
-			if ( ! in_array( $shipment->get_country(), array( 'LI', 'CH' ), true ) ) {
-				unset( $products['E18'] );
-			}
-
-			if ( ! in_array( $shipment->get_country(), array( 'CH', 'GB', 'NO' ), true ) ) {
-				unset( $products['CL'] );
-			}
-		}
-
-		return $products;
-	}
-
-	public function get_eu_products( $shipment = false ) {
-		$products = array(
-			'CL'  => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
-			'IE2' => _x( 'DPD Express', 'dpd', 'woocommerce-germanized-pro' ),
-			'E10' => _x( 'DPD 10:00', 'dpd', 'woocommerce-germanized-pro' ),
-			'E12' => _x( 'DPD 12:00', 'dpd', 'woocommerce-germanized-pro' ),
-			'E18' => _x( 'DPD 18:00', 'dpd', 'woocommerce-germanized-pro' ),
-		);
-
-		if ( $shipment ) {
-			if ( ! in_array( $shipment->get_country(), array( 'BE', 'NL', 'LU' ), true ) ) {
-				unset( $products['E10'] );
-				unset( $products['E12'] );
-				unset( $products['E18'] );
-			}
-		}
-
-		return $products;
-	}
-
 	/**
 	 * @return bool|\WP_Error|Authentication
 	 * @throws \SoapFault
@@ -297,16 +238,16 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 
 			$customs_data = $label->get_customs_data();
 
+			/**
+			 * Additional international guarantee
+			 */
+			if ( $label->has_service( 'international_guarantee' ) ) {
+				$product_and_service_data['guarantee'] = true;
+			}
+
 			if ( $shipment->is_shipping_international() || ( $shipment->is_shipping_inner_eu() && 'IE2' === $label->get_product_id() ) ) {
 				$invoice_lines = array();
 				$item_count    = 0;
-
-				/**
-				 * Additional international guarantee
-				 */
-				if ( in_array( $label->get_product_id(), array( 'CL', 'E18' ), true ) && $label->has_service( 'international_guarantee' ) ) {
-					$product_and_service_data['guarantee'] = true;
-				}
 
 				foreach ( $customs_data['items'] as $key => $item ) {
 					$item_count++;
@@ -326,8 +267,9 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 				/**
 				 * Make sure phone, email is available for international shipments (e.g. customs)
 				 */
-				$recipient['email'] = $shipment->get_email();
-				$recipient['phone'] = $shipment->get_phone();
+				$recipient['email']   = $shipment->get_email();
+				$recipient['phone']   = $shipment->get_phone();
+				$recipient['contact'] = empty( $recipient['contact'] ) ? $shipment->get_formatted_full_name() : $recipient['contact'];
 
 				$product_and_service_data['international'] = array(
 					// True in case is document (letter) and not cardboard
@@ -381,8 +323,8 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 
 			$content_description = $customs_data['export_type_description'];
 
-			if ( $label->has_service( 'higher_insurance' ) && $label->get_meta( 'higher_insurance_description' ) ) {
-				$content_description = $label->get_meta( 'higher_insurance_description' );
+			if ( $label->has_service( 'higher_insurance' ) && $label->get_service_prop( 'higher_insurance', 'description' ) ) {
+				$content_description = $label->get_service_prop( 'higher_insurance', 'description' );
 			}
 
 			$parcel_data = array(
@@ -397,7 +339,7 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 			}
 
 			if ( $label->has_service( 'higher_insurance' ) ) {
-				$amount = $label->get_meta( 'higher_insurance_amount' ) ? wc_format_decimal( $label->get_meta( 'higher_insurance_amount' ) ) : '';
+				$amount = $label->get_service_prop( 'higher_insurance', 'amount' ) ? wc_format_decimal( $label->get_service_prop( 'higher_insurance', 'amount' ) ) : '';
 
 				if ( empty( $amount ) ) {
 					$amount = $shipment->get_total();

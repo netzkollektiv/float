@@ -43,7 +43,7 @@ class CacheHelper {
 	/**
 	 * Prevent caching on certain pages
 	 */
-	public static function prevent_caching() {
+	public static function prevent_caching( $type = '' ) {
 		if ( ! is_blog_installed() ) {
 			return;
 		}
@@ -51,16 +51,18 @@ class CacheHelper {
 		/**
 		 * Clear/disable object cache if available
 		 */
-		wp_using_ext_object_cache( false );
-		wp_cache_flush();
-		wp_cache_init();
+		if ( apply_filters( 'storeabill_force_object_cache_flush', true, $type ) ) {
+			wp_using_ext_object_cache( false );
+			wp_cache_flush();
+			wp_cache_init();
 
-		if ( function_exists( 'w3tc_objectcache_flush' ) ) {
-			w3tc_objectcache_flush();
-		}
+			if ( function_exists( 'w3tc_objectcache_flush' ) ) {
+				w3tc_objectcache_flush();
+			}
 
-		if ( function_exists( 'w3tc_dbcache_flush' ) ) {
-			w3tc_dbcache_flush();
+			if ( function_exists( 'w3tc_dbcache_flush' ) ) {
+				w3tc_dbcache_flush();
+			}
 		}
 
 		self::set_nocache_constants();

@@ -474,7 +474,11 @@ class Mailer {
 			return $errors;
 		}
 
+		do_action( 'storeabill_before_send_document_email', $document );
+
 		$result = $mail->trigger( $document->get_id(), $document );
+
+		do_action( 'storeabill_after_send_document_email', $document, $to_admin );
 
 		if ( false === $result ) {
 			$errors->add( 'email-error', sprintf( _x( 'Email could not be sent. Has the email %s been disabled?', 'storeabill-core', 'woocommerce-germanized-pro' ), $mail->id ) );

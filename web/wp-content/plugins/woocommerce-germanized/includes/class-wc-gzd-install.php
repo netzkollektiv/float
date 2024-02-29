@@ -47,6 +47,8 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 			'3.10.0' => 'updates/woocommerce-gzd-update-3.10.0.php',
 			'3.10.4' => 'updates/woocommerce-gzd-update-3.10.4.php',
 			'3.12.2' => 'updates/woocommerce-gzd-update-3.12.2.php',
+			'3.13.2' => 'updates/woocommerce-gzd-update-3.13.2.php',
+			'3.15.5' => 'updates/woocommerce-gzd-update-3.15.5.php',
 		);
 
 		/**
@@ -165,6 +167,9 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 				define( 'WC_GZD_INSTALLING', true );
 			}
 
+			$current_version    = get_option( 'woocommerce_gzd_version', null );
+			$current_db_version = get_option( 'woocommerce_gzd_db_version', null );
+
 			// Load Translation for default options
 			$locale = apply_filters( 'plugin_locale', get_locale(), 'woocommerce-germanized' );
 			$mofile = WC_germanized()->plugin_path() . '/i18n/languages/woocommerce-germanized.mo';
@@ -199,8 +204,15 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 
 			self::install_packages();
 
-			self::create_units();
-			self::create_labels();
+			/**
+			 * Do only import default units + label on first install
+			 */
+			if ( is_null( $current_version ) ) {
+				self::create_units();
+				self::create_labels();
+				self::adjust_checkout_block();
+			}
+
 			self::create_options();
 
 			// Delete plugin header data for dependency check
@@ -229,10 +241,6 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 				$note->reset();
 			}
 
-			// Queue upgrades
-			$current_version    = get_option( 'woocommerce_gzd_version', null );
-			$current_db_version = get_option( 'woocommerce_gzd_db_version', null );
-
 			// Queue messages and notices
 			if ( ! is_null( $current_version ) ) {
 				$major_version     = \Vendidero\Germanized\PluginsHelper::get_major_version( $current_version );
@@ -240,10 +248,6 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 
 				// Only on major update
 				if ( version_compare( $new_major_version, $major_version, '>' ) ) {
-					if ( $note = $notices->get_note( 'review' ) ) {
-						$note->reset();
-					}
-
 					if ( $note = $notices->get_note( 'pro' ) ) {
 						$note->reset();
 					}
@@ -251,6 +255,10 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 					if ( $note = $notices->get_note( 'theme_supported' ) ) {
 						$note->reset();
 					}
+				}
+
+				if ( version_compare( $current_version, '3.14.0', '<' ) && ( wc_gzd_current_theme_is_fse_theme() || wc_gzd_has_checkout_block() ) ) {
+					$notices->activate_blocks_note();
 				}
 			}
 
@@ -263,12 +271,16 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 			 *
 			 */
 			if ( apply_filters( 'woocommerce_gzd_needs_db_update', self::needs_db_update() ) ) {
-				if ( $note = $notices->get_note( 'update' ) ) {
-					$note->reset();
-				}
+				if ( apply_filters( 'woocommerce_gzd_enable_auto_update_db', false ) ) {
+					self::update();
+				} else {
+					if ( $note = $notices->get_note( 'update' ) ) {
+						$note->reset();
+					}
 
-				// Update
-				update_option( '_wc_gzd_needs_update', 1 );
+					// Update
+					update_option( '_wc_gzd_needs_update', 1 );
+				}
 			} else {
 				self::update_db_version();
 			}
@@ -321,6 +333,18 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 
 			foreach ( $notices->get_notes() as $note ) {
 				$note->delete_note();
+			}
+
+			wp_clear_scheduled_hook( 'woocommerce_gzd_customer_cleanup' );
+
+			if ( function_exists( 'as_unschedule_all_actions' ) ) {
+				$hooks = array(
+					'woocommerce_gzd_shipments_daily_cleanup',
+				);
+
+				foreach ( $hooks as $hook ) {
+					as_unschedule_all_actions( $hook );
+				}
 			}
 		}
 
@@ -458,6 +482,30 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 			if ( ! empty( $labels ) ) {
 				foreach ( $labels as $slug => $unit ) {
 					wp_insert_term( $unit, 'product_price_label', array( 'slug' => $slug ) );
+				}
+			}
+		}
+
+		/**
+		 * Replace core term checkbox with Germanized checkboxes block.
+		 *
+		 * @return void
+		 */
+		public static function adjust_checkout_block() {
+			$page_id = wc_get_page_id( 'checkout' );
+
+			if ( $checkout_post = get_post( $page_id ) ) {
+				if ( function_exists( 'has_block' ) && has_block( 'woocommerce/checkout', $checkout_post ) ) {
+					$post_content = $checkout_post->post_content;
+					$post_content = str_replace( 'woocommerce/checkout-terms-block', 'woocommerce-germanized/checkout-checkboxes', $post_content );
+					$post_content = str_replace( 'wp-block-woocommerce-checkout-terms-block', 'wp-block-woocommerce-germanized-checkout-checkboxes', $post_content );
+
+					wp_update_post(
+						array(
+							'ID'           => $page_id,
+							'post_content' => $post_content,
+						)
+					);
 				}
 			}
 		}
@@ -611,7 +659,21 @@ if ( ! class_exists( 'WC_GZD_Install' ) ) :
 			include_once WC_GERMANIZED_ABSPATH . 'includes/admin/class-wc-gzd-admin-legal-checkboxes.php';
 			include_once WC_GERMANIZED_ABSPATH . 'includes/admin/settings/class-wc-gzd-settings-germanized.php';
 
-			$settings = new WC_GZD_Settings_Germanized();
+			$settings = false;
+
+			if ( is_admin() ) {
+				include_once WC()->plugin_path() . '/includes/admin/class-wc-admin-settings.php';
+
+				foreach ( WC_Admin_Settings::get_settings_pages() as $page ) {
+					if ( is_a( $page, 'WC_GZD_Settings_Germanized' ) ) {
+						$settings = $page;
+					}
+				}
+			}
+
+			if ( ! $settings ) {
+				$settings = new WC_GZD_Settings_Germanized();
+			}
 
 			/**
 			 * Filter to adjust default options to be created on install.

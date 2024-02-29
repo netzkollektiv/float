@@ -28,6 +28,10 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 
 	protected $must_exist_meta_keys = array();
 
+	protected $all_packaging = null;
+
+	protected $packaging_lookup = null;
+
 	protected $core_props = array(
 		'type',
 		'date_created',
@@ -37,8 +41,23 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 		'length',
 		'width',
 		'height',
+		'inner_length',
+		'inner_width',
+		'inner_height',
 		'description',
 		'order',
+	);
+
+	/**
+	 * Data stored in meta keys, but not considered "meta" for a packaging.
+	 *
+	 * @since 3.0.0
+	 * @var array
+	 */
+	protected $internal_meta_keys = array(
+		'_available_shipping_provider',
+		'_available_shipping_classes',
+		'_configuration_sets',
 	);
 
 	/*
@@ -65,6 +84,9 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 			'packaging_length'             => $packaging->get_length(),
 			'packaging_width'              => $packaging->get_width(),
 			'packaging_height'             => $packaging->get_height(),
+			'packaging_inner_length'       => $packaging->get_inner_length(),
+			'packaging_inner_width'        => $packaging->get_inner_width(),
+			'packaging_inner_height'       => $packaging->get_inner_height(),
 			'packaging_order'              => $packaging->get_order(),
 			'packaging_date_created'       => $packaging->get_date_created( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $packaging->get_date_created( 'edit' )->getOffsetTimestamp() ) : null,
 			'packaging_date_created_gmt'   => $packaging->get_date_created( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $packaging->get_date_created( 'edit' )->getTimestamp() ) : null,
@@ -216,6 +238,9 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 					'length'             => $data->packaging_length,
 					'width'              => $data->packaging_width,
 					'height'             => $data->packaging_height,
+					'inner_length'       => $data->packaging_inner_length,
+					'inner_width'        => $data->packaging_inner_width,
+					'inner_height'       => $data->packaging_inner_height,
 					'order'              => $data->packaging_order,
 					'date_created'       => Package::is_valid_mysql_date( $data->packaging_date_created_gmt ) ? wc_string_to_timestamp( $data->packaging_date_created_gmt ) : null,
 				)
@@ -249,6 +274,9 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 	protected function clear_caches( &$packaging ) {
 		wp_cache_delete( $packaging->get_id(), $this->meta_type . '_meta' );
 		wp_cache_delete( 'packaging-list', 'packaging' );
+
+		$this->all_packaging    = null;
+		$this->packaging_lookup = null;
 	}
 
 	/*
@@ -441,32 +469,18 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 		return apply_filters( 'woocommerce_gzd_packaging_data_store_get_shipments_query', $wp_query_args, $query_vars, $this );
 	}
 
-	public function get_packaging_list( $args = array() ) {
+	/**
+	 * @return \Vendidero\Germanized\Shipments\Packaging[]
+	 */
+	protected function get_all_packaging() {
 		global $wpdb;
 
-		$all_types = array_keys( wc_gzd_get_packaging_types() );
+		if ( is_null( $this->all_packaging ) ) {
+			$query = "
+				SELECT packaging_id FROM {$wpdb->gzd_packaging} 
+				ORDER BY packaging_order ASC
+			";
 
-		$args = wp_parse_args(
-			$args,
-			array(
-				'type' => $all_types,
-			)
-		);
-
-		if ( ! is_array( $args['type'] ) ) {
-			$args['type'] = array( $args['type'] );
-		}
-
-		$types = array_filter( wc_clean( $args['type'] ) );
-		$types = empty( $types ) ? $all_types : $types;
-
-		$query = "
-			SELECT packaging_id FROM {$wpdb->gzd_packaging} 
-			WHERE packaging_type IN ( '" . implode( "','", $types ) . "' )
-			ORDER BY packaging_order ASC
-		";
-
-		if ( $all_types === $types ) {
 			// Get from cache if available.
 			$results = wp_cache_get( 'packaging-list', 'packaging' );
 
@@ -475,15 +489,59 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 
 				wp_cache_set( 'packaging-list', $results, 'packaging' );
 			}
-		} else {
-			$results = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+			$all_packaging    = array();
+			$packaging_lookup = array();
+
+			foreach ( $results as $key => $packaging ) {
+				if ( $the_packaging = wc_gzd_get_packaging( $packaging ) ) {
+					$all_packaging[ $key ]                        = $the_packaging;
+					$packaging_lookup[ $the_packaging->get_id() ] = $key;
+				}
+			}
+
+			$this->all_packaging    = $all_packaging;
+			$this->packaging_lookup = $packaging_lookup;
 		}
 
-		foreach ( $results as $key => $packaging ) {
-			$results[ $key ] = wc_gzd_get_packaging( $packaging );
+		return $this->all_packaging;
+	}
+
+	/**
+	 * @param $args
+	 *
+	 * @return \Vendidero\Germanized\Shipments\Packaging[]
+	 */
+	public function get_packaging_list( $args = array() ) {
+		$the_list  = $this->get_all_packaging();
+		$all_types = array_keys( wc_gzd_get_packaging_types() );
+		$args      = wp_parse_args(
+			$args,
+			array(
+				'type'              => $all_types,
+				'shipping_provider' => '',
+			)
+		);
+
+		if ( ! is_array( $args['type'] ) ) {
+			$args['type'] = array_filter( array( $args['type'] ) );
 		}
 
-		return $results;
+		$types = array_filter( wc_clean( $args['type'] ) );
+		$types = empty( $types ) ? $all_types : $types;
+
+		foreach ( $the_list as $key => $packaging ) {
+			if ( ! in_array( $packaging->get_type(), $types, true ) ) {
+				unset( $the_list[ $key ] );
+				continue;
+			}
+
+			if ( ! empty( $args['shipping_provider'] ) && ! $packaging->supports_shipping_provider( $args['shipping_provider'] ) ) {
+				unset( $the_list[ $key ] );
+			}
+		}
+
+		return array_values( $the_list );
 	}
 
 	/**
@@ -501,10 +559,19 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 			return false;
 		}
 
-		$weight           = (float) wc_format_decimal( empty( $shipment->get_content_weight() ) ? 0 : wc_get_weight( $shipment->get_content_weight(), wc_gzd_get_packaging_weight_unit(), $shipment->get_weight_unit() ), 1 );
-		$volume           = (float) wc_format_decimal( empty( $shipment->get_content_volume() ) ? 0 : wc_gzd_get_volume_dimension( $shipment->get_content_volume(), wc_gzd_get_packaging_dimension_unit(), $shipment->get_dimension_unit() ), 1 );
-		$fits             = true;
-		$packaging_volume = (float) $packaging->get_length() * (float) $packaging->get_width() * (float) $packaging->get_height();
+		if ( ! $packaging->supports_shipping_provider( $shipment->get_shipping_provider() ) ) {
+			return false;
+		}
+
+		$weight = (float) wc_format_decimal( empty( $shipment->get_content_weight() ) ? 0 : wc_get_weight( $shipment->get_content_weight(), wc_gzd_get_packaging_weight_unit(), $shipment->get_weight_unit() ), 3 );
+		$volume = (float) wc_format_decimal( empty( $shipment->get_content_volume() ) ? 0 : wc_gzd_get_volume_dimension( $shipment->get_content_volume(), wc_gzd_get_packaging_dimension_unit(), $shipment->get_dimension_unit() ), 1 );
+		$fits   = true;
+
+		if ( $packaging->has_inner_dimensions() ) {
+			$packaging_volume = (float) $packaging->get_inner_length() * (float) $packaging->get_inner_width() * (float) $packaging->get_inner_height();
+		} else {
+			$packaging_volume = (float) $packaging->get_length() * (float) $packaging->get_width() * (float) $packaging->get_height();
+		}
 
 		/**
 		 * The packaging does not fit in case:
@@ -527,7 +594,7 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 	 */
 	public function find_available_packaging_for_shipment( $shipment ) {
 		$packaging_available = array();
-		$items_to_pack       = $shipment->get_items_to_pack();
+		$items               = $shipment->get_items_to_pack();
 		$results             = false;
 
 		// Get from cache if available.
@@ -535,12 +602,11 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 			$results = wp_cache_get( 'available-packaging-' . $shipment->get_id(), 'shipments' );
 		}
 
-		if ( false === $results && count( $items_to_pack ) > 0 ) {
+		if ( false === $results && count( $items ) > 0 ) {
 			$available_packaging_ids = array();
 
 			if ( Package::is_packing_supported() ) {
-				$packaging_list = wc_gzd_get_packaging_list();
-				$items          = \DVDoug\BoxPacker\ItemList::fromArray( $items_to_pack );
+				$packaging_list = $this->get_packaging_list( array( 'shipping_provider' => $shipment->get_shipping_provider() ) );
 
 				foreach ( $packaging_list as $packaging ) {
 					/**
@@ -550,13 +616,13 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 						continue;
 					}
 
-					$box      = new PackagingBox( $packaging );
-					$org_size = count( $items_to_pack );
+					$box        = new PackagingBox( $packaging );
+					$item_count = count( $items );
 
 					$packer = new VolumePacker( $box, $items );
 					$packed = $packer->pack();
 
-					if ( count( $packed->getItems() ) === $org_size ) {
+					if ( count( $packed->getItems() ) === $item_count ) {
 						$packaging_available[]     = $packaging;
 						$available_packaging_ids[] = $packaging->get_id();
 					}
@@ -564,7 +630,7 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 			} else {
 				global $wpdb;
 
-				$weight = wc_format_decimal( empty( $shipment->get_weight() ) ? 0 : wc_get_weight( $shipment->get_weight(), wc_gzd_get_packaging_weight_unit(), $shipment->get_weight_unit() ), 1 );
+				$weight = wc_format_decimal( empty( $shipment->get_weight() ) ? 0 : wc_get_weight( $shipment->get_weight(), wc_gzd_get_packaging_weight_unit(), $shipment->get_weight_unit() ), 3 );
 				$length = wc_format_decimal( empty( $shipment->get_length() ) ? 0 : wc_get_dimension( $shipment->get_length(), wc_gzd_get_packaging_dimension_unit(), $shipment->get_dimension_unit() ), 1 );
 				$width  = wc_format_decimal( empty( $shipment->get_width() ) ? 0 : wc_get_dimension( $shipment->get_width(), wc_gzd_get_packaging_dimension_unit(), $shipment->get_dimension_unit() ), 1 );
 				$height = wc_format_decimal( empty( $shipment->get_height() ) ? 0 : wc_get_dimension( $shipment->get_height(), wc_gzd_get_packaging_dimension_unit(), $shipment->get_dimension_unit() ), 1 );
@@ -573,34 +639,57 @@ class Packaging extends WC_Data_Store_WP implements WC_Object_Data_Store_Interfa
 				$threshold = apply_filters( 'woocommerce_gzd_shipment_packaging_match_threshold', 0, $shipment );
 
 				$query_sql = "SELECT 
-					packaging_id, 
-					(packaging_length - %f) AS length_diff,
-					(packaging_width - %f) AS width_diff,
-					(packaging_height - %f) AS height_diff,
-					((packaging_length - %f) + (packaging_width - %f) + (packaging_height - %f)) AS total_diff   
+					packaging_id,
+					CASE
+                  		WHEN packaging_inner_length > 0
+                 			THEN (packaging_inner_length - %f)
+                  		ELSE (packaging_length - %f)
+                    END as length_diff,
+    				CASE
+                  		WHEN packaging_inner_width > 0
+                 			THEN (packaging_inner_width - %f)
+                  		ELSE (packaging_width - %f)
+                    END as width_diff,
+    				CASE
+                  		WHEN packaging_inner_height > 0
+                 			THEN (packaging_inner_height - %f)
+                  		ELSE (packaging_height - %f)
+                    END as height_diff
 					FROM {$wpdb->gzd_packaging} 
 					WHERE ( packaging_max_content_weight = 0 OR packaging_max_content_weight >= %f ) AND packaging_type IN ( '" . implode( "','", $types ) . "' )
 					HAVING length_diff >= %f AND width_diff >= %f AND height_diff >= %f
-					ORDER BY total_diff ASC, packaging_weight ASC, packaging_order ASC
+					ORDER BY (length_diff+width_diff+height_diff) ASC, packaging_weight ASC, packaging_order ASC
 				";
 
-				$query   = $wpdb->prepare( $query_sql, $length, $width, $height, $length, $width, $height, $weight, $threshold, $threshold, $threshold ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$query   = $wpdb->prepare( $query_sql, $length, $length, $width, $width, $height, $height, $weight, $threshold, $threshold, $threshold ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$results = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 				if ( $results ) {
 					foreach ( $results as $result ) {
-						$available_packaging_ids[] = $result->packaging_id;
-						$packaging_available[]     = wc_gzd_get_packaging( $result->packaging_id );
+						$packaging = wc_gzd_get_packaging( $result->packaging_id );
+
+						if ( ! $packaging->supports_shipping_provider( $shipment->get_shipping_provider() ) ) {
+							continue;
+						}
+
+						$available_packaging_ids[] = $packaging->get_id();
+						$packaging_available[]     = $packaging;
 					}
 				}
 			}
 
 			wp_cache_set( 'available-packaging-' . $shipment->get_id(), $available_packaging_ids, 'shipments' );
-		} elseif ( count( $items_to_pack ) <= 0 ) {
-			$packaging_available = wc_gzd_get_packaging_list();
+		} elseif ( count( $items ) <= 0 ) {
+			$packaging_available = $this->get_packaging_list();
 		} else {
 			foreach ( (array) $results as $packaging_id ) {
-				$packaging_available[] = wc_gzd_get_packaging( $packaging_id );
+				$packaging = wc_gzd_get_packaging( $packaging_id );
+
+				if ( ! $packaging->supports_shipping_provider( $shipment->get_shipping_provider() ) ) {
+					continue;
+				}
+
+				$packaging_available[] = $packaging;
 			}
 		}
 

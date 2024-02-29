@@ -20,6 +20,7 @@ class Simple extends Label {
 	protected $extra_data = array(
 		'gls_track_id'  => '',
 		'shipping_date' => '',
+		'incoterms'     => '',
 	);
 
 	public function get_type() {
@@ -44,6 +45,14 @@ class Simple extends Label {
 
 	public function set_shipping_date( $date ) {
 		$this->set_prop( 'shipping_date', $date );
+	}
+
+	public function get_incoterms( $context = 'view' ) {
+		return $this->get_prop( 'incoterms', $context );
+	}
+
+	public function set_incoterms( $value ) {
+		$this->set_prop( 'incoterms', $value );
 	}
 
 	/**

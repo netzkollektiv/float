@@ -99,7 +99,6 @@ class ItemTotalRow extends DynamicBlock {
 			$content = '';
 
 			foreach ( $document_totals as $total ) {
-
 				if ( false !== $attributes['heading'] ) {
 					$total->set_label( $attributes['heading'] );
 				}

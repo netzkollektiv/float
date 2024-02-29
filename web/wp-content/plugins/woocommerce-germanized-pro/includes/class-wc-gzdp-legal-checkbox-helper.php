@@ -16,7 +16,7 @@ class WC_GZDP_Legal_Checkbox_Helper {
 	}
 
 	public function __construct() {
-		add_action( 'woocommerce_checkout_create_order', array( $this, 'save_checkout_checkboxes' ), 10, 2 );
+		add_action( 'woocommerce_gzd_checkout_store_checkbox_data', array( $this, 'save_checkout_checkboxes' ), 10, 2 );
 		add_action( 'woocommerce_created_customer', array( $this, 'save_register_checkboxes' ), 10, 3 );
 		add_action( 'woocommerce_before_pay_action', array( $this, 'save_pay_for_order_checkboxes' ), 30, 1 );
 		add_action( 'wp_insert_comment', array( $this, 'save_reviews_checkboxes' ), 10, 1 );
@@ -33,7 +33,7 @@ class WC_GZDP_Legal_Checkbox_Helper {
 		add_filter( 'woocommerce_gzd_legal_checkbox_fields_before_titles', array( $this, 'additional_fields' ), 10, 2 );
 
 		/** Display */
-		add_action( 'woocommerce_admin_order_data_after_shipping_address', array( $this, 'display_checkout_checkboxes' ), 10, 1 );
+		add_filter( 'woocommerce_gzd_loggable_checkboxes', array( $this, 'register_loggable_checkboxes' ), 10, 2 );
 		add_action( 'show_user_profile', array( $this, 'display_register_checkboxes' ) );
 		add_action( 'edit_user_profile', array( $this, 'display_register_checkboxes' ) );
 		add_action( 'add_meta_boxes', array( $this, 'add_review_meta_box' ), 30 );
@@ -60,9 +60,8 @@ class WC_GZDP_Legal_Checkbox_Helper {
 	}
 
 	public function add_review_meta_box() {
-		$screen    = get_current_screen();
-		$screen_id = $screen ? $screen->id : '';
-
+		$screen     = get_current_screen();
+		$screen_id  = $screen ? $screen->id : '';
 		$checkboxes = $this->get_checkboxes( 'reviews' );
 
 		if ( ! empty( $checkboxes ) ) {
@@ -73,28 +72,53 @@ class WC_GZDP_Legal_Checkbox_Helper {
 		}
 	}
 
-	public function display_checkout_checkboxes( $order ) {
-		$checkboxes      = $this->get_checkboxes( 'checkout' );
-		$checkboxes      = array_merge( $checkboxes, $this->get_checkboxes( 'pay_for_order' ) );
-		$checkbox_object = $order;
-
-		if ( ! empty( $checkboxes ) ) {
-			include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/views/html-admin-table-checkboxes.php';
+	public function register_loggable_checkboxes( $checkboxes, $location ) {
+		if ( 'order' === $location ) {
+			$loggable_checkboxes = array_merge( $this->get_checkboxes( 'checkout' ), $this->get_checkboxes( 'pay_for_order' ) );
+		} else {
+			$loggable_checkboxes = $this->get_checkboxes( $location );
 		}
+
+		foreach ( $loggable_checkboxes as $checkbox ) {
+			if ( ! in_array( $checkbox->get_id(), $checkboxes, true ) ) {
+				$checkboxes[] = $checkbox->get_id();
+			}
+		}
+
+		return $checkboxes;
 	}
 
 	public function display_reviews_checkboxes( $comment ) {
-		$checkboxes      = $this->get_checkboxes( 'reviews' );
-		$checkbox_object = $comment;
+		$this->render_checkboxes( $comment, 'reviews' );
+	}
 
-		if ( ! empty( $checkboxes ) ) {
-			include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/views/html-admin-table-checkboxes.php';
+	protected function render_checkboxes( $p_checkbox_object, $location ) {
+		$manager = WC_GZD_Legal_Checkbox_Manager::instance();
+
+		if ( is_callable( array( $manager, 'render_checkbox_log' ) ) ) {
+			$manager->render_checkbox_log( $p_checkbox_object, $location );
+		} else {
+			$checkboxes      = $this->get_checkboxes( 'register' );
+			$checkbox_object = $p_checkbox_object;
+
+			if ( ! empty( $checkboxes ) ) {
+				include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/views/html-admin-table-checkboxes.php';
+			}
 		}
 	}
 
 	public function display_register_checkboxes( $user ) {
-		$checkboxes      = $this->get_checkboxes( 'register' );
-		$checkbox_object = $user;
+		$manager = WC_GZD_Legal_Checkbox_Manager::instance();
+
+		if ( is_callable( array( $manager, 'get_loggable_checkboxes' ) ) ) {
+			$checkboxes = $manager->get_loggable_checkboxes( 'register' );
+
+			if ( empty( $checkboxes ) ) {
+				return;
+			}
+		} else {
+			$checkboxes = $this->get_checkboxes( 'register' );
+		}
 
 		if ( empty( $checkboxes ) ) {
 			return;
@@ -105,7 +129,7 @@ class WC_GZDP_Legal_Checkbox_Helper {
 				<tr>
 					<th><label for="woocommerce-gzdp-checkboxes"><?php esc_html_e( 'Register Form', 'woocommerce-germanized-pro' ); ?></label></th>
 					<td>
-						<?php include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/views/html-admin-table-checkboxes.php'; ?>
+						<?php $this->render_checkboxes( $user, 'register' ); ?>
 					</td>
 				</tr>
 			</tbody>
@@ -115,18 +139,22 @@ class WC_GZDP_Legal_Checkbox_Helper {
 
 	/**
 	 * @param WC_Order $order
-	 * @param $posted
+	 * @param WC_GZD_Checkout $checkout
 	 */
-	public function save_checkout_checkboxes( $order, $posted ) {
+	public function save_checkout_checkboxes( $order, $checkout ) {
 		$checkboxes = $this->get_checkboxes( 'checkout' );
 
 		foreach ( $checkboxes as $checkbox ) {
 			$checked = false;
 
-			if ( isset( $_POST[ $checkbox->get_html_name() ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				$checked = true;
-			} elseif ( $checkbox->hide_input() ) {
-				$checked = true;
+			if ( is_callable( array( $checkout, 'checkbox_is_checked' ) ) ) {
+				$checked = $checkout->checkbox_is_checked( $checkbox );
+			} else {
+				if ( isset( $_POST[ $checkbox->get_html_name() ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					$checked = true;
+				} elseif ( $checkbox->hide_input() ) {
+					$checked = true;
+				}
 			}
 
 			$order->update_meta_data( "_checkbox_{$checkbox->get_id()}", $checked ? 'yes' : 'no' );

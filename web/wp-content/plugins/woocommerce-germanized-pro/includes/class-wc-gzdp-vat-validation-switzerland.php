@@ -56,9 +56,10 @@ class WC_GZDP_VAT_Validation_Switzerland {
 				if ( true === $rs->ValidateVatNumberResult ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 					$instance->log( sprintf( 'Successfully validated: %s', $args['vatNumber'] ), 'info', 'vat-validation' );
 
-					$this->data  = array();
+					$this->data  = array(
+						'vat_id' => $args['vatNumber'],
+					);
 					$this->valid = true;
-
 				} else {
 					$instance->log( sprintf( 'VAT is invalid: %s', $args['vatNumber'] ), 'info', 'vat-validation' );
 

@@ -4,6 +4,7 @@ namespace Vendidero\StoreaBill\sevDesk\API;
 
 use Vendidero\StoreaBill\API\REST;
 use Vendidero\StoreaBill\API\RESTResponse;
+use Vendidero\StoreaBill\sevDesk\Contact;
 use Vendidero\StoreaBill\sevDesk\Package;
 use Vendidero\StoreaBill\sevDesk\Sync;
 
@@ -53,8 +54,12 @@ class Models extends REST {
 		return 'application/x-www-form-urlencoded';
 	}
 
-	protected function maybe_encode_body( $body_args ) {
-		if ( 'application/x-www-form-urlencoded' === $this->get_content_type() ) {
+	protected function maybe_encode_body( $body_args, $content_type = '' ) {
+		if ( empty( $content_type ) ) {
+			$content_type = $this->get_content_type();
+		}
+
+		if ( 'application/x-www-form-urlencoded' === $content_type ) {
 			return http_build_query( $body_args );
 		}
 
@@ -126,6 +131,26 @@ class Models extends REST {
 		}
 
 		return $categories;
+	}
+
+	public function get_contact_addresses( $id ) {
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'ContactAddress',
+				array(
+					'contact' => array(
+						'id'         => $id,
+						'objectName' => 'Contact',
+					),
+				)
+			)
+		);
+
+		if ( ! is_wp_error( $result ) ) {
+			return $result->get_body();
+		} else {
+			return $result;
+		}
 	}
 
 	public function get_address( $id ) {
@@ -200,7 +225,7 @@ class Models extends REST {
 				'Search/search',
 				array(
 					'searchType' => 'CONTACT',
-					'term'       => $term,
+					'term'       => urlencode( $term ),
 					'embed'      => 'contact,contact.parent,parent,category',
 				)
 			)
@@ -211,6 +236,71 @@ class Models extends REST {
 		} else {
 			return $result;
 		}
+	}
+
+	private function format_contact_str( $str ) {
+		return sanitize_key( $str );
+	}
+
+	/**
+	 * @param Contact $contact
+	 *
+	 * @return \WP_Error|string
+	 */
+	public function find_contact( $contact ) {
+		$result = $this->search_contacts( $contact->get_email() );
+
+		if ( ! is_wp_error( $result ) ) {
+			foreach ( $result['objects'] as $contact_data ) {
+				if ( 'CommunicationWay' === $contact_data['objectName'] ) {
+					$current_contact_data = $contact_data['contact'];
+
+					/**
+					 * Exclude organizations
+					 */
+					if ( empty( $current_contact_data['familyname'] ) ) {
+						continue;
+					}
+
+					$company_name = isset( $current_contact_data['parent'] ) && ! empty( $current_contact_data['parent'] ) ? $current_contact_data['parent']['name'] : '';
+
+					if (
+						strstr( $this->format_contact_str( $current_contact_data['surename'] ), $this->format_contact_str( $contact->get_first_name() ) ) &&
+						strstr( $this->format_contact_str( $current_contact_data['familyname'] ), $this->format_contact_str( $contact->get_last_name() ) ) &&
+						$this->format_contact_str( $contact->get_company() ) === $this->format_contact_str( $company_name )
+					) {
+						return $current_contact_data;
+					}
+				}
+			}
+
+			return new \WP_Error( 500, 'Error matching contact' );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @param Contact $contact
+	 *
+	 * @return \WP_Error|string
+	 */
+	public function find_company( $contact ) {
+		$result = $this->search_contacts( $contact->get_company() );
+
+		if ( ! is_wp_error( $result ) ) {
+			foreach ( $result['objects'] as $contact_data ) {
+				if ( 'Contact' === $contact_data['objectName'] && empty( $contact_data['parent'] ) ) {
+					if ( $this->format_contact_str( $contact->get_company() ) === $this->format_contact_str( $contact_data['name'] ) ) {
+						return $contact_data;
+					}
+				}
+			}
+
+			return new \WP_Error( 500, 'Error matching company' );
+		}
+
+		return $result;
 	}
 
 	public function book_voucher( $voucher_id, $amount, $args = array() ) {
@@ -249,6 +339,33 @@ class Models extends REST {
 		}
 
 		return $this->get_sync_helper()->parse_response( $this->put( 'Voucher/' . $voucher_id . '/bookAmmount', $query_args ) );
+	}
+
+	public function update_transactions( $account, $args = array() ) {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'start_date' => strtotime( 'today midnight' ),
+				'end_date'   => strtotime( 'today 24:00' ),
+			)
+		);
+
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'CheckAccount/' . $account . '/getNewTransactions',
+				array(
+					'fromDate'                    => $args['start_date'],
+					'toDate'                      => $args['end_date'],
+					'preventUpdateBankConnection' => 'false',
+				)
+			)
+		);
+
+		if ( ! is_wp_error( $result ) ) {
+			return $result->get_body();
+		} else {
+			return $result;
+		}
 	}
 
 	public function search_transactions( $args = array() ) {

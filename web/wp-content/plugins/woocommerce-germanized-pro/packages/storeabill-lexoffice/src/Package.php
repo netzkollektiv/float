@@ -14,13 +14,12 @@ class Package {
 	 *
 	 * @var string
 	 */
-	const VERSION = '1.2.6';
+	const VERSION = '2.0.0';
 
 	/**
 	 * Init the package.
 	 */
 	public static function init() {
-
 		if ( ! self::has_dependencies() ) {
 			return;
 		}
@@ -56,7 +55,7 @@ class Package {
 	}
 
 	public static function get_auth_url() {
-		return defined( 'SAB_LEXOFFICE_AUTH_URL' ) ? SAB_LEXOFFICE_AUTH_URL : 'https://app.lexoffice.de/api/oauth2/';
+		return defined( 'SAB_LEXOFFICE_AUTH_URL' ) ? SAB_LEXOFFICE_AUTH_URL : 'https://app.lexoffice.de/oauth2/';
 	}
 
 	public static function get_api_url() {

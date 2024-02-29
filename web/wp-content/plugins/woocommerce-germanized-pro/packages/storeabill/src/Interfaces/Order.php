@@ -21,13 +21,18 @@ interface Order extends SyncableReference {
 
 	public function get_date_paid();
 
-	public function is_reverse_charge();
+	public function is_vat_exempt();
 
 	public function get_vat_id();
 
 	public function get_email();
 
 	public function get_payment_method();
+
+	/**
+	 * @return null|PaymentMethod
+	 */
+	public function get_payment_method_instance();
 
 	public function get_status();
 
@@ -47,7 +52,7 @@ interface Order extends SyncableReference {
 
 	public function get_document( $document_id );
 
-	public function add_document( &$document );
+	public function add_document( $document, $replace = false );
 
 	public function delete_document( $document_id );
 

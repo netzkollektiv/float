@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
+class ComposerStaticInita0802ea6209fc73dea823caf7bf42ec3
 {
     public static $files = array (
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
@@ -20,10 +20,6 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'b' => 
         array (
             'baltpeter\\Internetmarke\\' => 24,
-        ),
-        'W' => 
-        array (
-            'WsdlToPhp\\WsSecurity\\' => 21,
         ),
         'V' => 
         array (
@@ -62,10 +58,6 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'baltpeter\\Internetmarke\\' => 
         array (
             0 => __DIR__ . '/..' . '/baltpeter/internetmarke-php/src/baltpeter/Internetmarke',
-        ),
-        'WsdlToPhp\\WsSecurity\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/wsdltophp/wssecurity/src',
         ),
         'Vendidero\\Germanized\\Shipments\\' => 
         array (
@@ -343,6 +335,33 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Psr\\Log\\Test\\TestLogger' => __DIR__ . '/..' . '/psr/log/Psr/Log/Test/TestLogger.php',
         'Vendidero\\EUTaxHelper\\Helper' => __DIR__ . '/../..' . '/packages/woocommerce-eu-tax-helper/src/Helper.php',
         'Vendidero\\Germanized\\Autoloader' => __DIR__ . '/../..' . '/src/Autoloader.php',
+        'Vendidero\\Germanized\\Blocks\\Assets' => __DIR__ . '/../..' . '/src/Blocks/Assets.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypesController' => __DIR__ . '/../..' . '/src/Blocks/BlockTypesController.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\AbstractBlock' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/AbstractBlock.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\AbstractInnerBlock' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/AbstractInnerBlock.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\AbstractProductElementBlock' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/AbstractProductElementBlock.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\CheckoutCheckboxes' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/CheckoutCheckboxes.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\CheckoutPhotovoltaicSystemNotice' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/CheckoutPhotovoltaicSystemNotice.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductDefectDescription' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductDefectDescription.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductDeliveryTime' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductDeliveryTime.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductDeposit' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductDeposit.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductDepositPackagingType' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductDepositPackagingType.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductNutriScore' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductNutriScore.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductShippingCostsInfo' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductShippingCostsInfo.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductTaxInfo' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductTaxInfo.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductUnitPrice' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductUnitPrice.php',
+        'Vendidero\\Germanized\\Blocks\\BlockTypes\\ProductUnitProduct' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/ProductUnitProduct.php',
+        'Vendidero\\Germanized\\Blocks\\Cart' => __DIR__ . '/../..' . '/src/Blocks/Cart.php',
+        'Vendidero\\Germanized\\Blocks\\Checkout' => __DIR__ . '/../..' . '/src/Blocks/Checkout.php',
+        'Vendidero\\Germanized\\Blocks\\Integrations\\Cart' => __DIR__ . '/../..' . '/src/Blocks/Integrations/Cart.php',
+        'Vendidero\\Germanized\\Blocks\\Integrations\\Checkout' => __DIR__ . '/../..' . '/src/Blocks/Integrations/Checkout.php',
+        'Vendidero\\Germanized\\Blocks\\Integrations\\MiniCart' => __DIR__ . '/../..' . '/src/Blocks/Integrations/MiniCart.php',
+        'Vendidero\\Germanized\\Blocks\\Integrations\\ProductElements' => __DIR__ . '/../..' . '/src/Blocks/Integrations/ProductElements.php',
+        'Vendidero\\Germanized\\Blocks\\MiniCart' => __DIR__ . '/../..' . '/src/Blocks/MiniCart.php',
+        'Vendidero\\Germanized\\Blocks\\PaymentGateways\\DirectDebit' => __DIR__ . '/../..' . '/src/Blocks/PaymentGateways/DirectDebit.php',
+        'Vendidero\\Germanized\\Blocks\\PaymentGateways\\Invoice' => __DIR__ . '/../..' . '/src/Blocks/PaymentGateways/Invoice.php',
+        'Vendidero\\Germanized\\Blocks\\Products' => __DIR__ . '/../..' . '/src/Blocks/Products.php',
+        'Vendidero\\Germanized\\Bootstrap' => __DIR__ . '/../..' . '/src/Bootstrap.php',
         'Vendidero\\Germanized\\DHL\\Admin\\Admin' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Admin/Admin.php',
         'Vendidero\\Germanized\\DHL\\Admin\\Importer\\DHL' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Admin/Importer/DHL.php',
         'Vendidero\\Germanized\\DHL\\Admin\\Importer\\Internetmarke' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Admin/Importer/Internetmarke.php',
@@ -355,6 +374,7 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Vendidero\\Germanized\\DHL\\Api\\ImRefundSoap' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/ImRefundSoap.php',
         'Vendidero\\Germanized\\DHL\\Api\\ImWarenpostIntRest' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/ImWarenpostIntRest.php',
         'Vendidero\\Germanized\\DHL\\Api\\Internetmarke' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/Internetmarke.php',
+        'Vendidero\\Germanized\\DHL\\Api\\LabelRest' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/LabelRest.php',
         'Vendidero\\Germanized\\DHL\\Api\\LabelSoap' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/LabelSoap.php',
         'Vendidero\\Germanized\\DHL\\Api\\LocationFinder' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/LocationFinder.php',
         'Vendidero\\Germanized\\DHL\\Api\\Paket' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/Paket.php',
@@ -362,6 +382,10 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Vendidero\\Germanized\\DHL\\Api\\Rest' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/Rest.php',
         'Vendidero\\Germanized\\DHL\\Api\\ReturnRest' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/ReturnRest.php',
         'Vendidero\\Germanized\\DHL\\Api\\Soap' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Api/Soap.php',
+        'Vendidero\\Germanized\\DHL\\Blocks\\Assets' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Blocks/Assets.php',
+        'Vendidero\\Germanized\\DHL\\Blocks\\Integrations\\PreferredServices' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Blocks/Integrations/PreferredServices.php',
+        'Vendidero\\Germanized\\DHL\\Blocks\\PreferredServices' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Blocks/PreferredServices.php',
+        'Vendidero\\Germanized\\DHL\\Bootstrap' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Bootstrap.php',
         'Vendidero\\Germanized\\DHL\\Install' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Install.php',
         'Vendidero\\Germanized\\DHL\\Label\\DHL' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Label/DHL.php',
         'Vendidero\\Germanized\\DHL\\Label\\DHLInlayReturn' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Label/DHLInlayReturn.php',
@@ -382,14 +406,27 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Vendidero\\Germanized\\DHL\\Product' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/Product.php',
         'Vendidero\\Germanized\\DHL\\ShippingProvider\\DHL' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/DHL.php',
         'Vendidero\\Germanized\\DHL\\ShippingProvider\\DeutschePost' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/DeutschePost.php',
-        'Vendidero\\Germanized\\DHL\\ShippingProvider\\ShippingMethod' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/ShippingMethod.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\CashOnDelivery' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/CashOnDelivery.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\ClosestDropPoint' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/ClosestDropPoint.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\DHLRetoure' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/DHLRetoure.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\IdentCheck' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/IdentCheck.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\PreferredDay' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/PreferredDay.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\PreferredLocation' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/PreferredLocation.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\PreferredNeighbour' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/PreferredNeighbour.php',
+        'Vendidero\\Germanized\\DHL\\ShippingProvider\\Services\\VisualCheckOfAge' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dhl/src/ShippingProvider/Services/VisualCheckOfAge.php',
+        'Vendidero\\Germanized\\Package' => __DIR__ . '/../..' . '/src/Package.php',
         'Vendidero\\Germanized\\Packages' => __DIR__ . '/../..' . '/src/Packages.php',
         'Vendidero\\Germanized\\PluginsHelper' => __DIR__ . '/../..' . '/src/PluginsHelper.php',
+        'Vendidero\\Germanized\\Registry\\AbstractDependencyType' => __DIR__ . '/../..' . '/src/Registry/AbstractDependencyType.php',
+        'Vendidero\\Germanized\\Registry\\Container' => __DIR__ . '/../..' . '/src/Registry/Container.php',
+        'Vendidero\\Germanized\\Registry\\FactoryType' => __DIR__ . '/../..' . '/src/Registry/FactoryType.php',
+        'Vendidero\\Germanized\\Registry\\SharedType' => __DIR__ . '/../..' . '/src/Registry/SharedType.php',
         'Vendidero\\Germanized\\Shipments\\AddressSplitter' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/AddressSplitter.php',
         'Vendidero\\Germanized\\Shipments\\Admin\\Admin' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/Admin.php',
         'Vendidero\\Germanized\\Shipments\\Admin\\BulkActionHandler' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/BulkActionHandler.php',
         'Vendidero\\Germanized\\Shipments\\Admin\\BulkLabel' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/BulkLabel.php',
         'Vendidero\\Germanized\\Shipments\\Admin\\MetaBox' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/MetaBox.php',
+        'Vendidero\\Germanized\\Shipments\\Admin\\PackagingSettings' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/PackagingSettings.php',
         'Vendidero\\Germanized\\Shipments\\Admin\\ProviderSettings' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/ProviderSettings.php',
         'Vendidero\\Germanized\\Shipments\\Admin\\ReturnTable' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/ReturnTable.php',
         'Vendidero\\Germanized\\Shipments\\Admin\\Settings' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Admin/Settings.php',
@@ -397,6 +434,7 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Vendidero\\Germanized\\Shipments\\Ajax' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Ajax.php',
         'Vendidero\\Germanized\\Shipments\\Api' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Api.php',
         'Vendidero\\Germanized\\Shipments\\Automation' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Automation.php',
+        'Vendidero\\Germanized\\Shipments\\CacheHelper' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/CacheHelper.php',
         'Vendidero\\Germanized\\Shipments\\DataStores\\Label' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/DataStores/Label.php',
         'Vendidero\\Germanized\\Shipments\\DataStores\\Packaging' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/DataStores/Packaging.php',
         'Vendidero\\Germanized\\Shipments\\DataStores\\Shipment' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/DataStores/Shipment.php',
@@ -405,11 +443,16 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Vendidero\\Germanized\\Shipments\\Emails' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Emails.php',
         'Vendidero\\Germanized\\Shipments\\FormHandler' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/FormHandler.php',
         'Vendidero\\Germanized\\Shipments\\Install' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Install.php',
+        'Vendidero\\Germanized\\Shipments\\Interfaces\\LabelConfigurationSet' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Interfaces/LabelConfigurationSet.php',
+        'Vendidero\\Germanized\\Shipments\\Interfaces\\PackingBox' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Interfaces/PackingBox.php',
+        'Vendidero\\Germanized\\Shipments\\Interfaces\\PackingItem' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Interfaces/PackingItem.php',
         'Vendidero\\Germanized\\Shipments\\Interfaces\\ShipmentLabel' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Interfaces/ShipmentLabel.php',
         'Vendidero\\Germanized\\Shipments\\Interfaces\\ShipmentReturnLabel' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Interfaces/ShipmentReturnLabel.php',
         'Vendidero\\Germanized\\Shipments\\Interfaces\\ShippingProvider' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Interfaces/ShippingProvider.php',
         'Vendidero\\Germanized\\Shipments\\Interfaces\\ShippingProviderAuto' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Interfaces/ShippingProviderAuto.php',
         'Vendidero\\Germanized\\Shipments\\Labels\\Automation' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Labels/Automation.php',
+        'Vendidero\\Germanized\\Shipments\\Labels\\ConfigurationSet' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Labels/ConfigurationSet.php',
+        'Vendidero\\Germanized\\Shipments\\Labels\\ConfigurationSetTrait' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Labels/ConfigurationSetTrait.php',
         'Vendidero\\Germanized\\Shipments\\Labels\\DownloadHandler' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Labels/DownloadHandler.php',
         'Vendidero\\Germanized\\Shipments\\Labels\\Factory' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Labels/Factory.php',
         'Vendidero\\Germanized\\Shipments\\Labels\\Label' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Labels/Label.php',
@@ -425,11 +468,19 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Vendidero\\Germanized\\Shipments\\Packaging\\Report' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packaging/Report.php',
         'Vendidero\\Germanized\\Shipments\\Packaging\\ReportHelper' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packaging/ReportHelper.php',
         'Vendidero\\Germanized\\Shipments\\Packaging\\ReportQueue' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packaging/ReportQueue.php',
+        'Vendidero\\Germanized\\Shipments\\Packing\\CartItem' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/CartItem.php',
         'Vendidero\\Germanized\\Shipments\\Packing\\Helper' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/Helper.php',
+        'Vendidero\\Germanized\\Shipments\\Packing\\Item' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/Item.php',
+        'Vendidero\\Germanized\\Shipments\\Packing\\ItemList' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/ItemList.php',
         'Vendidero\\Germanized\\Shipments\\Packing\\OrderItem' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/OrderItem.php',
         'Vendidero\\Germanized\\Shipments\\Packing\\PackagingBox' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/PackagingBox.php',
+        'Vendidero\\Germanized\\Shipments\\Packing\\Packer' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/Packer.php',
         'Vendidero\\Germanized\\Shipments\\Packing\\ShipmentItem' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Packing/ShipmentItem.php',
         'Vendidero\\Germanized\\Shipments\\Product' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Product.php',
+        'Vendidero\\Germanized\\Shipments\\Registry\\AbstractDependencyType' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Registry/AbstractDependencyType.php',
+        'Vendidero\\Germanized\\Shipments\\Registry\\Container' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Registry/Container.php',
+        'Vendidero\\Germanized\\Shipments\\Registry\\FactoryType' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Registry/FactoryType.php',
+        'Vendidero\\Germanized\\Shipments\\Registry\\SharedType' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Registry/SharedType.php',
         'Vendidero\\Germanized\\Shipments\\Rest\\ShipmentsController' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Rest/ShipmentsController.php',
         'Vendidero\\Germanized\\Shipments\\ReturnReason' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ReturnReason.php',
         'Vendidero\\Germanized\\Shipments\\ReturnShipment' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ReturnShipment.php',
@@ -439,27 +490,26 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'Vendidero\\Germanized\\Shipments\\ShipmentItem' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShipmentItem.php',
         'Vendidero\\Germanized\\Shipments\\ShipmentQuery' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShipmentQuery.php',
         'Vendidero\\Germanized\\Shipments\\ShipmentReturnItem' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShipmentReturnItem.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingMethod\\MethodHelper' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingMethod/MethodHelper.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingMethod\\ProviderMethod' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingMethod/ProviderMethod.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingMethod\\ProviderMethodPlaceholder' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingMethod/ProviderMethodPlaceholder.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingMethod\\ShippingMethod' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingMethod/ShippingMethod.php',
         'Vendidero\\Germanized\\Shipments\\ShippingProvider\\Auto' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/Auto.php',
         'Vendidero\\Germanized\\Shipments\\ShippingProvider\\Helper' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/Helper.php',
-        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\Method' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/Method.php',
-        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\MethodPlaceholder' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/MethodPlaceholder.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\PrintFormat' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/PrintFormat.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\PrintFormatList' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/PrintFormatList.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\Product' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/Product.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\ProductList' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/ProductList.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\Service' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/Service.php',
+        'Vendidero\\Germanized\\Shipments\\ShippingProvider\\ServiceList' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/ServiceList.php',
         'Vendidero\\Germanized\\Shipments\\ShippingProvider\\Simple' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/ShippingProvider/Simple.php',
         'Vendidero\\Germanized\\Shipments\\SimpleShipment' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/SimpleShipment.php',
+        'Vendidero\\Germanized\\Shipments\\Utilities\\NumberUtil' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Utilities/NumberUtil.php',
         'Vendidero\\Germanized\\Shipments\\Validation' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/Validation.php',
         'Vendidero\\Germanized\\Shipments\\WPMLHelper' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-shipments/src/WPMLHelper.php',
         'Vendidero\\Germanized\\Shopmark' => __DIR__ . '/../..' . '/src/Shopmark.php',
         'Vendidero\\Germanized\\Shopmarks' => __DIR__ . '/../..' . '/src/Shopmarks.php',
         'Vendidero\\Germanized\\Utilities\\NumberUtil' => __DIR__ . '/../..' . '/src/Utilities/NumberUtil.php',
-        'WsdlToPhp\\WsSecurity\\Created' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Created.php',
-        'WsdlToPhp\\WsSecurity\\Element' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Element.php',
-        'WsdlToPhp\\WsSecurity\\Expires' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Expires.php',
-        'WsdlToPhp\\WsSecurity\\Nonce' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Nonce.php',
-        'WsdlToPhp\\WsSecurity\\Password' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Password.php',
-        'WsdlToPhp\\WsSecurity\\Security' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Security.php',
-        'WsdlToPhp\\WsSecurity\\Timestamp' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Timestamp.php',
-        'WsdlToPhp\\WsSecurity\\Username' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/Username.php',
-        'WsdlToPhp\\WsSecurity\\UsernameToken' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/UsernameToken.php',
-        'WsdlToPhp\\WsSecurity\\WsSecurity' => __DIR__ . '/..' . '/wsdltophp/wssecurity/src/WsSecurity.php',
         'baltpeter\\Internetmarke\\Address' => __DIR__ . '/..' . '/baltpeter/internetmarke-php/src/baltpeter/Internetmarke/Address.php',
         'baltpeter\\Internetmarke\\AddressBinding' => __DIR__ . '/..' . '/baltpeter/internetmarke-php/src/baltpeter/Internetmarke/AddressBinding.php',
         'baltpeter\\Internetmarke\\ApiResult' => __DIR__ . '/..' . '/baltpeter/internetmarke-php/src/baltpeter/Internetmarke/ApiResult.php',
@@ -483,9 +533,13 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
         'baltpeter\\Internetmarke\\User' => __DIR__ . '/..' . '/baltpeter/internetmarke-php/src/baltpeter/Internetmarke/User.php',
         'setasign\\Fpdi\\FpdfTpl' => __DIR__ . '/..' . '/setasign/fpdi/src/FpdfTpl.php',
         'setasign\\Fpdi\\FpdfTplTrait' => __DIR__ . '/..' . '/setasign/fpdi/src/FpdfTplTrait.php',
+        'setasign\\Fpdi\\FpdfTrait' => __DIR__ . '/..' . '/setasign/fpdi/src/FpdfTrait.php',
         'setasign\\Fpdi\\Fpdi' => __DIR__ . '/..' . '/setasign/fpdi/src/Fpdi.php',
         'setasign\\Fpdi\\FpdiException' => __DIR__ . '/..' . '/setasign/fpdi/src/FpdiException.php',
         'setasign\\Fpdi\\FpdiTrait' => __DIR__ . '/..' . '/setasign/fpdi/src/FpdiTrait.php',
+        'setasign\\Fpdi\\GraphicsState' => __DIR__ . '/..' . '/setasign/fpdi/src/GraphicsState.php',
+        'setasign\\Fpdi\\Math\\Matrix' => __DIR__ . '/..' . '/setasign/fpdi/src/Math/Matrix.php',
+        'setasign\\Fpdi\\Math\\Vector' => __DIR__ . '/..' . '/setasign/fpdi/src/Math/Vector.php',
         'setasign\\Fpdi\\PdfParser\\CrossReference\\AbstractReader' => __DIR__ . '/..' . '/setasign/fpdi/src/PdfParser/CrossReference/AbstractReader.php',
         'setasign\\Fpdi\\PdfParser\\CrossReference\\CrossReference' => __DIR__ . '/..' . '/setasign/fpdi/src/PdfParser/CrossReference/CrossReference.php',
         'setasign\\Fpdi\\PdfParser\\CrossReference\\CrossReferenceException' => __DIR__ . '/..' . '/setasign/fpdi/src/PdfParser/CrossReference/CrossReferenceException.php',
@@ -533,9 +587,9 @@ class ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit2e20143b89cca292d30e6a6b3287b8b8::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInita0802ea6209fc73dea823caf7bf42ec3::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInita0802ea6209fc73dea823caf7bf42ec3::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInita0802ea6209fc73dea823caf7bf42ec3::$classMap;
 
         }, null, ClassLoader::class);
     }

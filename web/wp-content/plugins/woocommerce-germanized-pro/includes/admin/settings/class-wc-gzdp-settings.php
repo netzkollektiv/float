@@ -35,11 +35,6 @@ class WC_GZDP_Settings {
 		$tabs['emails']             = 'WC_GZDP_Settings_Tab_Emails';
 		$tabs['taxes']              = 'WC_GZDP_Settings_Tab_Taxes';
 
-		if ( class_exists( 'WC_GZD_Settings_Tab_Shipments' ) ) {
-			include_once dirname( __FILE__ ) . '/class-wc-gzdp-settings-tab-shipments.php';
-			$tabs['shipments'] = 'WC_GZDP_Settings_Tab_Shipments';
-		}
-
 		if ( apply_filters( 'woocommerce_gzdp_enable_legal_generator', true ) ) {
 			include_once dirname( __FILE__ ) . '/class-wc-gzdp-settings-tab-terms-generator.php';
 			include_once dirname( __FILE__ ) . '/class-wc-gzdp-settings-tab-revocation-generator.php';

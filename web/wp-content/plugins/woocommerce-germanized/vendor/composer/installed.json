@@ -252,17 +252,17 @@
         },
         {
             "name": "defuse/php-encryption",
-            "version": "v2.3.1",
-            "version_normalized": "2.3.1.0",
+            "version": "v2.4.0",
+            "version_normalized": "2.4.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/defuse/php-encryption.git",
-                "reference": "77880488b9954b7884c25555c2a0ea9e7053f9d2"
+                "reference": "f53396c2d34225064647a05ca76c1da9d99e5828"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/defuse/php-encryption/zipball/77880488b9954b7884c25555c2a0ea9e7053f9d2",
-                "reference": "77880488b9954b7884c25555c2a0ea9e7053f9d2",
+                "url": "https://api.github.com/repos/defuse/php-encryption/zipball/f53396c2d34225064647a05ca76c1da9d99e5828",
+                "reference": "f53396c2d34225064647a05ca76c1da9d99e5828",
                 "shasum": ""
             },
             "require": {
@@ -271,9 +271,10 @@
                 "php": ">=5.6.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^4|^5|^6|^7|^8|^9"
+                "phpunit/phpunit": "^5|^6|^7|^8|^9|^10",
+                "yoast/phpunit-polyfills": "^2.0.0"
             },
-            "time": "2021-04-09T23:57:26+00:00",
+            "time": "2023-06-19T06:10:36+00:00",
             "bin": [
                 "bin/generate-defuse-key"
             ],
@@ -315,7 +316,7 @@
             ],
             "support": {
                 "issues": "https://github.com/defuse/php-encryption/issues",
-                "source": "https://github.com/defuse/php-encryption/tree/v2.3.1"
+                "source": "https://github.com/defuse/php-encryption/tree/v2.4.0"
             },
             "install-path": "../defuse/php-encryption"
         },
@@ -660,24 +661,24 @@
         },
         {
             "name": "setasign/fpdf",
-            "version": "1.8.5",
-            "version_normalized": "1.8.5.0",
+            "version": "1.8.6",
+            "version_normalized": "1.8.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Setasign/FPDF.git",
-                "reference": "f4104a04c9a3f95c4c26a0a0531abebcc980987a"
+                "reference": "0838e0ee4925716fcbbc50ad9e1799b5edfae0a0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Setasign/FPDF/zipball/f4104a04c9a3f95c4c26a0a0531abebcc980987a",
-                "reference": "f4104a04c9a3f95c4c26a0a0531abebcc980987a",
+                "url": "https://api.github.com/repos/Setasign/FPDF/zipball/0838e0ee4925716fcbbc50ad9e1799b5edfae0a0",
+                "reference": "0838e0ee4925716fcbbc50ad9e1799b5edfae0a0",
                 "shasum": ""
             },
             "require": {
                 "ext-gd": "*",
                 "ext-zlib": "*"
             },
-            "time": "2022-11-18T07:02:00+00:00",
+            "time": "2023-06-26T14:44:25+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -703,23 +704,23 @@
                 "pdf"
             ],
             "support": {
-                "source": "https://github.com/Setasign/FPDF/tree/1.8.5"
+                "source": "https://github.com/Setasign/FPDF/tree/1.8.6"
             },
             "install-path": "../setasign/fpdf"
         },
         {
             "name": "setasign/fpdi",
-            "version": "v2.3.7",
-            "version_normalized": "2.3.7.0",
+            "version": "v2.6.0",
+            "version_normalized": "2.6.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Setasign/FPDI.git",
-                "reference": "bccc892d5fa1f48c43f8ba7db5ed4ba6f30c8c05"
+                "reference": "a6db878129ec6c7e141316ee71872923e7f1b7ad"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Setasign/FPDI/zipball/bccc892d5fa1f48c43f8ba7db5ed4ba6f30c8c05",
-                "reference": "bccc892d5fa1f48c43f8ba7db5ed4ba6f30c8c05",
+                "url": "https://api.github.com/repos/Setasign/FPDI/zipball/a6db878129ec6c7e141316ee71872923e7f1b7ad",
+                "reference": "a6db878129ec6c7e141316ee71872923e7f1b7ad",
                 "shasum": ""
             },
             "require": {
@@ -731,15 +732,15 @@
             },
             "require-dev": {
                 "phpunit/phpunit": "~5.7",
-                "setasign/fpdf": "~1.8",
-                "setasign/tfpdf": "1.31",
+                "setasign/fpdf": "~1.8.6",
+                "setasign/tfpdf": "~1.33",
                 "squizlabs/php_codesniffer": "^3.5",
                 "tecnickcom/tcpdf": "~6.2"
             },
             "suggest": {
                 "setasign/fpdf": "FPDI will extend this class but as it is also possible to use TCPDF or tFPDF as an alternative. There's no fixed dependency configured."
             },
-            "time": "2023-02-09T10:38:43+00:00",
+            "time": "2023-12-11T16:03:32+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -772,7 +773,7 @@
             ],
             "support": {
                 "issues": "https://github.com/Setasign/FPDI/issues",
-                "source": "https://github.com/Setasign/FPDI/tree/v2.3.7"
+                "source": "https://github.com/Setasign/FPDI/tree/v2.6.0"
             },
             "funding": [
                 {
@@ -784,17 +785,17 @@
         },
         {
             "name": "vendidero/woocommerce-eu-tax-helper",
-            "version": "1.0.8",
-            "version_normalized": "1.0.8.0",
+            "version": "2.0.2",
+            "version_normalized": "2.0.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/vendidero/woocommerce-eu-tax-helper.git",
-                "reference": "ee85f77b28b2507cff715797483d1809459f1542"
+                "reference": "1713f523297c1bfa1c2027a8481478e0561704ac"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vendidero/woocommerce-eu-tax-helper/zipball/ee85f77b28b2507cff715797483d1809459f1542",
-                "reference": "ee85f77b28b2507cff715797483d1809459f1542",
+                "url": "https://api.github.com/repos/vendidero/woocommerce-eu-tax-helper/zipball/1713f523297c1bfa1c2027a8481478e0561704ac",
+                "reference": "1713f523297c1bfa1c2027a8481478e0561704ac",
                 "shasum": ""
             },
             "require": {
@@ -807,7 +808,7 @@
                 "woocommerce/woocommerce-sniffs": "^0.1.3",
                 "yoast/phpunit-polyfills": "^1.0"
             },
-            "time": "2023-04-24T10:17:51+00:00",
+            "time": "2024-02-05T14:57:07+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "autoload": {
@@ -835,38 +836,37 @@
             "description": "EU tax helper for WooCommerce",
             "homepage": "https://vendidero.de/",
             "support": {
-                "source": "https://github.com/vendidero/woocommerce-eu-tax-helper/tree/v1.0.8",
+                "source": "https://github.com/vendidero/woocommerce-eu-tax-helper/tree/v2.0.2",
                 "issues": "https://github.com/vendidero/woocommerce-eu-tax-helper/issues"
             },
             "install-path": "../../packages/woocommerce-eu-tax-helper"
         },
         {
             "name": "vendidero/woocommerce-germanized-dhl",
-            "version": "1.8.6",
-            "version_normalized": "1.8.6.0",
+            "version": "3.0.5",
+            "version_normalized": "3.0.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/vendidero/woocommerce-germanized-dhl.git",
-                "reference": "ff58ff09b13dca4d1c402ceef778a193ab640633"
+                "reference": "add447c6af1b7ad10a4e347715d0744dd36782a0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-dhl/zipball/ff58ff09b13dca4d1c402ceef778a193ab640633",
-                "reference": "ff58ff09b13dca4d1c402ceef778a193ab640633",
+                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-dhl/zipball/add447c6af1b7ad10a4e347715d0744dd36782a0",
+                "reference": "add447c6af1b7ad10a4e347715d0744dd36782a0",
                 "shasum": ""
             },
             "require": {
                 "automattic/jetpack-autoloader": "^2.6.0",
                 "baltpeter/internetmarke-php": "^0.5.0",
                 "composer/installers": "^1.9.0",
-                "php": ">=5.6|>=7.0",
-                "wsdltophp/wssecurity": "^1.1"
+                "php": ">=5.6|>=7.0"
             },
             "require-dev": {
                 "phpunit/phpunit": "7.5.14",
                 "woocommerce/woocommerce-sniffs": "^0.1.3"
             },
-            "time": "2023-04-25T09:36:13+00:00",
+            "time": "2024-02-06T13:42:20+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "autoload": {
@@ -899,24 +899,24 @@
             "description": "The Germanized DHL implementation.",
             "homepage": "https://github.com/vendidero/woocommerce-germanized-dhl",
             "support": {
-                "source": "https://github.com/vendidero/woocommerce-germanized-dhl/tree/v1.8.6",
+                "source": "https://github.com/vendidero/woocommerce-germanized-dhl/tree/v3.0.5",
                 "issues": "https://github.com/vendidero/woocommerce-germanized-dhl/issues"
             },
             "install-path": "../../packages/woocommerce-germanized-dhl"
         },
         {
             "name": "vendidero/woocommerce-germanized-shipments",
-            "version": "2.3.1",
-            "version_normalized": "2.3.1.0",
+            "version": "3.0.5",
+            "version_normalized": "3.0.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/vendidero/woocommerce-germanized-shipments.git",
-                "reference": "b759d18b1f088fc4847daaf6a3d29d4d54e2ef84"
+                "reference": "762fb45bfc2f21bc352845f597764d8a54a3f1c8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-shipments/zipball/b759d18b1f088fc4847daaf6a3d29d4d54e2ef84",
-                "reference": "b759d18b1f088fc4847daaf6a3d29d4d54e2ef84",
+                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-shipments/zipball/762fb45bfc2f21bc352845f597764d8a54a3f1c8",
+                "reference": "762fb45bfc2f21bc352845f597764d8a54a3f1c8",
                 "shasum": ""
             },
             "require": {
@@ -928,9 +928,9 @@
             "require-dev": {
                 "phpunit/phpunit": "7.5.14",
                 "woocommerce/woocommerce-sniffs": "^0.1.3",
-                "yoast/phpunit-polyfills": "^1.0"
+                "yoast/phpunit-polyfills": "^1.1.0"
             },
-            "time": "2023-04-25T09:43:13+00:00",
+            "time": "2024-02-06T15:24:56+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "autoload": {
@@ -961,85 +961,10 @@
             "description": "The Germanized Shipments implementation.",
             "homepage": "https://github.com/vendidero/woocommerce-germanized-shipments",
             "support": {
-                "source": "https://github.com/vendidero/woocommerce-germanized-shipments/tree/v2.3.1",
+                "source": "https://github.com/vendidero/woocommerce-germanized-shipments/tree/v3.0.5",
                 "issues": "https://github.com/vendidero/woocommerce-germanized-shipments/issues"
             },
             "install-path": "../../packages/woocommerce-germanized-shipments"
-        },
-        {
-            "name": "wsdltophp/wssecurity",
-            "version": "1.2.2",
-            "version_normalized": "1.2.2.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/WsdlToPhp/WsSecurity.git",
-                "reference": "6a450af3cd462cbf73fdb3a09e80322da893af4f"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/WsdlToPhp/WsSecurity/zipball/6a450af3cd462cbf73fdb3a09e80322da893af4f",
-                "reference": "6a450af3cd462cbf73fdb3a09e80322da893af4f",
-                "shasum": ""
-            },
-            "require": {
-                "ext-soap": "*",
-                "php": ">=5.4"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "^2.0",
-                "phpunit/phpunit": "^4.8 || ^6.0"
-            },
-            "time": "2019-04-09T08:40:37+00:00",
-            "type": "library",
-            "installation-source": "dist",
-            "autoload": {
-                "psr-4": {
-                    "WsdlToPhp\\WsSecurity\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Mikaël DELSOL",
-                    "email": "contact@wsdltophp.com",
-                    "homepage": "https://www.wsdltophp.com",
-                    "role": "Owner"
-                },
-                {
-                    "name": "Alexey Anisimov",
-                    "email": "mne@lexa.in",
-                    "role": "Contributor"
-                },
-                {
-                    "name": "Tom Vaughan",
-                    "email": "tom.vaughan@farpoint.com",
-                    "role": "Contributor"
-                },
-                {
-                    "name": "NtlBldrv",
-                    "role": "Contributor"
-                },
-                {
-                    "name": "baijunyao",
-                    "email": "baijunyao@baijunyao.com",
-                    "role": "Contributor"
-                }
-            ],
-            "description": "Allows to easily add Ws Security header to a SOAP Request",
-            "keywords": [
-                "php",
-                "soap",
-                "wsse"
-            ],
-            "support": {
-                "email": "contact@wsdltophp.com",
-                "issues": "https://github.com/WsdlToPhp/WsSecurity/issues",
-                "source": "https://github.com/WsdlToPhp/WsSecurity/tree/master"
-            },
-            "install-path": "../wsdltophp/wssecurity"
         }
     ],
     "dev": false,

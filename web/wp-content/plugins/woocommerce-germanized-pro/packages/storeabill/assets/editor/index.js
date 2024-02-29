@@ -33,6 +33,7 @@ function enforceBlockOrder( blocks ) {
         }
     } );
 }
+
 /**
  * Force existence of our global DocumentStyles block which
  * dynamically updates editor wrapper styles on meta updates.
@@ -95,22 +96,27 @@ window.addEventListener( 'load', function () {
                 const clientId        = $shortcode.parents( '.wp-block' ).data( 'block' );
                 let   blockAttributes = select( 'core/block-editor' ).getBlockAttributes( clientId );
 
-                if ( blockAttributes.length > 0 ) {
+                if ( blockAttributes ) {
                     for ( var key of Object.keys( blockAttributes ) ) {
                         let val = blockAttributes[ key ];
 
-                        if ( ( typeof val === 'string' || val instanceof String ) && val.includes( shortcodeQuery ) ) {
-                            val = replacePreviewWithPlaceholder( val, ( ! isEmpty( content ) ? content : shortcode ), shortcodeQuery, true );
+                        if ( typeof val === 'string' || val instanceof String ) {
+                            // Decode html entities to prevent failing replacements with queries in shortcodes
+                            val = val.replace( /&amp;/g, "&" );
 
-                            /**
-                             * Update the attribute to make sure further
-                             * shortcode adjustments use the updated content.
-                             */
-                            blockAttributes[ key ] = val;
+                            if ( val.includes( shortcodeQuery ) ) {
+                                val = replacePreviewWithPlaceholder( val, ( ! isEmpty( content ) ? content : shortcode ), shortcodeQuery, true );
 
-                            dispatch( 'core/block-editor' ).updateBlockAttributes( clientId, {
-                                key: val
-                            } );
+                                /**
+                                 * Update the attribute to make sure further
+                                 * shortcode adjustments use the updated content.
+                                 */
+                                blockAttributes[ key ] = val;
+
+                                dispatch( 'core/block-editor' ).updateBlockAttributes( clientId, {
+                                    key: val
+                                } );
+                            }
                         }
                     }
                 }

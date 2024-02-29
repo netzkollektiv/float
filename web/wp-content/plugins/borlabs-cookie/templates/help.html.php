@@ -76,6 +76,7 @@ if (\BorlabsCookie\Cookie\Backend\License::getInstance()->isPluginUnlocked() ===
 
     </div>
     <div class="col-12 col-md-5">
+        <?php include \BorlabsCookie\Cookie\Backend\Backend::getInstance()->templatePath.'/improve-borlabs-cookie.html.php'; ?>
         <?php include \BorlabsCookie\Cookie\Backend\Backend::getInstance()->templatePath.'/system-check.html.php'; ?>
     </div>
 </div>

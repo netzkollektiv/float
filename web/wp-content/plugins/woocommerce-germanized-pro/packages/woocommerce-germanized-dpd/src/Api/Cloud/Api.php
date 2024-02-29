@@ -132,70 +132,6 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 		}
 	}
 
-	public function get_domestic_products( $shipment = false ) {
-		if ( $shipment && 'return' === $shipment->get_type() ) {
-			$products = array(
-				'Classic_Return' => _x( 'DPD Classic Return', 'dpd', 'woocommerce-germanized-pro' ),
-				'Shop_Return'    => _x( 'DPD Shop Return', 'dpd', 'woocommerce-germanized-pro' ),
-			);
-		} else {
-			$products = array(
-				'Classic'             => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
-				'Classic_Predict'     => _x( 'DPD Classic Predict', 'dpd', 'woocommerce-germanized-pro' ),
-				'Express_830'         => _x( 'DPD Express 8:30', 'dpd', 'woocommerce-germanized-pro' ),
-				'Express_10'          => _x( 'DPD Express 10:00', 'dpd', 'woocommerce-germanized-pro' ),
-				'Express_12'          => _x( 'DPD Express 12:00', 'dpd', 'woocommerce-germanized-pro' ),
-				'Express_18'          => _x( 'DPD Express 18:00', 'dpd', 'woocommerce-germanized-pro' ),
-				'Express_12_Saturday' => _x( 'DPD Express 12:00 (Saturday)', 'dpd', 'woocommerce-germanized-pro' ),
-			);
-		}
-
-		return $products;
-	}
-
-	public function get_international_products( $shipment = false ) {
-		if ( $shipment && 'return' === $shipment->get_type() ) {
-			$products = array(
-				'Classic_Return' => _x( 'DPD Classic Return', 'dpd', 'woocommerce-germanized-pro' ),
-				'Shop_Return'    => _x( 'DPD Shop Return', 'dpd', 'woocommerce-germanized-pro' ),
-			);
-		} else {
-			$products = array(
-				'Express_International' => _x( 'DPD Express', 'dpd', 'woocommerce-germanized-pro' ),
-				'Classic'               => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
-			);
-
-			if ( $shipment && ! in_array( $shipment->get_country(), array( 'CH', 'GB', 'NO' ), true ) ) {
-				unset( $products['Classic'] );
-			}
-		}
-
-		return $products;
-	}
-
-	public function get_eu_products( $shipment = false ) {
-		if ( $shipment && 'return' === $shipment->get_type() ) {
-			$products = array(
-				'Classic_Return' => _x( 'DPD Classic Return', 'dpd', 'woocommerce-germanized-pro' ),
-				'Shop_Return'    => _x( 'DPD Shop Return', 'dpd', 'woocommerce-germanized-pro' ),
-			);
-		} else {
-			$products = array(
-				'Classic'               => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
-				'Express_International' => _x( 'DPD Express', 'dpd', 'woocommerce-germanized-pro' ),
-			);
-		}
-
-		return $products;
-	}
-
-	public function get_page_formats() {
-		return array(
-			'PDF_A4' => _x( 'A4', 'dpd', 'woocommerce-germanized-pro' ),
-			'PDF_A6' => _x( 'A6', 'dpd', 'woocommerce-germanized-pro' ),
-		);
-	}
-
 	public function get_international_customs_terms() {
 		return array();
 	}
@@ -234,9 +170,8 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 		$shipment  = $label->get_shipment();
 		$is_return = 'return' === $label->get_type();
 
-		$provider                      = $shipment->get_shipping_provider_instance();
 		$error                         = new \WP_Error();
-		$label_supports_email_transmit = ( $label->supports_third_party_email_notification() || apply_filters( 'woocommerce_gzd_dpd_label_force_email_notification', wc_string_to_bool( $provider->get_setting( 'label_force_email_transfer', 'no' ) ), $label ) );
+		$label_supports_email_transmit = ( $label->supports_third_party_email_notification() || apply_filters( 'woocommerce_gzd_dpd_label_force_email_notification', false, $label ) );
 		$house_number                  = $is_return ? $shipment->get_sender_address_street_number() : $shipment->get_address_street_number();
 		$country                       = $is_return ? $shipment->get_sender_country() : $shipment->get_country();
 		$address_2                     = $is_return ? $shipment->get_sender_address_2() : $shipment->get_address_2();
@@ -256,7 +191,7 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 			'FirstName'  => mb_substr( $is_return ? $shipment->get_sender_first_name() : $shipment->get_first_name(), 0, 50 ),
 			'LastName'   => mb_substr( $is_return ? $shipment->get_sender_last_name() : $shipment->get_last_name(), 0, 50 ),
 			'Street'     => mb_substr( $is_return ? $shipment->get_sender_address_street() : $shipment->get_address_street(), 0, 50 ),
-			'HouseNo'    => mb_substr( empty( $house_number ) ? '0' : $house_number, 0, 8 ),
+			'HouseNo'    => strtolower( mb_substr( empty( $house_number ) ? '0' : $house_number, 0, 8 ) ), // Somehow DPD cannot parse capital house number suffixes, e.g. 53 C
 			'Country'    => mb_substr( $country, 0, 2 ),
 			'ZipCode'    => $is_return ? $shipment->get_sender_postcode() : $shipment->get_postcode(),
 			'City'       => mb_substr( $is_return ? $shipment->get_sender_city() : $shipment->get_city(), 0, 50 ),
@@ -276,7 +211,7 @@ class Api extends \Vendidero\Germanized\DPD\Api\Api {
 		$request = array(
 			'OrderAction'   => 'startOrder',
 			'OrderSettings' => array(
-				'LabelSize'          => $label->get_page_format(),
+				'LabelSize'          => $label->get_print_format(),
 				'LabelStartPosition' => apply_filters( 'woocommerce_gzd_dpd_label_start_position', 'UpperLeft', $label ),
 				'ShipDate'           => $label->get_pickup_date() ? $label->get_pickup_date() : date_i18n( 'Y-m-d' ),
 			),

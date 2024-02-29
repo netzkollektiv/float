@@ -777,7 +777,6 @@ class Ajax {
 	}
 
 	public static function export() {
-
 		if ( ! self::get_request_data( 'step' ) || ! self::get_request_data( 'filename' ) ) {
 			wp_die( -1 );
 		}

@@ -3,18 +3,18 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
@@ -24,35 +24,45 @@ class Buffer
 {
     private static $instance;
 
-    private $buffer = '';
-    private $bufferActive = false;
-
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
+    private $buffer = '';
+
+    private $bufferActive = false;
+
+    public function __construct()
     {
     }
 
-    private function __wakeup()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    protected function __construct()
+    public function __wakeup()
     {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
+    }
+
+    /**
+     * getBuffer function.
+     */
+    public function &getBuffer()
+    {
+        $this->buffer = ob_get_contents();
+
+        return $this->buffer;
     }
 
     /**
      * endBuffering function.
-     *
-     * @access public
-     * @return void
      */
     public function endBuffering()
     {
@@ -66,23 +76,7 @@ class Buffer
     }
 
     /**
-     * getBuffer function.
-     *
-     * @access public
-     * @return void
-     */
-    public function &getBuffer()
-    {
-        $this->buffer = ob_get_contents();
-
-        return $this->buffer;
-    }
-
-    /**
      * handleBuffering function.
-     *
-     * @access public
-     * @return void
      */
     public function handleBuffering()
     {
@@ -91,9 +85,6 @@ class Buffer
 
     /**
      * isBufferActive function.
-     *
-     * @access public
-     * @return void
      */
     public function isBufferActive()
     {
@@ -102,16 +93,16 @@ class Buffer
 
     /**
      * startBuffering function.
-     *
-     * @access public
-     * @return void
      */
     public function startBuffering()
     {
         if (ScriptBlocker::getInstance()->isScanActive() || ScriptBlocker::getInstance()->hasScriptBlocker()) {
-            ob_start();
+            // Allow to disable the buffering when a Page Builder is active
+            $this->bufferActive = apply_filters('borlabsCookie/buffer/active', true);
 
-            $this->bufferActive = true;
+            if ($this->bufferActive) {
+                ob_start();
+            }
         }
     }
 }

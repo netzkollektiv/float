@@ -165,6 +165,46 @@ class Automation {
 			50,
 			1
 		);
+
+		add_action(
+			'woocommerce_store_api_checkout_order_processed',
+			function( $order ) {
+				if ( $order = Helper::get_order( $order ) ) {
+					$payment_method = $order->get_payment_method();
+					$statuses       = empty( $payment_method ) ? array() : array_map( array( 'Vendidero\StoreaBill\WooCommerce\Helper', 'clean_order_status' ), self::get_invoice_payment_method_statuses( $payment_method ) );
+					$status         = Helper::clean_order_status( $order->get_status() );
+
+					if ( empty( $statuses ) || in_array( $status, $statuses, true ) ) {
+						if ( $order->needs_payment() ) {
+							add_action(
+								'woocommerce_rest_checkout_process_payment_with_context',
+								function( $context, $payment_result ) {
+									self::sync_invoices( $context->order );
+
+									remove_all_actions( 'woocommerce_rest_checkout_process_payment_with_context', 1015 );
+								},
+								1015,
+								2
+							);
+						} else {
+							add_filter(
+								'woocommerce_get_checkout_order_received_url',
+								function( $redirect, $order ) {
+									self::sync_invoices( $order );
+
+									remove_all_filters( 'woocommerce_get_checkout_order_received_url', 1015 );
+
+									return $redirect;
+								},
+								1015,
+								2
+							);
+						}
+					}
+				}
+			},
+			50
+		);
 	}
 
 	protected static function sync_invoices_on_order_status() {
@@ -267,6 +307,47 @@ class Automation {
 			50,
 			1
 		);
+
+		/**
+		 * The issue with the woocommerce_store_api_checkout_order_processed hook is that it is executed
+		 * before updating the order status + payment information. That's why we need to tweak
+		 * ourselves in hooks/filters applied on a later stage based on whether the order needs payment or not.
+		 *
+		 * @see \Automattic\WooCommerce\StoreApi\Routes\V1\Checkout
+		 */
+		add_action(
+			'woocommerce_store_api_checkout_order_processed',
+			function( $order ) {
+				if ( $order = Helper::get_order( $order ) ) {
+					if ( $order->needs_payment() ) {
+						add_action(
+							'woocommerce_rest_checkout_process_payment_with_context',
+							function( $context, $payment_result ) {
+								self::sync_invoices( $context->order );
+
+								remove_all_actions( 'woocommerce_rest_checkout_process_payment_with_context', 1015 );
+							},
+							1015,
+							2
+						);
+					} else {
+						add_filter(
+							'woocommerce_get_checkout_order_received_url',
+							function( $redirect, $order ) {
+								self::sync_invoices( $order );
+
+								remove_all_filters( 'woocommerce_get_checkout_order_received_url', 1015 );
+
+								return $redirect;
+							},
+							1015,
+							2
+						);
+					}
+				}
+			},
+			50
+		);
 	}
 
 	public static function cancel_deferred_sync( $args ) {
@@ -312,12 +393,12 @@ class Automation {
 		}
 
 		if ( $args['allow_defer'] ) {
-			$defer = apply_filters( 'storeabill_woo_defer_auto_order_invoice_sync', true, $order_id );
+			$defer = apply_filters( 'storeabill_woo_defer_auto_order_invoice_sync', true, $order_id, $order );
 		} else {
 			$defer = false;
 		}
 
-		if ( ! apply_filters( 'storeabill_woo_auto_sync_order_invoices', true, $order_id ) ) {
+		if ( ! apply_filters( 'storeabill_woo_auto_sync_order_invoices', true, $order_id, $order ) ) {
 			return false;
 		}
 
@@ -346,7 +427,7 @@ class Automation {
 				'storeabill-order-sync'
 			);
 		} else {
-			CacheHelper::prevent_caching();
+			CacheHelper::prevent_caching( 'automation' );
 
 			// Create a fresh order object
 			$order = Helper::get_order( $order_id );
@@ -368,7 +449,7 @@ class Automation {
 	}
 
 	public static function auto_sync_callback( $order_id ) {
-		CacheHelper::prevent_caching();
+		CacheHelper::prevent_caching( 'automation' );
 
 		/**
 		 * Maybe cancel duplicate deferred syncs.

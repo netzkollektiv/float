@@ -80,12 +80,12 @@
  */
 .woocommerce-multistep-checkout-active-payment, .woocommerce-multistep-checkout-active-address {
   .e-checkout__order_review-2 {
-    display: none;
+    display: none !important;
   }
 
   &.woocommerce-multistep-checkout-active-address {
     .e-checkout__order_review {
-      display: none;
+      display: none !important;
     }
   }
 }

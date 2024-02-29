@@ -5,10 +5,21 @@
  * @package wpcode
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Class WPCode_Auto_Insert_Single.
  */
 class WPCode_Auto_Insert_Single extends WPCode_Auto_Insert_Type {
+
+	/**
+	 * The type unique name (slug).
+	 *
+	 * @var string
+	 */
+	public $name = 'single';
 
 	/**
 	 * The category of this type.

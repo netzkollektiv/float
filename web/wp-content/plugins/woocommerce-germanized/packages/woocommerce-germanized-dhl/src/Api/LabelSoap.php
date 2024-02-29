@@ -35,7 +35,7 @@ class LabelSoap extends Soap {
 	 * @return string
 	 */
 	protected function get_wsdl_file( $wsdl_link ) {
-		$core_file = Package::get_core_wsdl_file( 'geschaeftskundenversand-api-3.4.0.wsdl' );
+		$core_file = Package::get_core_wsdl_file( 'geschaeftskundenversand-api-3.5.0.wsdl' );
 
 		if ( $core_file ) {
 			return $core_file;
@@ -57,7 +57,7 @@ class LabelSoap extends Soap {
 				array(
 					'Version'           => array(
 						'majorRelease' => '3',
-						'minorRelease' => '4',
+						'minorRelease' => '5',
 					),
 					'labelResponseType' => 'URL',
 					'labelFormat'       => '',
@@ -131,7 +131,7 @@ class LabelSoap extends Soap {
 			$soap_request = array(
 				'Version'           => array(
 					'majorRelease' => '3',
-					'minorRelease' => '4',
+					'minorRelease' => '5',
 				),
 				'shipmentNumber'    => $label->get_number(),
 				'labelResponseType' => 'B64',
@@ -174,7 +174,6 @@ class LabelSoap extends Soap {
 			$response_body = $soap_client->createShipmentOrder( $soap_request );
 
 			Package::log( 'Response: Successful' );
-
 		} catch ( Exception $e ) {
 			Package::log( 'Response Error: ' . $e->getMessage() );
 
@@ -190,7 +189,6 @@ class LabelSoap extends Soap {
 		}
 
 		if ( ! isset( $response_body->Status ) || ! isset( $response_body->CreationState ) ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-
 			if ( isset( $response_body->Status ) && ! empty( $response_body->Status->statusText ) ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 				throw new Exception( sprintf( _x( 'There was an error contacting the DHL API: %s.', 'dhl', 'woocommerce-germanized' ), $response_body->Status->statusText ) ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 			}
@@ -255,9 +253,9 @@ class LabelSoap extends Soap {
 				$default_file = base64_decode( $response_body->LabelData->labelData ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode,WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 				$return_file  = false;
 
-				// Try to split the PDF to extract return label
 				if ( $return_label ) {
-					$splitter = $splitter = new PDFSplitter( $default_file, true );
+					// Try to split the PDF to extract return label
+					$splitter = new PDFSplitter( $default_file, true );
 					$pdfs     = $splitter->split();
 
 					if ( $pdfs && ! empty( $pdfs ) && count( $pdfs ) > 1 ) {
@@ -276,7 +274,6 @@ class LabelSoap extends Soap {
 
 				// Merge export label into label path so that by default the shop owner downloads the merged file
 				if ( isset( $response_body->LabelData->exportLabelData ) ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-
 					// Save export file
 					$label->upload_label_file( base64_decode( $response_body->LabelData->exportLabelData ), 'export' ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode,WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
@@ -312,7 +309,7 @@ class LabelSoap extends Soap {
 		$soap_request = array(
 			'Version'        => array(
 				'majorRelease' => '3',
-				'minorRelease' => '4',
+				'minorRelease' => '5',
 			),
 			'shipmentNumber' => $label->get_number(),
 		);
@@ -363,38 +360,6 @@ class LabelSoap extends Soap {
 		return false;
 	}
 
-	protected function get_account_number( $dhl_product ) {
-		$product_number = preg_match( '!\d+!', $dhl_product, $matches );
-
-		if ( $product_number ) {
-			$participation_number = Package::get_participation_number( $dhl_product );
-			$account_base         = Package::get_setting( 'account_number' );
-
-			// Participation number contains account number too
-			if ( strlen( $participation_number ) >= 12 ) {
-				$account_base         = substr( $participation_number, 0, 10 ); // First 10 chars
-				$participation_number = substr( $participation_number, -2 ); // Last 2 chars
-			}
-
-			$account_number = $account_base . $matches[0] . $participation_number;
-
-			if ( strlen( $account_number ) !== 14 ) {
-				throw new Exception( sprintf( _x( 'Either your customer number or the participation number for <strong>%1$s</strong> is missing. Please validate your <a href="%2$s">settings</a> and try again.', 'dhl', 'woocommerce-germanized' ), esc_html( wc_gzd_dhl_get_product_title( $dhl_product ) ), esc_url( admin_url( 'admin.php?page=wc-settings&tab=germanized-shipping_provider&provider=dhl' ) ) ) );
-			}
-
-			return $account_number;
-		} else {
-			throw new Exception( _x( 'Could not create account number - no product number.', 'dhl', 'woocommerce-germanized' ) );
-		}
-	}
-
-	protected function get_return_account_number() {
-		$product_number = self::DHL_RETURN_PRODUCT;
-		$account_number = Package::get_setting( 'account_number' ) . $product_number . Package::get_participation_number( 'return' );
-
-		return $account_number;
-	}
-
 	/**
 	 * @param Label\DHL $label
 	 * @return array
@@ -409,12 +374,11 @@ class LabelSoap extends Soap {
 			throw new Exception( sprintf( _x( 'Could not fetch shipment %d.', 'dhl', 'woocommerce-germanized' ), $label->get_shipment_id() ) );
 		}
 
-		$services           = array();
-		$bank_data          = array();
-		$available_services = wc_gzd_dhl_get_product_services( $label->get_product_id(), $shipment );
+		$services  = array();
+		$bank_data = array();
 
 		foreach ( $label->get_services() as $service ) {
-			if ( ! in_array( $service, $available_services, true ) ) {
+			if ( in_array( $service, array( 'GoGreen', 'dhlRetoure' ), true ) ) {
 				continue;
 			}
 
@@ -429,7 +393,7 @@ class LabelSoap extends Soap {
 				case 'IdentCheck':
 					$services[ $service ]['Ident']['surname']     = $shipment->get_last_name();
 					$services[ $service ]['Ident']['givenName']   = $shipment->get_first_name();
-					$services[ $service ]['Ident']['dateOfBirth'] = $label->get_ident_date_of_birth() ? $label->get_ident_date_of_birth()->date( 'Y-m-d' ) : '';
+					$services[ $service ]['Ident']['dateOfBirth'] = $label->get_ident_date_of_birth();
 					$services[ $service ]['Ident']['minimumAge']  = $label->get_ident_min_age();
 					break;
 				case 'CashOnDelivery':
@@ -457,7 +421,7 @@ class LabelSoap extends Soap {
 					}
 					break;
 				case 'PreferredDay':
-					$services[ $service ]['details'] = $label->get_preferred_day() ? $label->get_preferred_day()->date( 'Y-m-d' ) : '';
+					$services[ $service ]['details'] = $label->get_preferred_day();
 					break;
 				case 'VisualCheckOfAge':
 					$services[ $service ]['type'] = $label->get_visual_min_age();
@@ -473,28 +437,35 @@ class LabelSoap extends Soap {
 						$services[ $service ]['details'] = $shipment->get_email();
 					}
 					break;
+				case 'Endorsement':
+					$services[ $service ]['type'] = wc_gzd_dhl_get_label_endorsement_type( $label, $shipment );
+					break;
+				case 'ClosestDropPoint':
+					unset( $services[ $service ] );
+					$services['CDP'] = array(
+						'active' => 1,
+					);
+					break;
+				case 'PostalDeliveryDutyPaid':
+					unset( $services[ $service ] );
+					$services['PDDP'] = array(
+						'active' => 1,
+					);
+					break;
 			}
 		}
 
-		/**
-		 * Endorsement option (Vorausverfügung)
-		 */
-		if ( 'V53WPAK' === $label->get_product_id() ) {
-			$services['Endorsement'] = array(
-				'active' => 1,
-				'type'   => wc_gzd_dhl_get_label_endorsement_type( $label, $shipment ),
-			);
-		}
-
-		$account_number            = self::get_account_number( $label->get_product_id() );
+		$billing_number_args       = array( 'services' => $label->get_services() );
+		$account_number            = wc_gzd_dhl_get_billing_number( $label->get_product_id(), $billing_number_args );
 		$formatted_recipient_state = wc_gzd_dhl_format_label_state( $shipment->get_state(), $shipment->get_country() );
 
 		$dhl_label_body = array(
 			'Version'           => array(
 				'majorRelease' => '3',
-				'minorRelease' => '4',
+				'minorRelease' => '5',
 			),
 			'labelResponseType' => 'B64',
+			'combinedPrinting'  => true,
 			'ShipmentOrder'     => array(
 				'sequenceNumber' => $label->get_shipment_id(),
 				'Shipment'       => array(
@@ -510,7 +481,6 @@ class LabelSoap extends Soap {
 							'heightInCM' => $label->has_dimensions() ? $label->get_height() : '',
 						),
 						'Service'           => $services,
-						'Notification'      => ( apply_filters( 'woocommerce_gzd_dhl_label_api_enable_notification', $label->has_email_notification(), $label ) && ! empty( $shipment->get_email() ) ) ? array( 'recipientEmailAddress' => $shipment->get_email() ) : array(),
 						'BankData'          => $bank_data,
 					),
 					'Receiver'        => array(
@@ -713,7 +683,7 @@ class LabelSoap extends Soap {
 		}
 
 		if ( $label->has_inlay_return() ) {
-			$dhl_label_body['ShipmentOrder']['Shipment']['ShipmentDetails']['returnShipmentAccountNumber'] = self::get_return_account_number();
+			$dhl_label_body['ShipmentOrder']['Shipment']['ShipmentDetails']['returnShipmentAccountNumber'] = wc_gzd_dhl_get_billing_number( 'return', $billing_number_args );
 			$dhl_label_body['ShipmentOrder']['Shipment']['ShipmentDetails']['returnShipmentReference']     = wc_gzd_dhl_get_inlay_return_label_reference( $label, $shipment );
 
 			$dhl_label_body['ShipmentOrder']['Shipment']['ReturnReceiver'] = array(
@@ -744,7 +714,6 @@ class LabelSoap extends Soap {
 		}
 
 		if ( Package::is_crossborder_shipment( $shipment->get_country(), $shipment->get_postcode() ) ) {
-
 			if ( count( $shipment->get_items() ) > self::DHL_MAX_ITEMS ) {
 				throw new Exception( sprintf( _x( 'Only %1$s shipment items can be processed, your shipment has %2$s items.', 'dhl', 'woocommerce-germanized' ), self::DHL_MAX_ITEMS, count( $shipment->get_items() ) ) );
 			}
@@ -773,36 +742,21 @@ class LabelSoap extends Soap {
 			 * In case the customs item total weight is greater than label weight (e.g. due to rounding issues) replace it
 			 */
 			if ( $customs_label_data['item_total_weight_in_kg'] > $label->get_weight() ) {
-				$dhl_label_body['ShipmentOrder']['Shipment']['ShipmentDetails']['ShipmentItem']['weightInKG'] = wc_format_decimal( $customs_label_data['item_total_weight_in_kg'] ) + $shipment->get_packaging_weight();
+				$dhl_label_body['ShipmentOrder']['Shipment']['ShipmentDetails']['ShipmentItem']['weightInKG'] = (float) wc_format_decimal( $customs_label_data['item_total_weight_in_kg'] ) + (float) $shipment->get_packaging_weight();
 			}
+
+			$export_type = $this->get_export_type( $customs_label_data, $label );
 
 			$customs_data = array(
 				'termsOfTrade'               => $label->get_duties(),
 				'additionalFee'              => $customs_label_data['additional_fee'],
-				'exportTypeDescription'      => $customs_label_data['export_type_description'],
+				'exportTypeDescription'      => $customs_label_data['export_reason_description'],
 				'placeOfCommital'            => $customs_label_data['place_of_commital'],
 				'addresseesCustomsReference' => $customs_label_data['receiver_customs_ref_number'],
 				'sendersCustomsReference'    => $customs_label_data['sender_customs_ref_number'],
 				'customsCurrency'            => strtoupper( $customs_label_data['currency'] ),
 				'ExportDocPosition'          => $customs_items,
-				/**
-				 * Filter to allow adjusting the export type of a DHL label (for customs). Could be:
-				 * <ul>
-				 * <li>OTHER</li>
-				 * <li>PRESENT</li>
-				 * <li>COMMERCIAL_SAMPLE</li>
-				 * <li>DOCUMENT</li>
-				 * <li>RETURN_OF_GOODS</li>
-				 * <li>COMMERCIAL_GOODS</li>
-				 * </ul>
-				 *
-				 * @param string $export_type The export type.
-				 * @param Label\Label  $label The label instance.
-				 *
-				 * @since 3.3.0
-				 * @package Vendidero/Germanized/DHL
-				 */
-				'exportType'                 => strtoupper( apply_filters( 'woocommerce_gzd_dhl_label_api_export_type', 'COMMERCIAL_GOODS', $label ) ),
+				'exportType'                 => strtoupper( $export_type ),
 				/**
 				 * Filter to allow adjusting the export invoice number.
 				 *
@@ -815,7 +769,7 @@ class LabelSoap extends Soap {
 				'invoiceNumber'              => apply_filters( 'woocommerce_gzd_dhl_label_api_export_invoice_number', $customs_label_data['invoice_number'], $label ),
 			);
 
-			$dhl_label_body['ShipmentOrder']['Shipment']['ExportDocument'] = $customs_data;
+			$dhl_label_body['ShipmentOrder']['Shipment']['ExportDocument'] = apply_filters( 'woocommerce_gzd_dhl_label_api_customs_data', $customs_data, $label );
 		}
 
 		// Unset/remove any items that are empty strings or 0, even if required!
@@ -827,7 +781,7 @@ class LabelSoap extends Soap {
 			$this->body_request['ShipmentOrder']['Shipment']['ExportDocument']['additionalFee'] = 0;
 		}
 
-		// If "Ident-Check" enabled, then ensure both fields are passed even if empty
+		// If "IdentCheck" enabled, then ensure both fields are passed even if empty
 		if ( $label->has_service( 'IdentCheck' ) ) {
 			if ( ! isset( $this->body_request['ShipmentOrder']['Shipment']['ShipmentDetails']['Service']['IdentCheck']['Ident']['minimumAge'] ) ) {
 				$this->body_request['ShipmentOrder']['Shipment']['ShipmentDetails']['Service']['IdentCheck']['Ident']['minimumAge'] = '';
@@ -838,5 +792,42 @@ class LabelSoap extends Soap {
 		}
 
 		return apply_filters( 'woocommerce_gzd_dhl_label_api_create_label_request', $this->body_request, $label, $shipment, $this );
+	}
+
+	protected function get_export_type( $customs_data, $label ) {
+		$export_type = 'commercial_goods';
+
+		if ( isset( $customs_data['export_reason'] ) && ! empty( $customs_data['export_reason'] ) ) {
+			if ( 'gift' === $customs_data['export_reason'] ) {
+				$export_type = 'PRESENT';
+			} elseif ( 'sample' === $customs_data['export_reason'] ) {
+				$export_type = 'COMMERCIAL_SAMPLE';
+			} elseif ( 'repair' === $customs_data['export_reason'] ) {
+				$export_type = 'RETURN_OF_GOODS';
+			} elseif ( 'sale' === $customs_data['export_reason'] ) {
+				$export_type = 'COMMERCIAL_GOODS';
+			} else {
+				$export_type = 'OTHER';
+			}
+		}
+
+		/**
+		 * Filter to allow adjusting the export type of a DHL label (for customs). Could be:
+		 * <ul>
+		 * <li>OTHER</li>
+		 * <li>PRESENT</li>
+		 * <li>COMMERCIAL_SAMPLE</li>
+		 * <li>DOCUMENT</li>
+		 * <li>RETURN_OF_GOODS</li>
+		 * <li>COMMERCIAL_GOODS</li>
+		 * </ul>
+		 *
+		 * @param string $export_type The export type.
+		 * @param Label\Label  $label The label instance.
+		 *
+		 * @since 3.3.0
+		 * @package Vendidero/Germanized/DHL
+		 */
+		return apply_filters( 'woocommerce_gzd_dhl_label_api_export_type', strtoupper( $export_type ), $label );
 	}
 }

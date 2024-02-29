@@ -274,6 +274,10 @@ class Shortcodes implements ShortcodeHandleable {
 			$args['compare'] = array_map( 'trim', explode( '|', $args['compare'] ) );
 		}
 
+		if ( strstr( $args['value'], '|' ) ) {
+			$args['value'] = array_map( 'trim', explode( '|', $args['value'] ) );
+		}
+
 		return $args;
 	}
 
@@ -352,12 +356,12 @@ class Shortcodes implements ShortcodeHandleable {
 				}
 			}
 
-			$ref    = new \ReflectionMethod( $object, $getter );
-			$params = $ref->getNumberOfParameters();
-			$args   = array_slice( $args, 0, $params );
+			$ref         = new \ReflectionMethod( $object, $getter );
+			$param_count = $ref->getNumberOfParameters();
+			$args        = array_slice( $args, 0, $param_count );
 
 			if ( $ref->isPublic() ) {
-				if ( $params > 0 && ! empty( $args ) ) {
+				if ( $param_count > 0 && ! empty( $args ) ) {
 					$result = call_user_func_array( array( $object, $getter ), $args );
 				} else {
 					$result = $object->$getter();
@@ -376,6 +380,9 @@ class Shortcodes implements ShortcodeHandleable {
 	 * @param Reference|Document|DocumentItem $object
 	 */
 	protected function get_object_data( $object, $field_key, $args = array() ) {
+		$field_key_parts      = explode( '#', $field_key );
+		$field_key            = $field_key_parts[0];
+		$inner_field_keys     = count( $field_key_parts ) > 1 ? array_slice( $field_key_parts, 1 ) : array();
 		$getter               = "get_{$field_key}";
 		$fallback_getter      = $field_key;
 		$result               = '';
@@ -411,6 +418,19 @@ class Shortcodes implements ShortcodeHandleable {
 					if ( is_string( $prefixed_meta_result ) && 'field_' === substr( $prefixed_meta_result, 0, 6 ) ) {
 						$result = $original_result;
 					}
+				}
+			}
+		}
+
+		/**
+		 * Support inner field keys, e.g. [xy data="my_object#field1#field2"]
+		 */
+		if ( ! empty( $inner_field_keys ) ) {
+			foreach ( $inner_field_keys as $inner_field_key ) {
+				if ( is_array( $result ) ) {
+					$result = array_key_exists( $inner_field_key, $result ) ? $result[ $inner_field_key ] : $result;
+				} elseif ( is_object( $result ) ) {
+					$result = $this->get_object_data( $result, $inner_field_key, $args );
 				}
 			}
 		}
@@ -589,23 +609,25 @@ class Shortcodes implements ShortcodeHandleable {
 
 		if ( is_array( $data ) && ! is_array( $comparison ) ) {
 			$comparison = array( $comparison );
+		} elseif ( is_array( $comparison ) && ! is_array( $data ) ) {
+			$data = array( $data );
 		}
 
 		foreach ( $types as $c ) {
 			$inner_show = false;
 
-			if ( 'e' === $c || 'equals' === $c ) {
+			if ( 'e' === $c || 'equals' === $c || '==' === $c ) {
 				$inner_show = $data == $comparison; // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
-			} elseif ( 'ne' === $c || 'nequals' === $c ) {
+			} elseif ( 'ne' === $c || 'nequals' === $c || '!=' === $c ) {
 				$inner_show = $data != $comparison; // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
-			} elseif ( 'gt' === $c || 'greater' === $c ) {
-				$inner_show = $comparison > $data;
-			} elseif ( 'gte' === $c ) {
-				$inner_show = $comparison >= $data;
-			} elseif ( 'lt' === $c || 'lesser' === $c ) {
-				$inner_show = $comparison < $data;
-			} elseif ( 'lte' === $c ) {
-				$inner_show = $comparison <= $data;
+			} elseif ( 'gt' === $c || 'greater' === $c || '>' === $c ) {
+				$inner_show = $data > $comparison;
+			} elseif ( 'gte' === $c || '>=' === $c ) {
+				$inner_show = $data >= $comparison;
+			} elseif ( 'lt' === $c || 'lesser' === $c || '<' === $c ) {
+				$inner_show = $data < $comparison;
+			} elseif ( 'lte' === $c || '<=' === $c ) {
+				$inner_show = $data <= $comparison;
 			} elseif ( 'empty' === $c ) {
 				$inner_show = empty( $data ) ? true : false;
 			} elseif ( 'nempty' === $c ) {
@@ -614,10 +636,18 @@ class Shortcodes implements ShortcodeHandleable {
 				$inner_show = true === $data;
 			} elseif ( 'false' === $c ) {
 				$inner_show = false === $data;
-			} elseif ( 'in' === $c && is_array( $data ) ) {
-				$inner_show = in_array( $comparison[0], $data ); // phpcs:ignore WordPress.PHP.StrictInArray.MissingTrueStrict
+			} elseif ( 'in' === $c ) {
+				$comparison = (array) $comparison;
+				$data       = (array) $data;
+				$intersect  = array_intersect( $data, $comparison );
+
+				$inner_show = ! empty( $intersect );
 			} elseif ( 'nin' === $c && is_array( $data ) ) {
-				$inner_show = ! in_array( $comparison[0], $data ); // phpcs:ignore WordPress.PHP.StrictInArray.MissingTrueStrict
+				$comparison = (array) $comparison;
+				$data       = (array) $data;
+				$intersect  = array_intersect( $data, $comparison );
+
+				$inner_show = empty( $intersect );
 			}
 
 			if ( 'OR' === $compare && $inner_show ) {
@@ -813,11 +843,15 @@ class Shortcodes implements ShortcodeHandleable {
 			$return_data = '';
 
 			if ( ! empty( $atts['args'] ) ) {
+				$new_filtered = array();
+
 				foreach ( $atts['args'] as $arg ) {
 					if ( isset( $filtered[ $arg ] ) ) {
-						$filtered = $filtered[ $arg ];
+						$new_filtered = array_merge( is_array( $filtered[ $arg ] ) ? $filtered[ $arg ] : array( $filtered[ $arg ] ), $new_filtered );
 					}
 				}
+
+				$filtered = $new_filtered;
 			}
 
 			if ( ! is_array( $filtered ) ) {
@@ -834,15 +868,30 @@ class Shortcodes implements ShortcodeHandleable {
 
 		if ( ! $has_applied_format && ! empty( $format ) ) {
 			if ( 'price' === $format ) {
-				if ( is_callable( array( $object, 'get_formatted_price' ) ) ) {
-					$return_data = $object->get_formatted_price( $data );
-				} elseif ( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Reference' ) ) {
-					if ( $object->is_callable( 'get_currency' ) ) {
-						$currency    = $object->get_currency();
-						$return_data = sab_format_price( $return_data, array( 'currency' => $currency ) );
+				if ( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Reference' ) ) {
+					if ( $object->is_callable( 'get_formatted_price' ) ) {
+						$return_data        = $object->get_formatted_price( $return_data );
+						$has_applied_format = true;
+					} elseif ( $object->is_callable( 'get_currency' ) ) {
+						$currency           = $object->get_currency();
+						$return_data        = sab_format_price( $return_data, array( 'currency' => $currency ) );
+						$has_applied_format = true;
 					}
-				} else {
-					$return_data = sab_format_price( $return_data );
+				} elseif ( is_callable( array( $object, 'get_formatted_price' ) ) ) {
+					$return_data        = $object->get_formatted_price( $data );
+					$has_applied_format = true;
+				}
+
+				if ( ! $has_applied_format ) {
+					$price_args = array();
+
+					if ( $document = $this->get_document() ) {
+						if ( is_callable( array( $document, 'get_currency' ) ) ) {
+							$price_args['currency'] = $document->get_currency();
+						}
+					}
+
+					$return_data = sab_format_price( $return_data, $price_args );
 				}
 			} elseif ( 'decimal' === $format && is_numeric( $return_data ) ) {
 				$return_data = sab_print_decimal( $return_data );
@@ -854,6 +903,10 @@ class Shortcodes implements ShortcodeHandleable {
 				}
 			} elseif ( 'country' === $format && 2 === strlen( $return_data ) ) {
 				$return_data = sab_format_country_name( $return_data );
+			} elseif ( 'upper' === $format ) {
+				$return_data = strtoupper( $return_data );
+			} elseif ( 'lower' === $format ) {
+				$return_data = strtolower( $return_data );
 			} elseif ( 'date:' === substr( $format, 0, 5 ) || ( strstr( strtolower( $format ), 'm' ) && strstr( strtolower( $format ), 'y' ) && strstr( strtolower( $format ), 'd' ) ) ) {
 				$datetime = false;
 				$format   = 'date:' === substr( $format, 0, 5 ) ? substr( $format, 5 ) : $format;
@@ -876,6 +929,17 @@ class Shortcodes implements ShortcodeHandleable {
 
 				if ( is_a( $datetime, 'WC_DateTime' ) ) {
 					return $this->format_result( $datetime, $atts, $object );
+				}
+			} elseif ( ! empty( $return_data ) ) {
+				if ( is_callable( $format ) ) {
+					try {
+						$reflection = is_array( $format ) ? new \ReflectionMethod( $format[0], $format[1] ) : new \ReflectionFunction( $format );
+
+						if ( 1 === $reflection->getNumberOfRequiredParameters() ) {
+							$return_data = call_user_func_array( $format, array( $return_data ) );
+						}
+					} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+					}
 				}
 			}
 		}

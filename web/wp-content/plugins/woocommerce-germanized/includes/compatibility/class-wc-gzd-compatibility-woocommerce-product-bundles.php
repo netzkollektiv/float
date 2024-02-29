@@ -60,8 +60,34 @@ class WC_GZD_Compatibility_WooCommerce_Product_Bundles extends WC_GZD_Compatibil
 		add_action( 'woocommerce_bundled_single_variation', array( $this, 'bundled_variation' ), 10, 2 );
 		add_action( 'woocommerce_gzd_before_add_variation_options', array( $this, 'before_bundled_variation_options' ), 10, 3 );
 
-		add_action( 'woocommerce_gzd_registered_scripts', array( $this, 'register_script' ), 10, 3 );
+		add_action( 'woocommerce_gzd_registered_scripts', array( $this, 'register_script' ), 10 );
 		add_filter( 'woocommerce_gzd_templates_requiring_variation_script', array( $this, 'register_template' ) );
+
+		add_filter( 'woocommerce_gzd_product_is_revocation_exempt', array( $this, 'bundle_revocation_exempt' ), 10, 4 );
+	}
+
+	public function bundle_revocation_exempt( $is_exempt, $product, $type, $item ) {
+		if ( 'digital' === $type && is_a( $product, 'WC_Product_Bundle' ) && is_callable( array( $product, 'is_virtual_bundle' ) ) && ! $product->is_virtual_bundle() ) {
+			$is_exempt = false;
+		}
+
+		if ( $is_exempt && $product->is_virtual() ) {
+			$bundled_item = false;
+
+			if ( is_array( $item ) && isset( $item['bundled_item_id'] ) && function_exists( 'wc_pb_get_bundled_cart_item_container' ) ) {
+				if ( $bundle_container_item = wc_pb_get_bundled_cart_item_container( $item ) ) {
+					$bundle = $bundle_container_item['data'];
+
+					$bundled_item = $bundle->get_bundled_item( $item['bundled_item_id'] );
+				}
+			}
+
+			if ( $bundled_item && false === $bundled_item->is_shipped_individually() ) {
+				$is_exempt = false;
+			}
+		}
+
+		return $is_exempt;
 	}
 
 	/**
@@ -77,10 +103,12 @@ class WC_GZD_Compatibility_WooCommerce_Product_Bundles extends WC_GZD_Compatibil
 		return $templates;
 	}
 
-	public function register_script( $suffix, $frontend_script_path, $assets_path ) {
+	public function register_script() {
+		$gzd = WC_germanized();
+
 		wp_register_script(
 			'wc-gzd-unit-price-observer-bundle',
-			$frontend_script_path . 'unit-price-observer-bundle' . $suffix . '.js',
+			$gzd->get_assets_build_url( 'static/unit-price-observer-bundle.js' ),
 			array(
 				'jquery',
 				'wc-gzd-unit-price-observer',
@@ -176,13 +204,30 @@ class WC_GZD_Compatibility_WooCommerce_Product_Bundles extends WC_GZD_Compatibil
 	}
 
 	public function output_bundle_shopmarks() {
-		foreach ( wc_gzd_get_single_product_shopmarks() as $shopmark ) {
-			$callback = $shopmark->get_callback();
+		?>
+		<script type="text/javascript">
+			jQuery( function( $ ) {
+				$( '.bundle_data' ).on( 'woocommerce-product-bundle-updated-totals', function( e, bundle ) {
+					if ( bundle.show_price_html() ) {
+						bundle.$bundle_data.find( '.wc-gzd-bundle-total-shopmarks' ).show();
+					} else {
+						bundle.$bundle_data.find( '.wc-gzd-bundle-total-shopmarks' ).hide();
+					}
+				} );
+			});
+		</script>
+		<div class="wc-gzd-bundle-total-shopmarks" style="display: none;">
+			<?php
+			foreach ( wc_gzd_get_single_product_shopmarks() as $shopmark ) {
+				$callback = $shopmark->get_callback();
 
-			if ( function_exists( $callback ) && $shopmark->is_enabled() && in_array( $shopmark->get_type(), array( 'unit_price', 'legal', 'tax', 'shipping_costs' ), true ) ) {
-				call_user_func( $callback );
+				if ( function_exists( $callback ) && $shopmark->is_enabled() && in_array( $shopmark->get_type(), array( 'unit_price', 'legal', 'tax', 'shipping_costs' ), true ) ) {
+					call_user_func( $callback );
+				}
 			}
-		}
+			?>
+		</div>
+		<?php
 	}
 
 	/**
@@ -211,6 +256,8 @@ class WC_GZD_Compatibility_WooCommerce_Product_Bundles extends WC_GZD_Compatibil
 			$add_suffixes = true;
 
 			if ( $product->is_type( 'variable' ) && self::$variable_has_filtered ) {
+				$add_suffixes = false;
+			} elseif ( strstr( $price, 'wc-gzd-legal-price-info' ) ) {
 				$add_suffixes = false;
 			}
 

@@ -47,7 +47,11 @@ class VoucherItem extends TaxableItem implements Summable, Taxable {
 		$name = $this->get_prop( 'name', $context );
 
 		if ( 'view' === $context && empty( $name ) ) {
-			$name = sprintf( _x( 'Voucher: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), $this->get_code( $context ) );
+			if ( ! empty( $this->get_code( $context ) ) ) {
+				$name = sprintf( _x( 'Voucher: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), $this->get_code( $context ) );
+			} else {
+				$name = _x( 'Voucher', 'storeabill-core', 'woocommerce-germanized-pro' );
+			}
 		}
 
 		return $name;

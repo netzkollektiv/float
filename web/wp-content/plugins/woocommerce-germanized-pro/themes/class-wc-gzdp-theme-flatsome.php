@@ -92,16 +92,15 @@ class WC_GZDP_Theme_Flatsome extends WC_GZDP_Theme {
 
 	public function enqeue_variations_script() {
 		if ( ! is_singular( 'product' ) && wp_script_is( 'wc-add-to-cart-variation' ) ) {
-
 			// Add filter for wrapper
 			add_filter( 'woocommerce_gzd_add_to_cart_variation_params', array( $this, 'set_quick_view_wrapper' ), 10, 1 );
 			wp_enqueue_script( 'wc-gzd-add-to-cart-variation' );
 
-			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
-			wp_register_script( 'wc-gzdp-flatsome-quick-view', WC_germanized_pro()->plugin_url() . '/themes/assets/js/wc-gzdp-flatsome-quick-view' . $suffix . '.js', array( 'flatsome-theme-woocommerce-js' ), WC_GERMANIZED_PRO_VERSION, true );
+			$assets = WC_GZDP_Assets::instance();
+			$assets->register_script( 'wc-gzdp-theme-flatsome-quick-view', 'static/wc-gzdp-theme-flatsome-quick-view.js', array( 'flatsome-theme-woocommerce-js' ) );
 
 			if ( wp_script_is( 'wc-gzd-add-to-cart-variation' ) ) {
-				wp_enqueue_script( 'wc-gzdp-flatsome-quick-view' );
+				wp_enqueue_script( 'wc-gzdp-theme-flatsome-quick-view' );
 			}
 		}
 	}

@@ -3,7 +3,13 @@
 namespace Vendidero\Germanized\Shipments;
 
 use Exception;
+use Vendidero\Germanized\Shipments\Admin\Settings;
+use Vendidero\Germanized\Shipments\Packing\Helper;
+use Vendidero\Germanized\Shipments\Packing\ItemList;
 use Vendidero\Germanized\Shipments\Packing\OrderItem;
+use Vendidero\Germanized\Shipments\ShippingMethod\MethodHelper;
+use Vendidero\Germanized\Shipments\ShippingMethod\ProviderMethod;
+use Vendidero\Germanized\Shipments\ShippingMethod\ShippingMethod;
 use WC_DateTime;
 use DateTimeZone;
 use WC_Order;
@@ -29,6 +35,8 @@ class Order {
 	protected $order;
 
 	protected $shipments = null;
+
+	protected $package_data = null;
 
 	protected $shipments_to_delete = array();
 
@@ -80,6 +88,19 @@ class Order {
 		return apply_filters( 'woocommerce_gzd_shipment_order_shipping_status', ( in_array( $shipping_status, array( 'shipped', 'delivered' ), true ) || ( 'partially-delivered' === $shipping_status && ! $this->needs_shipping( array( 'sent_only' => true ) ) ) ), $this );
 	}
 
+	public function get_last_tracking_id() {
+		$tracking_id = '';
+
+		foreach ( array_reverse( $this->get_simple_shipments( true ) ) as $shipment ) {
+			if ( ! empty( $shipment->get_tracking_id() ) ) {
+				$tracking_id = $shipment->get_tracking_id();
+				break;
+			}
+		}
+
+		return apply_filters( 'woocommerce_gzd_shipment_order_last_tracking_id', $tracking_id, $this );
+	}
+
 	public function get_shipping_status() {
 		$status                  = 'not-shipped';
 		$shipments               = $this->get_simple_shipments();
@@ -116,6 +137,22 @@ class Order {
 		}
 
 		return apply_filters( 'woocommerce_gzd_shipment_order_shipping_status', $status, $this );
+	}
+
+	public function supports_third_party_email_transmission() {
+		$supports_email_transmission = function_exists( 'wc_gzd_order_supports_parcel_delivery_reminder' ) ? wc_gzd_order_supports_parcel_delivery_reminder( $this->get_order() ) : 'yes' === $this->get_order()->get_meta( '_parcel_delivery_opted_in' );
+
+		/**
+		 * Filter to adjust whether the email address may be transmitted to third-parties, e.g.
+		 * the shipping provider (via label requests) or not.
+		 *
+		 * @param boolean $supports_email_transmission Whether the order supports email transmission or not.
+		 * @param Order   $order The order instance.
+		 *
+		 * @since 3.0.0
+		 * @package Vendidero/Germanized/Shipments
+		 */
+		return apply_filters( 'woocommerce_gzd_shipment_order_supports_email_transmission', $supports_email_transmission, $this );
 	}
 
 	public function has_shipped_shipments() {
@@ -162,6 +199,176 @@ class Order {
 		}
 
 		return apply_filters( 'woocommerce_gzd_shipment_order_return_default_shipping_provider', $default_provider, $this );
+	}
+
+	protected function get_package_data() {
+		if ( is_null( $this->package_data ) ) {
+			$items        = $this->get_available_items_for_shipment();
+			$package_data = array(
+				'total'            => 0.0,
+				'subtotal'         => 0.0,
+				'weight'           => 0.0,
+				'volume'           => 0.0,
+				'products'         => array(),
+				'shipping_classes' => array(),
+				'item_count'       => 0,
+				'items'            => new ItemList(),
+			);
+
+			foreach ( $items as $order_item_id => $item ) {
+				if ( ! $order_item = $this->get_order()->get_item( $order_item_id ) ) {
+					continue;
+				}
+
+				$line_total    = (float) $order_item->get_total();
+				$line_subtotal = (float) $order_item->get_subtotal();
+
+				if ( $this->get_order()->get_prices_include_tax() ) {
+					$line_total    += (float) $order_item->get_total_tax();
+					$line_subtotal += (float) $order_item->get_subtotal_tax();
+				}
+
+				$quantity = (int) $item['max_quantity'];
+
+				if ( $product = $order_item->get_product() ) {
+					$width  = ( empty( $product->get_width() ) ? 0 : wc_format_decimal( $product->get_width() ) ) * $quantity;
+					$length = ( empty( $product->get_length() ) ? 0 : wc_format_decimal( $product->get_length() ) ) * $quantity;
+					$height = ( empty( $product->get_height() ) ? 0 : wc_format_decimal( $product->get_height() ) ) * $quantity;
+					$weight = ( empty( $product->get_weight() ) ? 0 : wc_format_decimal( $product->get_weight() ) ) * $quantity;
+
+					$package_data['weight'] += $weight;
+					$package_data['volume'] += ( $width * $length * $height );
+
+					if ( $product && ! array_key_exists( $product->get_id(), $package_data['products'] ) ) {
+						$package_data['products'][ $product->get_id() ] = $product;
+
+						if ( ! empty( $product->get_shipping_class_id() ) ) {
+							$package_data['shipping_classes'][] = $product->get_shipping_class_id();
+						}
+					}
+				}
+
+				$package_data['total']      += $line_total;
+				$package_data['subtotal']   += $line_subtotal;
+				$package_data['item_count'] += $quantity;
+
+				$box_item = new Packing\OrderItem( $order_item );
+				$package_data['items']->insert( $box_item, $quantity );
+			}
+
+			$this->package_data = $package_data;
+		}
+
+		return $this->package_data;
+	}
+
+	/**
+	 * Create shipments (if needed) based on current packing configuration.
+	 *
+	 * @param string $default_status
+	 *
+	 * @return array|\WP_Error
+	 */
+	public function create_shipments( $default_status = 'processing' ) {
+		$shipments_created = array();
+		$errors            = new \WP_Error();
+
+		if ( $this->needs_shipping() ) {
+			if ( $this->has_auto_packing() ) {
+				if ( $method = $this->get_builtin_shipping_method() ) {
+					$packaging_boxes = $method->get_method()->get_available_packaging_boxes( $this->get_package_data() );
+				} else {
+					$available_packaging = wc_gzd_get_packaging_list();
+
+					if ( $provider = wc_gzd_get_order_shipping_provider( $this ) ) {
+						$available_packaging = wc_gzd_get_packaging_list( array( 'shipping_provider' => $provider->get_name() ) );
+					}
+
+					$packaging_boxes = Helper::get_packaging_boxes( $available_packaging );
+				}
+
+				$items        = $this->get_items_to_pack_left_for_shipping();
+				$packed_boxes = Helper::pack( $items, $packaging_boxes, 'order' );
+
+				if ( empty( $packaging_boxes ) && 0 === count( $packed_boxes ) ) {
+					$shipment = wc_gzd_create_shipment( $this, array( 'props' => array( 'status' => $default_status ) ) );
+
+					if ( ! is_wp_error( $shipment ) ) {
+						$this->add_shipment( $shipment );
+						$shipments_created[ $shipment->get_id() ] = $shipment;
+					} else {
+						foreach ( $shipment->get_error_messages() as $code => $message ) {
+							$errors->add( $code, $message );
+						}
+					}
+				} else {
+					if ( 0 === count( $packed_boxes ) ) {
+						$errors->add( 404, sprintf( _x( 'Seems like none of your <a href="%1$s">packaging options</a> is available for this order.', 'shipments', 'woocommerce-germanized' ), Settings::get_settings_url( 'packaging' ) ) );
+					} else {
+						foreach ( $packed_boxes as $box ) {
+							$packaging      = $box->getBox();
+							$items          = $box->getItems();
+							$shipment_items = array();
+
+							foreach ( $items as $item ) {
+								$order_item = $item->getItem();
+
+								if ( ! isset( $shipment_items[ $order_item->get_id() ] ) ) {
+									$shipment_items[ $order_item->get_id() ] = 1;
+								} else {
+									$shipment_items[ $order_item->get_id() ]++;
+								}
+							}
+
+							$shipment = wc_gzd_create_shipment(
+								$this,
+								array(
+									'items' => $shipment_items,
+									'props' => array(
+										'packaging_id' => $packaging->get_id(),
+										'status'       => $default_status,
+									),
+								)
+							);
+
+							if ( ! is_wp_error( $shipment ) ) {
+								$this->add_shipment( $shipment );
+
+								$shipments_created[ $shipment->get_id() ] = $shipment;
+							} else {
+								foreach ( $shipments_created as $id => $shipment_created ) {
+									$shipment_created->delete( true );
+									$this->remove_shipment( $id );
+								}
+
+								foreach ( $shipment->get_error_messages() as $code => $message ) {
+									$errors->add( $code, $message );
+								}
+							}
+						}
+					}
+				}
+			} else {
+				$shipment = wc_gzd_create_shipment( $this, array( 'props' => array( 'status' => $default_status ) ) );
+
+				if ( ! is_wp_error( $shipment ) ) {
+					$this->add_shipment( $shipment );
+					$shipments_created[ $shipment->get_id() ] = $shipment;
+				} else {
+					foreach ( $shipment->get_error_messages() as $code => $message ) {
+						$errors->add( $code, $message );
+					}
+				}
+			}
+		}
+
+		if ( wc_gzd_shipment_wp_error_has_errors( $errors ) ) {
+			return $errors;
+		} else {
+			$this->save();
+		}
+
+		return $shipments_created;
 	}
 
 	public function validate_shipments( $args = array() ) {
@@ -288,9 +495,7 @@ class Order {
 	 * @return Shipment[] Shipments
 	 */
 	public function get_shipments() {
-
 		if ( is_null( $this->shipments ) ) {
-
 			$this->shipments = wc_gzd_get_shipments(
 				array(
 					'order_id' => $this->get_order()->get_id(),
@@ -342,13 +547,16 @@ class Order {
 	}
 
 	public function add_shipment( &$shipment ) {
+		$this->package_data = null;
+
 		$shipments = $this->get_shipments();
 
 		$this->shipments[] = $shipment;
 	}
 
 	public function remove_shipment( $shipment_id ) {
-		$shipments = $this->get_shipments();
+		$this->package_data = null;
+		$shipments          = $this->get_shipments();
 
 		foreach ( $this->shipments as $key => $shipment ) {
 			if ( $shipment->get_id() === (int) $shipment_id ) {
@@ -400,7 +608,6 @@ class Order {
 			$quantity_left = $this->get_shippable_item_quantity( $order_item );
 
 			foreach ( $this->get_shipments() as $shipment ) {
-
 				if ( $args['sent_only'] && ! $shipment->is_shipped() ) {
 					continue;
 				}
@@ -411,7 +618,7 @@ class Order {
 
 				if ( $item = $shipment->get_item_by_order_item_id( $order_item->get_id() ) ) {
 					if ( 'return' === $shipment->get_type() ) {
-						if ( $shipment->is_shipped() ) {
+						if ( ! $args['sent_only'] && $shipment->is_shipped() ) {
 							$quantity_left += absint( $item->get_quantity() );
 						}
 					} else {
@@ -456,12 +663,26 @@ class Order {
 		return $quantity;
 	}
 
+	public function order_item_is_non_returnable( $order_item_id ) {
+		$is_non_returnable = false;
+		$order_item        = is_a( $order_item_id, 'WC_Order_Item' ) ? $order_item_id : $this->get_order()->get_item( $order_item_id );
+
+		if ( $order_item ) {
+			if ( is_callable( array( $order_item, 'get_product' ) ) ) {
+				if ( $product = $order_item->get_product() ) {
+					$is_non_returnable = wc_gzd_shipments_get_product( $product )->is_non_returnable();
+				}
+			}
+		}
+
+		return apply_filters( 'woocommerce_gzd_shipment_order_item_is_non_returnable', $is_non_returnable, $order_item_id, $this );
+	}
+
 	/**
 	 * @param ShipmentItem $item
 	 */
 	public function get_item_quantity_left_for_returning( $order_item_id, $args = array() ) {
-		$quantity_left = 0;
-		$args          = wp_parse_args(
+		$args = wp_parse_args(
 			$args,
 			array(
 				'delivered_only'           => false,
@@ -472,8 +693,11 @@ class Order {
 
 		$quantity_left = $this->get_item_quantity_sent_by_order_item_id( $order_item_id );
 
-		foreach ( $this->get_return_shipments() as $shipment ) {
+		if ( $this->order_item_is_non_returnable( $order_item_id ) ) {
+			$quantity_left = 0;
+		}
 
+		foreach ( $this->get_return_shipments() as $shipment ) {
 			if ( $args['delivered_only'] && ! $shipment->has_status( 'delivered' ) ) {
 				continue;
 			}
@@ -505,42 +729,40 @@ class Order {
 	}
 
 	/**
-	 * @param false $group_by_shipping_class
+	 * @param false $legacy_group_by_product_group
 	 *
-	 * @return OrderItem[]
+	 * @return ItemList|OrderItem[]
 	 */
-	public function get_items_to_pack_left_for_shipping( $group_by_shipping_class = false ) {
-		$items              = $this->get_available_items_for_shipment();
-		$items_to_be_packed = array();
+	public function get_items_to_pack_left_for_shipping( $legacy_group_by_product_group = null ) {
+		$items_to_be_packed = ! is_null( $legacy_group_by_product_group ) ? array() : $this->get_package_data()['items'];
 
-		foreach ( $items as $order_item_id => $item ) {
-			if ( ! $order_item = $this->get_order()->get_item( $order_item_id ) ) {
-				continue;
-			}
+		if ( ! is_null( $legacy_group_by_product_group ) ) {
+			foreach ( $this->get_available_items_for_shipment() as $order_item_id => $item ) {
+				if ( ! $order_item = $this->get_order()->get_item( $order_item_id ) ) {
+					continue;
+				}
 
-			$shipping_class = '';
+				$box_item = new Packing\OrderItem( $order_item );
 
-			if ( $group_by_shipping_class ) {
+				$product_group = '';
+
 				if ( $product = $order_item->get_product() ) {
-					$shipping_class = $product->get_shipping_class();
-				}
-			}
+					$product_group = '';
 
-			for ( $i = 0; $i < $item['max_quantity']; $i++ ) {
-				try {
-					$box_item = new Packing\OrderItem( $order_item );
-
-					if ( ! isset( $items_to_be_packed[ $shipping_class ] ) ) {
-						$items_to_be_packed[ $shipping_class ] = array();
+					if ( 'yes' === get_option( 'woocommerce_gzd_shipments_packing_group_by_shipping_class' ) ) {
+						$product_group = $product->get_shipping_class();
 					}
-
-					$items_to_be_packed[ $shipping_class ][] = $box_item;
-				} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 				}
+
+				if ( ! array_key_exists( $product_group, $items_to_be_packed ) ) {
+					$items_to_be_packed[ $product_group ] = new ItemList();
+				}
+
+				$items_to_be_packed[ $product_group ]->insert( $box_item, $item['max_quantity'] );
 			}
 		}
 
-		return apply_filters( 'woocommerce_gzd_shipment_order_items_to_pack_left_for_shipping', $items_to_be_packed, $group_by_shipping_class );
+		return apply_filters( 'woocommerce_gzd_shipment_order_items_to_pack_left_for_shipping', $items_to_be_packed );
 	}
 
 	/**
@@ -605,6 +827,23 @@ class Order {
 		}
 
 		return false;
+	}
+
+	public function get_non_returnable_items() {
+		$items = array();
+
+		foreach ( $this->get_returnable_items() as $item ) {
+			if ( $this->order_item_is_non_returnable( $item->get_order_item_id() ) ) {
+				$sku = $item->get_sku();
+
+				$items[ $item->get_order_item_id() ] = array(
+					'name'         => $item->get_name() . ( ! empty( $sku ) ? ' (' . esc_html( $sku ) . ')' : '' ),
+					'max_quantity' => 0,
+				);
+			}
+		}
+
+		return $items;
 	}
 
 	/**
@@ -771,12 +1010,14 @@ class Order {
 		$items = array();
 
 		foreach ( $this->get_simple_shipments() as $shipment ) {
-
 			if ( ! $shipment->is_shipped() ) {
 				continue;
 			}
 
 			foreach ( $shipment->get_items() as $item ) {
+				if ( $this->order_item_is_non_returnable( $item->get_order_item_id() ) ) {
+					continue;
+				}
 
 				if ( ! isset( $items[ $item->get_order_item_id() ] ) ) {
 					$new_item                            = clone $item;
@@ -898,6 +1139,41 @@ class Order {
 	}
 
 	/**
+	 * @return ProviderMethod|false
+	 */
+	public function get_builtin_shipping_method() {
+		$method = false;
+
+		if ( Package::is_packing_supported() ) {
+			$shipping_method_id = wc_gzd_get_shipment_order_shipping_method_id( $this->get_order() );
+
+			if ( 'shipping_provider_' === substr( $shipping_method_id, 0, 18 ) ) {
+				if ( $method = MethodHelper::get_provider_method( $shipping_method_id ) ) {
+					return $method;
+				}
+			}
+		}
+
+		return $method;
+	}
+
+	public function has_auto_packing() {
+		$has_auto_packing = false;
+
+		if ( Package::is_packing_supported() ) {
+			$has_auto_packing = Helper::enable_auto_packing();
+
+			if ( ! $has_auto_packing ) {
+				if ( self::get_builtin_shipping_method() ) {
+					$has_auto_packing = true;
+				}
+			}
+		}
+
+		return apply_filters( 'woocommerce_gzd_shipment_order_has_auto_packing', $has_auto_packing, $this->get_order(), $this );
+	}
+
+	/**
 	 * Checks whether the order needs shipping or not by checking quantity
 	 * for every line item.
 	 *
@@ -957,7 +1233,6 @@ class Order {
 		$needs_return = false;
 
 		foreach ( $items as $item ) {
-
 			if ( $this->item_needs_return( $item, $args ) ) {
 				$needs_return = true;
 				break;
@@ -979,7 +1254,6 @@ class Order {
 
 	public function save() {
 		if ( ! empty( $this->shipments_to_delete ) ) {
-
 			foreach ( $this->shipments_to_delete as $shipment ) {
 				$shipment->delete( true );
 			}
@@ -988,6 +1262,8 @@ class Order {
 		foreach ( $this->shipments as $shipment ) {
 			$shipment->save();
 		}
+
+		$this->package_data = null;
 	}
 
 	/**
@@ -999,7 +1275,6 @@ class Order {
 	 * @return bool|mixed
 	 */
 	public function __call( $method, $args ) {
-
 		if ( method_exists( $this->order, $method ) ) {
 			return call_user_func_array( array( $this->order, $method ), $args );
 		}

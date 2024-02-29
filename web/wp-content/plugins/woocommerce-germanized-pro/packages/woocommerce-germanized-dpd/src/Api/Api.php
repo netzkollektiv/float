@@ -47,20 +47,6 @@ abstract class Api {
 		return self::DEV_ENVIRONMENT === self::$environment;
 	}
 
-	abstract public function get_domestic_products( $shipment = false );
-
-	abstract public function get_international_products( $shipment = false );
-
-	abstract public function get_eu_products( $shipment = false );
-
-	public function get_page_formats() {
-		return array(
-			'A4' => _x( 'A4', 'dpd', 'woocommerce-germanized-pro' ),
-			'A6' => _x( 'A6', 'dpd', 'woocommerce-germanized-pro' ),
-			'A7' => _x( 'A7', 'dpd', 'woocommerce-germanized-pro' ),
-		);
-	}
-
 	public function get_international_customs_terms() {
 		return array(
 			'01' => _x( 'DAP, cleared', 'dpd', 'woocommerce-germanized-pro' ),

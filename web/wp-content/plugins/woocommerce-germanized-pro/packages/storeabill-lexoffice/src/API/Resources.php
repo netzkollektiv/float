@@ -4,6 +4,7 @@ namespace Vendidero\StoreaBill\Lexoffice\API;
 
 use Vendidero\StoreaBill\API\REST;
 use Vendidero\StoreaBill\API\RESTResponse;
+use Vendidero\StoreaBill\Lexoffice\Customer;
 use Vendidero\StoreaBill\Lexoffice\Package;
 use Vendidero\StoreaBill\Lexoffice\Sync;
 
@@ -39,22 +40,36 @@ class Resources extends REST {
 		return Package::get_api_url();
 	}
 
-	public function revoke() {
-		$result = $this->get_sync_helper()->parse_response( $this->post( 'revoke' ) );
-
-		if ( ! is_wp_error( $result ) ) {
-			return true;
-		}
-
-		return $result;
-	}
-
 	protected function get_response( $url, $type = 'GET', $body_args = array(), $header = array() ) {
 		if ( $this->get_auth()->has_expired() ) {
 			$this->get_auth()->refresh();
 		}
 
-		return parent::get_response( $url, $type, $body_args, $header );
+		$response = parent::get_response( $url, $type, $body_args, $header );
+
+		if ( $response->is_error() ) {
+			$code = $response->get_code();
+
+			/**
+			 * Handle rate limit hits
+			 */
+			if ( 429 === absint( $code ) ) {
+				\Vendidero\StoreaBill\Package::extended_log( sprintf( 'Lexoffice rate limit hit while calling %1$s', $url ) );
+
+				$hits = false === get_transient( 'storeabill_lexoffice_rate_limit_hits' ) ? 0 : absint( get_transient( 'storeabill_lexoffice_rate_limit_hits' ) );
+
+				if ( $hits <= 5 ) {
+					$hits++;
+
+					sleep( 1 * $hits );
+					set_transient( 'storeabill_lexoffice_rate_limit_hits', $hits, MINUTE_IN_SECONDS );
+
+					return $this->get_response( $url, $type, $body_args, $header );
+				}
+			}
+		}
+
+		return $response;
 	}
 
 	public function ping() {
@@ -134,29 +149,74 @@ class Resources extends REST {
 
 	public function update_voucher_file( $id, $file ) {
 		try {
-			$curl_file = new \CURLFile( $file, 'application/pdf' );
+			if ( $this->uses_curl() ) {
+				/**
+				 * Prevent WP from overriding CURLOPT_POSTFIELDS with string data.
+				 *
+				 * @param $handle
+				 */
+				$callback = function( $handle ) use ( $file ) {
+					if ( function_exists( 'curl_init' ) && function_exists( 'curl_exec' ) ) {
+						$curl_file = new \CURLFile( $file, 'application/pdf' );
 
-			/**
-			 * Prevent WP from overriding CURLOPT_POSTFIELDS with string data.
-			 *
-			 * @param $handle
-			 */
-			$callback = function( $handle ) use ( $curl_file ) {
-				if ( function_exists( 'curl_init' ) && function_exists( 'curl_exec' ) ) {
-					curl_setopt( // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-						$handle,
-						CURLOPT_POSTFIELDS,
+						curl_setopt( // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+							$handle,
+							CURLOPT_POSTFIELDS,
+							array(
+								'file' => $curl_file,
+								'type' => 'voucher',
+							)
+						);
+					}
+				};
+
+				add_action( 'http_api_curl', $callback, 10, 3 );
+				$result = $this->get_sync_helper()->parse_response(
+					$this->post(
+						'vouchers/' . $id . '/files',
 						array(
-							'file' => $curl_file,
+							'file' => $file,
 							'type' => 'voucher',
-						)
+						),
+						array( 'Content-Type' => 'multipart/form-data' )
+					)
+				);
+				remove_action( 'http_api_curl', $callback, 10 );
+			} else {
+				if ( file_exists( $file ) ) {
+					$files = array(
+						'file' => array(
+							'filename' => basename( $file ),
+							'binary'   => file_get_contents( $file ), // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+						),
 					);
+				} else {
+					$files = array();
 				}
-			};
 
-			add_action( 'http_api_curl', $callback, 10, 3 );
-			$result = $this->get_sync_helper()->parse_response( $this->post( 'vouchers/' . $id . '/files', array( 'file' => $curl_file ), array( 'Content-Type' => 'multipart/form-data' ) ) );
-			remove_action( 'http_api_curl', $callback, 10 );
+				$boundary       = uniqid();
+				$request_body   = $this->build_multipart_data( $boundary, array( 'type' => 'voucher' ), $files );
+				$content_length = strlen( $request_body );
+
+				$callback = function( &$handle ) use ( $request_body ) {
+					$handle .= $request_body;
+
+					return $handle;
+				};
+
+				add_action( 'requests-fsockopen.before_send', $callback, 10, 3 );
+				$result = $this->get_sync_helper()->parse_response(
+					$this->post(
+						'vouchers/' . $id . '/files',
+						array(),
+						array(
+							'Content-Type'   => 'multipart/form-data; boundary=' . $boundary,
+							'Content-Length' => $content_length,
+						)
+					)
+				);
+				remove_action( 'requests-fsockopen.before_send', $callback, 10 );
+			}
 
 			return $result;
 		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
@@ -175,28 +235,82 @@ class Resources extends REST {
 		}
 	}
 
-	public function search_contacts( $term ) {
-		if ( is_numeric( $term ) ) {
-			$result = $this->get_sync_helper()->parse_response(
-				$this->get(
-					'contacts',
-					array(
-						'customer' => true,
-						'number'   => $term,
-					)
-				)
-			);
-		} else {
-			$result = $this->get_sync_helper()->parse_response(
-				$this->get(
-					'contacts',
-					array(
-						'customer' => true,
-						'name'     => $term,
-					)
-				)
-			);
+	private function format_contact_str( $str ) {
+		return sanitize_key( $str );
+	}
+
+	/**
+	 * @param Customer $contact
+	 *
+	 * @return \WP_Error|array
+	 */
+	public function find_contact( $contact ) {
+		$result = $this->search_contacts( $contact->get_email(), 'email' );
+
+		if ( ! is_wp_error( $result ) ) {
+			foreach ( $result['content'] as $customer ) {
+				if ( isset( $customer['company'] ) ) {
+					$company_name = $customer['company']['name'];
+
+					if ( $this->format_contact_str( $contact->get_company() ) === $this->format_contact_str( $company_name ) ) {
+						/**
+						 * Right now lexoffice does not support syncing contacts with multiple contactPersons via API.
+						 *
+						 * @see https://developers.lexoffice.io/docs/#contacts-endpoint-retrieve-a-contact
+						 */
+						if ( count( $customer['company']['contactPersons'] ) > 1 ) {
+							continue;
+						}
+
+						foreach ( $customer['company']['contactPersons'] as $contact_person ) {
+							$first_name = $contact_person['firstName'];
+							$last_name  = $contact_person['lastName'];
+
+							if (
+								strstr( $this->format_contact_str( $first_name ), $this->format_contact_str( $contact->get_first_name() ) ) &&
+								strstr( $this->format_contact_str( $last_name ), $this->format_contact_str( $contact->get_last_name() ) )
+							) {
+								return $customer;
+							}
+						}
+					}
+				} else {
+					$company_name = '';
+					$first_name   = $customer['person']['firstName'];
+					$last_name    = $customer['person']['lastName'];
+
+					if (
+						strstr( $this->format_contact_str( $first_name ), $this->format_contact_str( $contact->get_first_name() ) ) &&
+						strstr( $this->format_contact_str( $last_name ), $this->format_contact_str( $contact->get_last_name() ) ) &&
+						$this->format_contact_str( $contact->get_company() ) === $this->format_contact_str( $company_name )
+					) {
+						return $customer;
+					}
+				}
+			}
 		}
+
+		return new \WP_Error( 500, 'Error matching contact' );
+	}
+
+	public function search_contacts( $term, $by = '' ) {
+		if ( empty( $by ) ) {
+			if ( is_numeric( $term ) ) {
+				$by = 'number';
+			} else {
+				$by = 'name';
+			}
+		}
+
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'contacts',
+				array(
+					'customer' => true,
+					$by        => $term,
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
 			return $result->get_body();

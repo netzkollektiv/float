@@ -39,7 +39,7 @@ class WC_GZDP_Dependencies {
 	 *
 	 * @var string
 	 */
-	public $wc_gzd_maximum_version_supported = '3.12';
+	public $wc_gzd_maximum_version_supported = '3.15';
 
 	/**
 	 * Lazy initiated activated plugins list
@@ -49,6 +49,8 @@ class WC_GZDP_Dependencies {
 	protected $active_plugins = null;
 
 	public $loadable = true;
+
+	protected $plugin = null;
 
 	public static function instance( $plugin = null ) {
 		if ( is_null( self::$_instance ) ) {
@@ -99,19 +101,23 @@ class WC_GZDP_Dependencies {
 	}
 
 	public function is_plugin_activated( $plugin_slug ) {
-		if ( is_null( $this->active_plugins ) ) {
-			$this->active_plugins = (array) get_option( 'active_plugins', array() );
+		if ( is_callable( array( 'Vendidero\Germanized\PluginsHelper', 'is_plugin_active' ) ) ) {
+			return \Vendidero\Germanized\PluginsHelper::is_plugin_active( $plugin_slug );
+		} else {
+			if ( is_null( $this->active_plugins ) ) {
+				$this->active_plugins = (array) get_option( 'active_plugins', array() );
 
-			if ( is_multisite() ) {
-				$this->active_plugins = array_merge( $this->active_plugins, get_site_option( 'active_sitewide_plugins', array() ) );
+				if ( is_multisite() ) {
+					$this->active_plugins = array_merge( $this->active_plugins, get_site_option( 'active_sitewide_plugins', array() ) );
+				}
 			}
-		}
 
-		if ( strpos( $plugin_slug, '.php' ) === false ) {
-			$plugin_slug = trailingslashit( $plugin_slug ) . $plugin_slug . '.php';
-		}
+			if ( strpos( $plugin_slug, '.php' ) === false ) {
+				$plugin_slug = trailingslashit( $plugin_slug ) . $plugin_slug . '.php';
+			}
 
-		return ( in_array( $plugin_slug, $this->active_plugins, true ) || array_key_exists( $plugin_slug, $this->active_plugins ) );
+			return ( in_array( $plugin_slug, $this->active_plugins, true ) || array_key_exists( $plugin_slug, $this->active_plugins ) );
+		}
 	}
 
 	public function get_wc_min_version_required() {
@@ -156,11 +162,7 @@ class WC_GZDP_Dependencies {
 	}
 
 	public function is_woocommerce_outdated() {
-		$version = get_option( 'woocommerce_db_version' );
-
-		if ( empty( $version ) ) {
-			$version = get_option( 'woocommerce_version' );
-		}
+		$version = self::get_plugin_version( 'woocommerce' );
 
 		return $this->compare_versions( $version, $this->get_wc_min_version_required(), '<' );
 	}
@@ -172,9 +174,13 @@ class WC_GZDP_Dependencies {
 	}
 
 	public function get_plugin_version( $plugin_slug ) {
-		$version = $this->parse_version( get_option( $plugin_slug . '_version', '1.0' ) );
+		if ( is_callable( array( 'Vendidero\Germanized\PluginsHelper', 'get_plugin_version' ) ) ) {
+			return \Vendidero\Germanized\PluginsHelper::get_plugin_version( $plugin_slug );
+		} else {
+			$version = $this->parse_version( get_option( $plugin_slug . '_version', '1.0' ) );
 
-		return $version;
+			return $version;
+		}
 	}
 
 	protected function parse_version( $version ) {

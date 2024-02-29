@@ -48,6 +48,13 @@ class DocumentTitle extends DynamicBlock {
 		$this->attributes = $this->parse_attributes( $attributes );
 		$this->content    = $content;
 
+		$current_plain_title = wp_strip_all_tags( $this->content );
+		$plain_title         = apply_filters( "storeabill_{$document->get_type()}_plain_title", $current_plain_title, $document, $this->content );
+
+		if ( $current_plain_title !== $plain_title ) {
+			$this->content = str_replace( $current_plain_title, $plain_title, $this->content );
+		}
+
 		return $this->content;
 	}
 }

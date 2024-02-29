@@ -7,20 +7,19 @@
 namespace Vendidero\Germanized\DPD\ShippingProvider;
 
 use Vendidero\Germanized\DPD\Package;
+use Vendidero\Germanized\DPD\ShippingProvider\Services\HigherInsurance;
 use Vendidero\Germanized\Shipments\Admin\Settings;
+use Vendidero\Germanized\Shipments\Labels\ConfigurationSet;
 use Vendidero\Germanized\Shipments\Shipment;
+use Vendidero\Germanized\Shipments\ShippingMethod\MethodHelper;
 use Vendidero\Germanized\Shipments\ShippingProvider\Auto;
 
 defined( 'ABSPATH' ) || exit;
 
 class DPD extends Auto {
 
-	protected function get_default_label_minimum_shipment_weight() {
-		return 0.01;
-	}
-
-	protected function get_default_label_default_shipment_weight() {
-		return 0.5;
+	protected function get_default_label_default_print_format() {
+		return 'web_connect' === $this->get_api_type() ? 'A6' : 'PDF_A6';
 	}
 
 	public function get_title( $context = 'view' ) {
@@ -83,7 +82,13 @@ class DPD extends Auto {
 	}
 
 	public function get_api_type( $context = 'view' ) {
-		return $this->get_meta( 'api_type', true, $context );
+		$api_type = $this->get_meta( 'api_type', true, $context );
+
+		if ( 'view' === $context && empty( $api_type ) ) {
+			$api_type = 'cloud';
+		}
+
+		return $api_type;
 	}
 
 	public function set_api_username( $username ) {
@@ -108,6 +113,182 @@ class DPD extends Auto {
 		return $settings;
 	}
 
+	protected function register_print_formats() {
+		if ( 'cloud' === $this->get_api_type() ) {
+			$page_formats = array(
+				'PDF_A4' => _x( 'A4', 'dpd', 'woocommerce-germanized-pro' ),
+				'PDF_A6' => _x( 'A6', 'dpd', 'woocommerce-germanized-pro' ),
+			);
+		} else {
+			$page_formats = array(
+				'A4' => _x( 'A4', 'dpd', 'woocommerce-germanized-pro' ),
+				'A6' => _x( 'A6', 'dpd', 'woocommerce-germanized-pro' ),
+				'A7' => _x( 'A7', 'dpd', 'woocommerce-germanized-pro' ),
+			);
+		}
+
+		foreach ( $page_formats as $format_id => $format_label ) {
+			$this->register_print_format(
+				$format_id,
+				array(
+					'label' => $format_label,
+				)
+			);
+		}
+	}
+
+	protected function register_products() {
+		if ( 'cloud' === $this->get_api_type() ) {
+			$dom_products = array(
+				'Classic_Predict'     => _x( 'DPD Classic Predict', 'dpd', 'woocommerce-germanized-pro' ),
+				'Express_830'         => _x( 'DPD Express 8:30', 'dpd', 'woocommerce-germanized-pro' ),
+				'Express_10'          => _x( 'DPD Express 10:00', 'dpd', 'woocommerce-germanized-pro' ),
+				'Express_12'          => _x( 'DPD Express 12:00', 'dpd', 'woocommerce-germanized-pro' ),
+				'Express_18'          => _x( 'DPD Express 18:00', 'dpd', 'woocommerce-germanized-pro' ),
+				'Express_12_Saturday' => _x( 'DPD Express 12:00 (Saturday)', 'dpd', 'woocommerce-germanized-pro' ),
+			);
+
+			$this->register_product(
+				'Classic',
+				array(
+					'label'                    => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu', 'int' ),
+					'shipment_types' => array( 'simple' ),
+					'countries'      => array( 'ALL_EU', 'CH', 'GB', 'NO' ),
+				)
+			);
+
+			foreach ( $dom_products as $product_id => $label ) {
+				$this->register_product(
+					$product_id,
+					array(
+						'label'                    => $label,
+						'zones'          => array( 'dom' ),
+						'shipment_types' => array( 'simple' ),
+					)
+				);
+			}
+
+			$this->register_product(
+				'Express_International',
+				array(
+					'label'                    => _x( 'DPD Express', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'eu', 'int' ),
+					'shipment_types' => array( 'simple' ),
+				)
+			);
+
+			$this->register_product(
+				'Classic_Return',
+				array(
+					'label'                    => _x( 'DPD Classic Return', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu', 'int' ),
+					'shipment_types' => array( 'return' ),
+				)
+			);
+
+			$this->register_product(
+				'Shop_Return',
+				array(
+					'label'                    => _x( 'DPD Shop Return', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu', 'int' ),
+					'shipment_types' => array( 'return' ),
+				)
+			);
+		} else {
+			$this->register_product(
+				'CL',
+				array(
+					'label'                    => _x( 'DPD Classic', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu', 'int' ),
+					'countries'      => array( 'ALL_EU', 'CH', 'GB', 'NO' ),
+					'shipment_types' => array( 'simple', 'return' ),
+				)
+			);
+
+			$this->register_product(
+				'IE2',
+				array(
+					'label'                    => _x( 'DPD Express', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu', 'int' ),
+					'shipment_types' => array( 'simple', 'return' ),
+				)
+			);
+
+			$this->register_product(
+				'E10',
+				array(
+					'label'                    => _x( 'DPD 10:00', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu' ),
+					'countries'      => array( 'DE', 'BE', 'NL', 'LU' ),
+					'shipment_types' => array( 'simple', 'return' ),
+				)
+			);
+
+			$this->register_product(
+				'E12',
+				array(
+					'label'                    => _x( 'DPD 12:00', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu' ),
+					'countries'      => array( 'DE', 'BE', 'NL', 'LU' ),
+					'shipment_types' => array( 'simple', 'return' ),
+				)
+			);
+
+			$this->register_product(
+				'E18',
+				array(
+					'label'                    => _x( 'DPD 18:00', 'dpd', 'woocommerce-germanized-pro' ),
+					'zones'          => array( 'dom', 'eu', 'int' ),
+					'countries'      => array( 'DE', 'BE', 'NL', 'LU', 'CH', 'LI' ),
+					'shipment_types' => array( 'simple', 'return' ),
+				)
+			);
+
+			$dom_products = array(
+				'E830' => _x( 'DPD 8:30', 'dpd', 'woocommerce-germanized-pro' ),
+				'E18'  => _x( 'DPD 18:00', 'dpd', 'woocommerce-germanized-pro' ),
+				'MAX'  => _x( 'DPD MAX', 'dpd', 'woocommerce-germanized-pro' ),
+				'PL'   => _x( 'DPD PARCELLetter', 'dpd', 'woocommerce-germanized-pro' ),
+				'PM4'  => _x( 'DPD Priority', 'dpd', 'woocommerce-germanized-pro' ),
+			);
+
+			foreach ( $dom_products as $product_id => $label ) {
+				$this->register_product(
+					$product_id,
+					array(
+						'label'                    => $label,
+						'zones'          => array( 'dom' ),
+						'shipment_types' => array( 'simple', 'return' ),
+					)
+				);
+			}
+		}
+	}
+
+	protected function register_services() {
+		if ( 'web_connect' === $this->get_api_type() ) {
+			$this->register_service(
+				'saturday_delivery',
+				array(
+					'label'    => _x( 'Saturday Delivery', 'dpd', 'woocommerce-germanized-pro' ),
+					'products' => array( 'E12' ),
+				)
+			);
+
+			$this->register_service( new HigherInsurance( $this ) );
+
+			$this->register_service(
+				'international_guarantee',
+				array(
+					'label'           => _x( 'International Guarantee', 'dpd', 'woocommerce-germanized-pro' ),
+					'products'        => array( 'CL', 'E18' ),
+					'zones' => array( 'eu', 'int' ),
+				)
+			);
+		}
+	}
+
 	/**
 	 * @param \Vendidero\Germanized\Shipments\Shipment $shipment
 	 *
@@ -116,20 +297,6 @@ class DPD extends Auto {
 	protected function get_simple_label_fields( $shipment ) {
 		$settings     = parent::get_simple_label_fields( $shipment );
 		$default_args = $this->get_default_label_props( $shipment );
-
-		$settings = array_merge(
-			$settings,
-			array(
-				array(
-					'id'          => 'page_format',
-					'label'       => _x( 'Page Format', 'dpd', 'woocommerce-germanized-pro' ),
-					'description' => '',
-					'type'        => 'select',
-					'options'     => Package::get_api()->get_page_formats(),
-					'value'       => isset( $default_args['page_format'] ) ? $default_args['page_format'] : '',
-				),
-			)
-		);
 
 		if ( 'cloud' === $this->get_api_type() ) {
 			$settings = array_merge(
@@ -146,63 +313,7 @@ class DPD extends Auto {
 			);
 		}
 
-		$services = array();
-
 		if ( 'web_connect' === $this->get_api_type() ) {
-			$services = array_merge(
-				$services,
-				array(
-					array(
-						'id'                => 'service_saturday_delivery',
-						'label'             => _x( 'Saturday Delivery', 'dpd', 'woocommerce-germanized-pro' ),
-						'description'       => '',
-						'type'              => 'checkbox',
-						'value'             => in_array( 'service_saturday_delivery', $default_args['services'], true ) ? 'yes' : 'no',
-						'wrapper_class'     => 'form-field-checkbox',
-						'custom_attributes' => array(
-							'data-products-supported' => 'E12',
-						),
-					),
-					array(
-						'id'                => 'service_higher_insurance',
-						'label'             => _x( 'Higher Insurance', 'dpd', 'woocommerce-germanized-pro' ),
-						'description'       => '',
-						'type'              => 'checkbox',
-						'class'             => 'checkbox show-if-trigger',
-						'value'             => in_array( 'service_higher_insurance', $default_args['services'], true ) ? 'yes' : 'no',
-						'wrapper_class'     => 'form-field-checkbox',
-						'custom_attributes' => array(
-							'data-show-if' => '.show-if-higher_insurance',
-						),
-					),
-					array(
-						'id'    => '',
-						'type'  => 'columns',
-						'class' => 'show-if show-if-higher_insurance',
-					),
-					array(
-						'id'    => 'higher_insurance_amount',
-						'label' => _x( 'Amount', 'dpd', 'woocommerce-germanized-pro' ),
-						'type'  => 'text',
-						'class' => 'wc_input_decimal',
-						'value' => wc_format_localized_decimal( $shipment->get_total() ),
-					),
-					array(
-						'id'                => 'higher_insurance_description',
-						'label'             => _x( 'Description', 'dpd', 'woocommerce-germanized-pro' ),
-						'type'              => 'text',
-						'value'             => '',
-						'custom_attributes' => array(
-							'maxlength' => 35,
-						),
-					),
-					array(
-						'id'   => '',
-						'type' => 'columns_end',
-					),
-				)
-			);
-
 			if ( $shipment->is_shipping_international() ) {
 				$terms = Package::get_api()->get_international_customs_terms();
 
@@ -231,38 +342,10 @@ class DPD extends Auto {
 						),
 					)
 				);
-
-				$services = array_merge(
-					$services,
-					array(
-						array(
-							'id'            => 'service_international_guarantee',
-							'label'         => _x( 'Guarantee', 'dpd', 'woocommerce-germanized-pro' ),
-							'description'   => '',
-							'type'          => 'checkbox',
-							'value'         => in_array( 'service_international_guarantee', $default_args['services'], true ) ? 'yes' : 'no',
-							'wrapper_class' => 'form-field-checkbox',
-						),
-					)
-				);
 			}
 		}
 
-		if ( ! empty( $services ) ) {
-			$settings[] = array(
-				'type'         => 'services_start',
-				'id'           => '',
-				'hide_default' => true,
-			);
-
-			$settings = array_merge( $settings, $services );
-		}
-
 		return $settings;
-	}
-
-	protected function get_default_page_format() {
-		return 'web_connect' === $this->get_api_type() ? 'A6' : 'PDF_A6';
 	}
 
 	protected function get_default_customs_terms() {
@@ -283,10 +366,6 @@ class DPD extends Auto {
 		$args  = wp_parse_args( $args, 'return' === $shipment->get_type() ? $this->get_default_return_label_props( $shipment ) : $this->get_default_simple_label_props( $shipment ) );
 		$error = new \WP_Error();
 
-		if ( ! in_array( $args['page_format'], array_keys( Package::get_api()->get_page_formats() ), true ) ) {
-			$error->add( 'page_format', _x( 'Please choose a valid page format.', 'dpd', 'woocommerce-germanized-pro' ) );
-		}
-
 		if ( 'web_connect' === $this->get_api_type() && $shipment->is_shipping_international() ) {
 			if ( ! in_array( $args['customs_terms'], array_keys( Package::get_api()->get_international_customs_terms() ), true ) ) {
 				$error->add( 'customs_terms', _x( 'Please choose a customs term.', 'dpd', 'woocommerce-germanized-pro' ) );
@@ -297,14 +376,6 @@ class DPD extends Auto {
 			if ( empty( $args['pickup_date'] ) || ! \Vendidero\Germanized\Shipments\Package::is_valid_datetime( $args['pickup_date'], 'Y-m-d' ) ) {
 				$error->add( 500, _x( 'Error while parsing pickup date.', 'dpd', 'woocommerce-germanized-pro' ) );
 			}
-		}
-
-		if (
-			( $shipment->is_shipping_domestic() && ! in_array( $args['product_id'], array_keys( Package::get_api()->get_domestic_products( $shipment ) ), true ) ) ||
-			( $shipment->is_shipping_inner_eu() && ! in_array( $args['product_id'], array_keys( Package::get_api()->get_eu_products( $shipment ) ), true ) ) ||
-			( $shipment->is_shipping_international() && ! in_array( $args['product_id'], array_keys( Package::get_api()->get_international_products( $shipment ) ), true ) )
-		) {
-			$error->add( 'product_id', _x( 'Please choose a valid DPD product.', 'dpd', 'woocommerce-germanized-pro' ) );
 		}
 
 		if ( wc_gzd_shipment_wp_error_has_errors( $error ) ) {
@@ -338,11 +409,7 @@ class DPD extends Auto {
 	 */
 	protected function get_default_return_label_props( $shipment ) {
 		$product_id = $this->get_default_label_product( $shipment );
-
-		$defaults = array(
-			'services'    => array(),
-			'page_format' => $this->get_shipment_setting( $shipment, 'label_default_page_format' ),
-		);
+		$defaults   = array();
 
 		if ( 'cloud' === $this->get_api_type() ) {
 			if ( $pickup_date = Package::get_api()->get_next_available_pickup_date( $product_id ) ) {
@@ -359,39 +426,20 @@ class DPD extends Auto {
 	}
 
 	/**
-	 * @param \Vendidero\Germanized\Shipments\Shipment $shipment
-	 */
-	public function get_default_label_product( $shipment ) {
-		if ( 'simple' === $shipment->get_type() ) {
-			if ( $shipment->is_shipping_domestic() ) {
-				return $this->get_shipment_setting( $shipment, 'label_default_product_dom' );
-			} else {
-				return $this->get_shipment_setting( $shipment, 'label_default_product_int' );
-			}
-		}
-
-		return '';
-	}
-
-	/**
 	 * @param Shipment $shipment
 	 *
 	 * @return array
 	 */
 	protected function get_default_simple_label_props( $shipment ) {
 		$product_id = $this->get_default_label_product( $shipment );
-
-		$defaults = array(
-			'services'    => array(),
-			'page_format' => $this->get_shipment_setting( $shipment, 'label_default_page_format', $this->get_default_page_format() ),
-		);
+		$defaults   = array();
 
 		if ( 'web_connect' === $this->get_api_type() ) {
 			$defaults = array_merge(
 				$defaults,
 				array(
-					'customs_terms' => $this->get_shipment_setting( $shipment, 'label_default_customs_terms', $this->get_default_customs_terms() ),
-					'customs_paper' => $this->get_shipment_setting( $shipment, 'label_default_customs_paper', $this->get_default_customs_paper() ),
+					'customs_terms' => $this->get_setting( 'label_default_customs_terms', $this->get_default_customs_terms() ),
+					'customs_paper' => $this->get_setting( 'label_default_customs_paper', $this->get_default_customs_paper() ),
 				)
 			);
 		} elseif ( 'cloud' === $this->get_api_type() ) {
@@ -406,48 +454,6 @@ class DPD extends Auto {
 		}
 
 		return $defaults;
-	}
-
-	/**
-	 * @param \Vendidero\Germanized\Shipments\Shipment $shipment
-	 */
-	public function get_available_label_products( $shipment ) {
-		if ( $shipment->is_shipping_domestic() ) {
-			return Package::get_api()->get_domestic_products( $shipment );
-		} elseif ( $shipment->is_shipping_inner_eu() ) {
-			return Package::get_api()->get_eu_products( $shipment );
-		} else {
-			$products = Package::get_api()->get_international_products( $shipment );
-
-			return $products;
-		}
-	}
-
-	/**
-	 * @param \Vendidero\Germanized\Shipments\Shipment $shipment
-	 */
-	public function get_available_label_services( $shipment ) {
-		$services = array(
-			'higher_insurance',
-		);
-
-		if ( $shipment->is_shipping_international() ) {
-			$services = array_merge(
-				$services,
-				array(
-					'international_guarantee',
-				)
-			);
-		} elseif ( $shipment->is_shipping_domestic() ) {
-			$services = array_merge(
-				$services,
-				array(
-					'saturday_delivery',
-				)
-			);
-		}
-
-		return $services;
 	}
 
 	protected function get_available_base_countries() {
@@ -542,168 +548,50 @@ class DPD extends Auto {
 			)
 		);
 
-		$general_settings = parent::get_general_settings( $for_shipping_method );
+		$general_settings = parent::get_general_settings();
 
 		return array_merge( $settings, $general_settings );
 	}
 
-	protected function get_label_settings( $for_shipping_method = false ) {
-		$select_dpd_product_dom = Package::get_api()->get_domestic_products();
-		$select_dpd_product_int = Package::get_api()->get_international_products();
-		$select_dpd_product_eu  = Package::get_api()->get_eu_products();
-		$select_formats         = Package::get_api()->get_page_formats();
+	/**
+	 * @param ConfigurationSet $configuration_set
+	 *
+	 * @return mixed
+	 */
+	protected function get_label_settings_by_zone( $configuration_set ) {
+		$settings = parent::get_label_settings_by_zone( $configuration_set );
 
-		$settings = array(
-			array(
-				'title'          => '',
-				'title_method'   => _x( 'Products', 'dpd', 'woocommerce-germanized-pro' ),
-				'type'           => 'title',
-				'id'             => 'shipping_provider_dpd_label_options',
-				'allow_override' => true,
-			),
-
-			array(
-				'title'   => _x( 'Domestic Default Service', 'dpd', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'id'      => 'label_default_product_dom',
-				'default' => 'CL',
-				'value'   => $this->get_setting( 'label_default_product_dom', 'CL' ),
-				'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default DPD shipping service for domestic shipments that you want to offer to your customers (you can always change this within each individual shipment afterwards).', 'dpd', 'woocommerce-germanized-pro' ) . '</div>',
-				'options' => $select_dpd_product_dom,
-				'class'   => 'wc-enhanced-select',
-			),
-
-			array(
-				'title'   => _x( 'EU Default Service', 'dpd', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'default' => '',
-				'value'   => $this->get_setting( 'label_default_product_eu', '' ),
-				'id'      => 'label_default_product_eu',
-				'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default DPD shipping service for cross-border shipments that you want to offer to your customers (you can always change this within each individual shipment afterwards).', 'dpd', 'woocommerce-germanized-pro' ) . '</div>',
-				'options' => $select_dpd_product_eu,
-				'class'   => 'wc-enhanced-select',
-			),
-
-			array(
-				'title'   => _x( 'Int. Default Service', 'dpd', 'woocommerce-germanized-pro' ),
-				'type'    => 'select',
-				'default' => '',
-				'value'   => $this->get_setting( 'label_default_product_int', '' ),
-				'id'      => 'label_default_product_int',
-				'desc'    => '<div class="wc-gzd-additional-desc">' . _x( 'Please select your default DPD shipping service for cross-border shipments that you want to offer to your customers (you can always change this within each individual shipment afterwards).', 'dpd', 'woocommerce-germanized-pro' ) . '</div>',
-				'options' => $select_dpd_product_int,
-				'class'   => 'wc-enhanced-select',
-			),
-		);
-
-		if ( 'web_connect' === $this->get_api_type() ) {
-			$settings = array_merge(
-				$settings,
-				array(
+		if ( 'web_connect' === $this->get_api_type() && 'shipping_provider' === $configuration_set->get_setting_type() ) {
+			if ( 'int' === $configuration_set->get_zone() && 'simple' === $configuration_set->get_shipment_type() ) {
+				$settings = array_merge(
+					$settings,
 					array(
-						'title'    => _x( 'Default Customs Terms', 'dpd', 'woocommerce-germanized-pro' ),
-						'type'     => 'select',
-						'default'  => self::get_default_customs_terms(),
-						'id'       => 'label_default_customs_terms',
-						'value'    => $this->get_setting( 'label_default_customs_terms', $this->get_default_customs_terms() ),
-						'desc'     => _x( 'Please select your default customs terms.', 'dpd', 'woocommerce-germanized-pro' ),
-						'desc_tip' => true,
-						'options'  => Package::get_api()->get_international_customs_terms(),
-						'class'    => 'wc-enhanced-select',
-					),
-
-					array(
-						'title'    => _x( 'Default Customs Paper', 'dpd', 'woocommerce-germanized-pro' ),
-						'type'     => 'multiselect',
-						'default'  => self::get_default_customs_paper(),
-						'id'       => 'label_default_customs_paper',
-						'value'    => $this->get_setting( 'label_default_customs_paper', $this->get_default_customs_paper() ),
-						'desc'     => _x( 'Please select which documents you are attaching to international shipments.', 'dpd', 'woocommerce-germanized-pro' ),
-						'desc_tip' => true,
-						'options'  => Package::get_api()->get_international_customs_paper(),
-						'class'    => 'wc-enhanced-select',
-					),
-				)
-			);
+						array(
+							'title'    => _x( 'Default Customs Terms', 'dpd', 'woocommerce-germanized-pro' ),
+							'type'     => 'select',
+							'default'  => self::get_default_customs_terms(),
+							'id'       => 'label_default_customs_terms',
+							'value'    => $this->get_setting( 'label_default_customs_terms', $this->get_default_customs_terms() ),
+							'desc'     => _x( 'Please select your default customs terms.', 'dpd', 'woocommerce-germanized-pro' ),
+							'desc_tip' => true,
+							'options'  => Package::get_api()->get_international_customs_terms(),
+							'class'    => 'wc-enhanced-select',
+						),
+						array(
+							'title'    => _x( 'Default Customs Paper', 'dpd', 'woocommerce-germanized-pro' ),
+							'type'     => 'multiselect',
+							'default'  => self::get_default_customs_paper(),
+							'id'       => 'label_default_customs_paper',
+							'value'    => $this->get_setting( 'label_default_customs_paper', $this->get_default_customs_paper() ),
+							'desc'     => _x( 'Please select which documents you are attaching to international shipments.', 'dpd', 'woocommerce-germanized-pro' ),
+							'desc_tip' => true,
+							'options'  => Package::get_api()->get_international_customs_paper(),
+							'class'    => 'wc-enhanced-select',
+						),
+					)
+				);
+			}
 		}
-
-		$settings = array_merge(
-			$settings,
-			array(
-				array(
-					'title'          => _x( 'Force email', 'dpd', 'woocommerce-germanized-pro' ),
-					'desc'           => _x( 'Force transferring customer email to DPD.', 'dpd', 'woocommerce-germanized-pro' ) . '<div class="wc-gzd-additional-desc">' . sprintf( _x( 'By default the customer email address is only transferred in case explicit consent has been given via a checkbox during checkout. You may force to transfer the customer email address during label creation to make sure your customers receive email notifications by DPD. Make sure to check your privacy policy and seek advice by a lawyer in case of doubt.', 'dpd', 'woocommerce-germanized-pro' ) ) . '</div>',
-					'id'             => 'label_force_email_transfer',
-					'value'          => $this->get_setting( 'label_force_email_transfer', 'no' ),
-					'default'        => 'no',
-					'allow_override' => false,
-					'type'           => 'gzd_toggle',
-				),
-
-				array(
-					'type' => 'sectionend',
-					'id'   => 'shipping_provider_dpd_label_options',
-				),
-			)
-		);
-
-		$settings = array_merge( $settings, parent::get_label_settings( $for_shipping_method ) );
-
-		if ( 'web_connect' === $this->get_api_type() ) {
-			$settings = array_merge(
-				$settings,
-				array(
-					array(
-						'title'          => _x( 'Default Services', 'dpd', 'woocommerce-germanized-pro' ),
-						'allow_override' => true,
-						'type'           => 'title',
-						'id'             => 'dpd_label_default_services_options',
-						'desc'           => sprintf( _x( 'Adjust services to be added to your labels by default.', 'dpd', 'woocommerce-germanized-pro' ) ),
-					),
-
-					array(
-						'title'   => _x( 'International Guarantee', 'dpd', 'woocommerce-germanized-pro' ),
-						'desc'    => _x( 'Enable a guarantee for international shipments by default.', 'dpd', 'woocommerce-germanized-pro' ),
-						'id'      => 'label_service_international_guarantee',
-						'value'   => wc_bool_to_string( $this->get_setting( 'label_service_international_guarantee', 'no' ) ),
-						'default' => 'no',
-						'type'    => 'gzd_toggle',
-					),
-
-					array(
-						'type' => 'sectionend',
-						'id'   => 'dpd_label_default_services_options',
-					),
-				)
-			);
-		}
-
-		$settings = array_merge(
-			$settings,
-			array(
-
-				array(
-					'title' => _x( 'Printing', 'dpd', 'woocommerce-germanized-pro' ),
-					'type'  => 'title',
-					'id'    => 'dpd_print_options',
-				),
-
-				array(
-					'title'   => _x( 'Default Format', 'dpd', 'woocommerce-germanized-pro' ),
-					'id'      => 'label_default_page_format',
-					'class'   => 'wc-enhanced-select',
-					'type'    => 'select',
-					'value'   => $this->get_setting( 'label_default_page_format', $this->get_default_page_format() ),
-					'options' => $select_formats,
-					'default' => $this->get_default_page_format(),
-				),
-
-				array(
-					'type' => 'sectionend',
-					'id'   => 'dpd_print_options',
-				),
-			)
-		);
 
 		return $settings;
 	}
@@ -729,7 +617,9 @@ class DPD extends Auto {
 		 * In case the API type has changed, make sure to restore defaults to prevent setting mismatches.
 		 */
 		if ( $restore_label_defaults ) {
-			foreach ( $this->get_label_settings() as $setting ) {
+			$this->reset_configuration_sets();
+
+			foreach ( $this->get_printing_settings() as $setting ) {
 				$type    = isset( $setting['type'] ) ? $setting['type'] : 'title';
 				$default = isset( $setting['default'] ) ? $setting['default'] : null;
 
@@ -740,24 +630,23 @@ class DPD extends Auto {
 				$this->update_setting( $setting['id'], $default );
 			}
 
-			// Reset shipping method DPD options
-			foreach ( \WC_Shipping_Zones::get_zones() as $zone ) {
-				foreach ( $zone['shipping_methods'] as $method ) {
-					$method->init_instance_settings();
+			foreach ( \WC_Shipping_Zones::get_zones() as $zone_data ) {
+				if ( $zone = \WC_Shipping_Zones::get_zone( $zone_data['id'] ) ) {
+					foreach ( $zone->get_shipping_methods() as $method ) {
+						if ( $shipment_method = MethodHelper::get_provider_method( $method ) ) {
+							if ( 'dpd' === $shipment_method->get_shipping_provider() ) {
+								$config_sets = $shipment_method->get_configuration_sets();
 
-					$instance_settings = $method->instance_settings;
-					$did_unset         = false;
+								if ( ! empty( $config_sets ) ) {
+									$shipment_method->reset_configuration_sets();
+									$current_settings = $shipment_method->get_method()->instance_settings;
 
-					foreach ( $instance_settings as $setting => $value ) {
-						if ( 'dpd_' === substr( $setting, 0, 4 ) ) {
-							unset( $instance_settings[ $setting ] );
-
-							$did_unset = true;
+									if ( ! empty( $current_settings ) ) {
+										update_option( $shipment_method->get_method()->get_instance_option_key(), apply_filters( 'woocommerce_shipping_' . $shipment_method->get_method()->id . '_instance_settings_values', $current_settings, $shipment_method->get_method() ), 'yes' );
+									}
+								}
+							}
 						}
-					}
-
-					if ( $did_unset ) {
-						update_option( $method->get_instance_option_key(), apply_filters( 'woocommerce_shipping_' . $method->id . '_instance_settings_values', $instance_settings, $method ), 'yes' );
 					}
 				}
 			}
@@ -770,5 +659,21 @@ class DPD extends Auto {
 
 	public function get_signup_link() {
 		return 'https://www.dpd.com/de/de/versenden/angebot-fuer-geschaeftskunden/';
+	}
+
+	public function get_available_label_products( $shipment ) {
+		if ( is_callable('parent::get_available_label_products' ) ) {
+			return parent::get_available_label_products( $shipment );
+		} else {
+			return array();
+		}
+	}
+
+	public function get_default_label_product( $shipment ) {
+		if ( is_callable('parent::get_default_label_product' ) ) {
+			return parent::get_default_label_product( $shipment );
+		} else {
+			return '';
+		}
 	}
 }

@@ -1,5 +1,14 @@
 <?php
+/**
+ * Pipe-related classes.
+ *
+ * @link https://contactform7.com/selectable-recipient-with-pipes/
+ */
 
+
+/**
+ * Class representing a pair of pipe.
+ */
 class WPCF7_Pipe {
 
 	public $before = '';
@@ -19,6 +28,10 @@ class WPCF7_Pipe {
 	}
 }
 
+
+/**
+ * Class representing a list of pipes.
+ */
 class WPCF7_Pipes {
 
 	private $pipes = array();
@@ -40,18 +53,12 @@ class WPCF7_Pipes {
 		) );
 
 		foreach ( $this->pipes as $pipe ) {
+			$before_canonical = wpcf7_canonicalize( $pipe->before, array(
+				'strto' => 'as-is',
+			) );
 
-			list( $before, $after ) = array_map(
-				function ( $item ) {
-					return wpcf7_canonicalize( $item, array(
-						'strto' => 'as-is',
-					) );
-				},
-				array( $pipe->before, $pipe->after )
-			);
-
-			if ( $input_canonical === $before ) {
-				return $after;
+			if ( $input_canonical === $before_canonical ) {
+				return $pipe->after;
 			}
 		}
 
@@ -92,7 +99,7 @@ class WPCF7_Pipes {
 
 	public function to_array() {
 		return array_map(
-			function( WPCF7_Pipe $pipe ) {
+			static function ( WPCF7_Pipe $pipe ) {
 				return array(
 					$pipe->before,
 					$pipe->after,

@@ -47,7 +47,6 @@ final class Embed {
 
 	public function populate_fonts( $fonts ) {
 		foreach ( $fonts as $display_type => $font_data ) {
-
 			if ( ! is_a( $font_data, '\Vendidero\StoreaBill\Fonts\Font' ) ) {
 				$font_data = wp_parse_args(
 					$font_data,
@@ -106,7 +105,6 @@ final class Embed {
 			$variant   = false;
 
 			foreach ( $rules as $str_rule ) {
-
 				if ( ! empty( $str_rule ) ) {
 					$rule     = explode( ':', $str_rule );
 					$rule_key = sab_clean( trim( $rule[0] ) );
@@ -129,7 +127,6 @@ final class Embed {
 							);
 
 							foreach ( $maps as $map_key => $map_variant ) {
-
 								if ( substr( $variant_string, strlen( $map_key ) * -1 ) === $map_key ) {
 									$variant = $map_variant;
 									break;
@@ -181,13 +178,6 @@ final class Embed {
 				array( ': ', ';  ', '; ', '  ' ),
 				array( ':', ';', ';', ' ' ),
 				preg_replace( "/\r|\n/", '', $css )
-			);
-
-			// Remove protocol to fix http/https issues.
-			$css = str_replace(
-				array( 'http://', 'https://' ),
-				array( '//', '//' ),
-				$css
 			);
 
 			$rules_arr['css'] = wp_strip_all_tags( $css );

@@ -2,6 +2,7 @@
 
 namespace Vendidero\Germanized\Shipments\Admin;
 
+use Vendidero\Germanized\Shipments\Package;
 use Vendidero\Germanized\Shipments\Packaging\ReportHelper;
 use Vendidero\Germanized\Shipments\Packaging\ReportQueue;
 
@@ -12,15 +13,25 @@ defined( 'ABSPATH' ) || exit;
  */
 class Settings {
 
+	public static function get_settings_url( $section = '' ) {
+		$url = admin_url( 'admin.php?page=wc-settings&tab=germanized-shipments' );
+
+		if ( ! empty( $section ) ) {
+			$url .= '&section=' . esc_attr( $section );
+		}
+
+		return $url;
+	}
+
 	public static function get_section_description( $section ) {
 		return '';
 	}
 
 	public static function get_pointers( $section ) {
 		$pointers = array();
-		$next_url = admin_url( 'admin.php?page=wc-settings&tab=germanized-shipping_provider&tutorial=yes' );
 
 		if ( '' === $section ) {
+			$next_url = admin_url( 'admin.php?page=wc-settings&tab=germanized-shipments&section=packaging&tutorial=yes' );
 			$pointers = array(
 				'pointers' => array(
 					'menu'    => array(
@@ -77,13 +88,57 @@ class Settings {
 					),
 				),
 			);
+		} elseif ( 'packaging' === $section ) {
+			$next_url = admin_url( 'admin.php?page=wc-settings&tab=germanized-shipping_provider&tutorial=yes' );
+			$pointers = array(
+				'pointers' => array(
+					'packaging-edit' => array(
+						'target'       => 'tbody.packaging_list .wc-gzd-shipment-action-button:last',
+						'next'         => 'packaging-add',
+						'next_url'     => '',
+						'next_trigger' => array(),
+						'options'      => array(
+							'content'  => '<h3>' . esc_html_x( 'Edit packaging', 'shipments', 'woocommerce-germanized' ) . '</h3><p>' . esc_html_x( 'Adjust additional options such as custom label configurations per shipping provider by using the edit link.', 'shipments', 'woocommerce-germanized' ) . '</p>',
+							'position' => array(
+								'edge'  => 'right',
+								'align' => 'left',
+							),
+						),
+					),
+					'packaging-add'  => array(
+						'target'       => '#packaging_list_wrapper a.add',
+						'next'         => 'auto',
+						'next_url'     => '',
+						'next_trigger' => array(),
+						'options'      => array(
+							'content'  => '<h3>' . esc_html_x( 'Add packaging', 'shipments', 'woocommerce-germanized' ) . '</h3><p>' . esc_html_x( 'Add all your available packaging options to make sure the packing algorithm knows about it.', 'shipments', 'woocommerce-germanized' ) . '</p>',
+							'position' => array(
+								'edge'  => 'left',
+								'align' => 'left',
+							),
+						),
+					),
+					'auto'           => array(
+						'target'       => '#woocommerce_gzd_shipments_enable_auto_packing-toggle',
+						'next'         => 'auto',
+						'next_url'     => $next_url,
+						'next_trigger' => array(),
+						'options'      => array(
+							'content'  => '<h3>' . esc_html_x( 'Automated packing', 'shipments', 'woocommerce-germanized' ) . '</h3><p>' . esc_html_x( 'Shipments will be created automatically based on your available packaging options.', 'shipments', 'woocommerce-germanized' ) . '</p>',
+							'position' => array(
+								'edge'  => 'left',
+								'align' => 'left',
+							),
+						),
+					),
+				),
+			);
 		}
 
 		return $pointers;
 	}
 
 	protected static function get_general_settings() {
-
 		$statuses = array_diff_key( wc_gzd_get_shipment_statuses(), array_flip( array( 'gzd-requested' ) ) );
 
 		$settings = array(
@@ -365,11 +420,22 @@ class Settings {
 			array(
 				'title' => '',
 				'type'  => 'title',
-				'id'    => 'packaging_options',
+				'id'    => 'packaging_list_options',
 			),
 
 			array(
 				'type' => 'packaging_list',
+			),
+
+			array(
+				'type' => 'sectionend',
+				'id'   => 'packaging_list_options',
+			),
+
+			array(
+				'title' => '',
+				'type'  => 'title',
+				'id'    => 'packaging_options',
 			),
 
 			array(
@@ -393,6 +459,99 @@ class Settings {
 				'id'   => 'packaging_options',
 			),
 		);
+
+		if ( Package::is_packing_supported() ) {
+			$settings = array_merge(
+				$settings,
+				array(
+					array(
+						'title' => _x( 'Automated packing', 'shipments', 'woocommerce-germanized' ),
+						'type'  => 'title',
+						'id'    => 'automated_packing_options',
+					),
+
+					array(
+						'title'   => _x( 'Enable', 'shipments', 'woocommerce-germanized' ),
+						'desc'    => _x( 'Automatically pack orders based on available packaging options', 'shipments', 'woocommerce-germanized' ) . '<div class="wc-gzd-additional-desc">' . sprintf( _x( 'By enabling this option, shipments will be packed based on your available packaging options. For that purpose a knapsack algorithm is used to best fit available order items within your packaging. <a href="%s" target="_blank">Learn more</a> about the feature.', 'shipments', 'woocommerce-germanized' ), 'https://vendidero.de/dokument/sendungen-automatisiert-packen' ) . '</div>',
+						'id'      => 'woocommerce_gzd_shipments_enable_auto_packing',
+						'default' => 'yes',
+						'type'    => 'gzd_toggle',
+					),
+
+					array(
+						'title'             => _x( 'Grouping', 'shipments', 'woocommerce-germanized' ),
+						'desc'              => _x( 'Group items by shipping class.', 'shipments', 'woocommerce-germanized' ) . '<div class="wc-gzd-additional-desc">' . sprintf( _x( 'Use this option to prevent items with different shipping classes from being packed in the same package.', 'shipments', 'woocommerce-germanized' ) ) . '</div>',
+						'id'                => 'woocommerce_gzd_shipments_packing_group_by_shipping_class',
+						'default'           => 'no',
+						'type'              => 'gzd_toggle',
+						'custom_attributes' => array(
+							'data-show_if_woocommerce_gzd_shipments_enable_auto_packing' => '',
+						),
+					),
+
+					array(
+						'title'             => _x( 'Balance weights', 'shipments', 'woocommerce-germanized' ),
+						'desc'              => _x( 'Automatically balance weights between packages in case multiple packages are needed.', 'shipments', 'woocommerce-germanized' ),
+						'id'                => 'woocommerce_gzd_shipments_packing_balance_weights',
+						'default'           => 'no',
+						'type'              => 'gzd_toggle',
+						'custom_attributes' => array(
+							'data-show_if_woocommerce_gzd_shipments_enable_auto_packing' => '',
+						),
+					),
+
+					array(
+						'title'             => _x( 'Buffer type', 'shipments', 'woocommerce-germanized' ),
+						'desc'              => '<div class="wc-gzd-additional-desc">' . sprintf( _x( 'Choose a buffer type to leave space between the items and outer dimensions of your packaging.', 'shipments', 'woocommerce-germanized' ) ) . '</div>',
+						'id'                => 'woocommerce_gzd_shipments_packing_inner_buffer_type',
+						'default'           => 'fixed',
+						'type'              => 'select',
+						'options'           => array(
+							'fixed'      => _x( 'Fixed', 'shipments', 'woocommerce-germanized' ),
+							'percentage' => _x( 'Percentage', 'shipments', 'woocommerce-germanized' ),
+						),
+						'custom_attributes' => array(
+							'data-show_if_woocommerce_gzd_shipments_enable_auto_packing' => '',
+						),
+					),
+
+					array(
+						'title'             => _x( 'Fixed Buffer', 'shipments', 'woocommerce-germanized' ),
+						'desc'              => 'mm',
+						'id'                => 'woocommerce_gzd_shipments_packing_inner_fixed_buffer',
+						'default'           => '5',
+						'type'              => 'number',
+						'row_class'         => 'with-suffix',
+						'css'               => 'max-width: 60px',
+						'custom_attributes' => array(
+							'data-show_if_woocommerce_gzd_shipments_enable_auto_packing' => '',
+							'data-show_if_woocommerce_gzd_shipments_packing_inner_buffer_type' => 'fixed',
+							'step' => 1,
+						),
+					),
+
+					array(
+						'title'             => _x( 'Percentage Buffer', 'shipments', 'woocommerce-germanized' ),
+						'desc'              => '%',
+						'id'                => 'woocommerce_gzd_shipments_packing_inner_percentage_buffer',
+						'default'           => '0.5',
+						'type'              => 'number',
+						'row_class'         => 'with-suffix',
+						'css'               => 'max-width: 60px',
+						'custom_attributes' => array(
+							'data-show_if_woocommerce_gzd_shipments_enable_auto_packing' => '',
+							'data-show_if_woocommerce_gzd_shipments_packing_inner_buffer_type' => 'percentage',
+							'step' => 0.1,
+						),
+					),
+
+					array(
+						'type' => 'sectionend',
+						'id'   => 'automated_packing_options',
+					),
+				)
+			);
+		}
 
 		return $settings;
 	}
@@ -447,7 +606,6 @@ class Settings {
 
 		// Loop options and get values to save.
 		foreach ( $settings as $option ) {
-
 			if ( ! isset( $option['id'] ) || empty( $option['id'] ) || ! isset( $option['type'] ) || in_array( $option['type'], array( 'title', 'sectionend' ), true ) || ( isset( $option['is_option'] ) && false === $option['is_option'] ) ) {
 				continue;
 			}
@@ -548,6 +706,11 @@ class Settings {
 
 				woocommerce_wp_select( $setting );
 			} elseif ( 'checkbox' === $setting['type'] ) {
+				$field_name  = isset( $setting['name'] ) ? $setting['name'] : $setting['id'];
+				$field_value = isset( $setting['value'] ) ? $setting['value'] : 'no';
+
+				// Use a placeholder checkbox to force transmitting non-checked checkboxes with a no value to make sure default props are overridden.
+				echo ( ( 'yes' === $field_value ) ? '<input type="hidden" value="no" name="' . esc_attr( $field_name ) . '" />' : '' );
 				woocommerce_wp_checkbox( $setting );
 			} elseif ( 'textarea' === $setting['type'] ) {
 				woocommerce_wp_textarea_input( $setting );
@@ -564,15 +727,15 @@ class Settings {
 				$hide_default = isset( $setting['hide_default'] ) ? wc_string_to_bool( $setting['hide_default'] ) : false;
 				$missing_div_closes++;
 				?>
-				<p class="show-services-trigger">
-					<a href="#" class="show-further-services <?php echo ( ! $hide_default ? 'hide-default' : '' ); ?>">
+				<p class="show-services-trigger show-more-trigger">
+					<a href="#" class="show-more show-further-services <?php echo ( ! $hide_default ? 'hide-default' : '' ); ?>">
 						<span class="dashicons dashicons-plus"></span> <?php echo esc_html_x( 'More services', 'shipments', 'woocommerce-germanized' ); ?>
 					</a>
-					<a class="show-fewer-services <?php echo ( $hide_default ? 'hide-default' : '' ); ?>" href="#">
+					<a class="show-fewer show-fewer-services <?php echo ( $hide_default ? 'hide-default' : '' ); ?>" href="#">
 						<span class="dashicons dashicons-minus"></span> <?php echo esc_html_x( 'Fewer services', 'shipments', 'woocommerce-germanized' ); ?>
 					</a>
 				</p>
-				<div class="<?php echo ( $hide_default ? 'hide-default' : '' ); ?> show-if-further-services">
+				<div class="<?php echo ( $hide_default ? 'hide-default' : '' ); ?> show-more-wrapper show-if-further-services" data-trigger=".show-services-trigger">
 				<?php
 			} elseif ( 'columns' === $setting['type'] ) {
 				$missing_div_closes++;

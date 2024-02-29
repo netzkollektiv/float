@@ -61,7 +61,6 @@ function wc_gzd_get_product( $product ) {
  * @return bool|WC_GZD_Product
  */
 function wc_gzd_get_gzd_product( $product ) {
-
 	if ( is_numeric( $product ) || is_a( $product, 'WP_Post' ) ) {
 		$product = wc_get_product( $product );
 	} elseif ( is_a( $product, 'WC_GZD_Product' ) ) {
@@ -72,12 +71,7 @@ function wc_gzd_get_gzd_product( $product ) {
 		return false;
 	}
 
-	if ( ! isset( $product->gzd_product ) || ! is_a( $product->gzd_product, 'WC_GZD_Product' ) ) {
-		$factory              = WC_germanized()->product_factory;
-		$product->gzd_product = $factory->get_gzd_product( $product );
-	}
-
-	return $product->gzd_product;
+	return WC_germanized()->product_factory->get_cached_gzd_product( $product );
 }
 
 function wc_gzd_get_small_business_product_notice() {
@@ -91,7 +85,7 @@ function wc_gzd_get_small_business_product_notice() {
 	return apply_filters( 'woocommerce_gzd_small_business_product_notice', wc_gzd_get_small_business_notice() );
 }
 
-function wc_gzd_is_revocation_exempt( $product, $type = 'digital' ) {
+function wc_gzd_is_revocation_exempt( $product, $type = 'digital', $context_object = null ) {
 	$is_exempt = false;
 
 	if ( 'digital' === $type && ( $checkbox = wc_gzd_get_legal_checkbox( 'download' ) ) ) {
@@ -140,10 +134,11 @@ function wc_gzd_is_revocation_exempt( $product, $type = 'digital' ) {
 	 * @param boolean    $is_exempt Whether the product is an exempt or not.
 	 * @param WC_Product $product The product object.
 	 * @param string     $type The exempt type e.g. digital or service.
+	 * @param object     $context_object E.g. the cart item or order item
 	 *
 	 * @since 3.1.5
 	 */
-	return apply_filters( 'woocommerce_gzd_product_is_revocation_exempt', $is_exempt, $product, $type );
+	return apply_filters( 'woocommerce_gzd_product_is_revocation_exempt', $is_exempt, $product, $type, $context_object );
 }
 
 function wc_gzd_needs_age_verification( $product ) {
@@ -260,6 +255,18 @@ function wc_gzd_recalculate_unit_price( $args = array(), $product = false ) {
 				'products'      => $product->get_unit_product(),
 			)
 		);
+
+		/**
+		 * WooCommerce updates the product price after triggering the before_product_save hook.
+		 * Make sure to use the current price based on regular/sale price if discrepancies detected.
+		 */
+		if ( $default_args['price'] !== $default_args['regular_price'] && $default_args['price'] !== $default_args['sale_price'] ) {
+			if ( $product->is_on_sale() ) {
+				$default_args['price'] = $default_args['sale_price'];
+			} else {
+				$default_args['price'] = $default_args['regular_price'];
+			}
+		}
 
 		if ( isset( $default_args['tax_mode'] ) && 'incl' === $default_args['tax_mode'] ) {
 			$default_args['regular_price'] = wc_get_price_including_tax( $wc_product, array( 'price' => $default_args['regular_price'] ) );

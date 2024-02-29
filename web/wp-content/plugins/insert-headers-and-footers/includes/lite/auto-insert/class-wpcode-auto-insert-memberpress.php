@@ -5,11 +5,21 @@
  * @package WPCode
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Class WPCode_Auto_Insert_MemberPress_Lite.
  */
 class WPCode_Auto_Insert_MemberPress_Lite extends WPCode_Auto_Insert_Type {
 
+	/**
+	 * The type unique name (slug).
+	 *
+	 * @var string
+	 */
+	public $name = 'memberpress';
 	/**
 	 * The category of this type.
 	 *

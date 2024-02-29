@@ -33,6 +33,14 @@ function wc_gzd_get_formatted_state( $country = '', $state = '' ) {
 	return $formatted_state;
 }
 
+function wc_gzd_country_to_alpha3( $country ) {
+	return Package::get_country_iso_alpha3( $country );
+}
+
+function wc_gzd_country_to_alpha2( $country ) {
+	return Package::get_country_iso_alpha2( $country );
+}
+
 function wc_gzd_get_shipment_order( $order ) {
 	if ( is_numeric( $order ) ) {
 		$order = wc_get_order( $order );
@@ -45,6 +53,8 @@ function wc_gzd_get_shipment_order( $order ) {
 			wc_caught_exception( $e, __FUNCTION__, array( $order ) );
 			return false;
 		}
+	} elseif ( is_a( $order, 'Vendidero\Germanized\Shipments\Order' ) ) {
+		return $order;
 	}
 
 	return false;
@@ -54,6 +64,38 @@ function wc_gzd_get_shipment_label_title( $type, $plural = false ) {
 	$type_data = wc_gzd_get_shipment_type_data( $type );
 
 	return ( ! $plural ? $type_data['labels']['singular'] : $type_data['labels']['plural'] );
+}
+
+function wc_gzd_get_shipping_label_zones() {
+	return apply_filters(
+		'woocommerce_gzd_shipments_shipping_label_zones',
+		array(
+			'dom' => _x( 'Domestic', 'shipments', 'woocommerce-germanized' ),
+			'eu'  => _x( 'EU', 'shipments', 'woocommerce-germanized' ),
+			'int' => _x( 'International', 'shipments', 'woocommerce-germanized' ),
+		)
+	);
+}
+
+function wc_gzd_get_shipping_label_zone_title( $zone ) {
+	$zones = wc_gzd_get_shipping_label_zones();
+	$title = array_key_exists( $zone, $zones ) ? $zones[ $zone ] : '';
+
+	return apply_filters( 'woocommerce_gzd_shipments_shipping_label_zone_title', $title, $zone );
+}
+
+function wc_gzd_get_shipping_shipments_label_zone_title( $zone ) {
+	$title = _x( '%1$s shipments', 'shipments-zone-title', 'woocommerce-germanized' );
+
+	$zones = array(
+		'dom' => _x( 'Domestic Shipments', 'shipments', 'woocommerce-germanized' ),
+		'eu'  => _x( 'EU Shipments', 'shipments', 'woocommerce-germanized' ),
+		'int' => _x( 'International Shipments', 'shipments', 'woocommerce-germanized' ),
+	);
+
+	$title = array_key_exists( $zone, $zones ) ? $zones[ $zone ] : $title;
+
+	return apply_filters( 'woocommerce_gzd_shipments_shipping_shipments_label_zone_title', $title, $zone );
 }
 
 function wc_gzd_get_shipment_types() {
@@ -152,115 +194,10 @@ function wc_gzd_get_shipment_order_return_statuses() {
 /**
  * @param $instance_id
  *
- * @return ShippingProvider\Method
+ * @return \Vendidero\Germanized\Shipments\ShippingMethod\ProviderMethod|false
  */
 function wc_gzd_get_shipping_provider_method( $instance_id ) {
-	$original_id = $instance_id;
-	$method      = false;
-	$method_id   = '';
-
-	if ( is_a( $original_id, 'WC_Shipping_Rate' ) ) {
-		$instance_id = $original_id->get_instance_id();
-		$method_id   = $original_id->get_method_id();
-	} elseif ( is_a( $original_id, 'WC_Shipping_Method' ) ) {
-		$instance_id = $original_id->get_instance_id();
-		$method_id   = $original_id->id;
-	} elseif ( ! is_numeric( $instance_id ) && is_string( $instance_id ) ) {
-		if ( strpos( $instance_id, ':' ) !== false ) {
-			$expl        = explode( ':', $instance_id );
-			$instance_id = ( ( ! empty( $expl ) && count( $expl ) > 1 ) ? (int) $expl[1] : 0 );
-			$method_id   = ( ! empty( $expl ) ) ? $expl[0] : $instance_id;
-		} else {
-			/**
-			 * Plugins like Flexible Shipping use underscores to separate instance ids.
-			 * Example: flexible_shipping_4_1. In this case, 4 ist the instance id.
-			 * method_id: flexible_shipping
-			 * instance_id: 4
-			 *
-			 * On the other hand legacy shipping methods may be string only, e.g. an instance id might not exist.
-			 * Example: local_pickup_plus
-			 * method: local_pickup_plus
-			 * instance_id: 0
-			 */
-			$expl      = explode( '_', $instance_id );
-			$numbers   = array_values( array_filter( $expl, 'is_numeric' ) );
-			$method_id = rtrim( preg_replace( '/[0-9]+/', '', $instance_id ), '_' );
-
-			if ( ! empty( $numbers ) ) {
-				$instance_id = absint( $numbers[0] );
-			} else {
-				$instance_id = 0;
-			}
-		}
-	}
-
-	if ( ! empty( $instance_id ) ) {
-		// Make sure shipping zones are loaded
-		include_once WC_ABSPATH . 'includes/class-wc-shipping-zones.php';
-
-		/**
-		 * Cache methods within frontend
-		 */
-		if ( WC()->session && did_action( 'woocommerce_shipping_init' ) ) {
-			$cache_key  = 'woocommerce_gzd_method_' . $instance_id;
-			$tmp_method = WC()->session->get( $cache_key );
-
-			if ( ! $tmp_method || ! is_object( $tmp_method ) || is_a( $tmp_method, '__PHP_Incomplete_Class' ) ) {
-				$method = WC_Shipping_Zones::get_shipping_method( $instance_id );
-
-				if ( $method ) {
-					WC()->session->set( $cache_key, $method );
-				}
-			} else {
-				$method = $tmp_method;
-			}
-		} else {
-			$method = WC_Shipping_Zones::get_shipping_method( $instance_id );
-		}
-	}
-
-	/**
-	 * Fallback for legacy shipping methods that do not support instance ids.
-	 */
-	if ( ! $method && empty( $instance_id ) && ! empty( $method_id ) ) {
-		$shipping_methods = WC()->shipping()->get_shipping_methods();
-
-		if ( array_key_exists( $method_id, $shipping_methods ) ) {
-			$method = $shipping_methods[ $method_id ];
-		}
-	}
-
-	if ( $method ) {
-		/**
-		 * Filter to adjust the classname used to construct the shipping provider method
-		 * which contains additional provider related settings useful for shipments.
-		 *
-		 * @param string             $classname The classname.
-		 * @param WC_Shipping_Method $method The shipping method instance.
-		 *
-		 * @since 3.0.6
-		 * @package Vendidero/Germanized/Shipments
-		 */
-		$classname = apply_filters( 'woocommerce_gzd_shipping_provider_method_classname', 'Vendidero\Germanized\Shipments\ShippingProvider\Method', $method );
-
-		return new $classname( $method );
-	}
-
-	// Load placeholder
-	$placeholder = new ShippingProvider\MethodPlaceholder( $original_id );
-
-	/**
-	 * Filter to adjust the fallback shipping method to be loaded if no real
-	 * shipping method was able to be constructed (e.g. a custom plugin is being used which
-	 * replaces the default Woo shipping zones integration).
-	 *
-	 * @param ShippingProvider\MethodPlaceholder $placeholder The placeholder impl.
-	 * @param string                             $original_id The shipping method id.
-	 *
-	 * @since 3.0.6
-	 * @package Vendidero/Germanized/Shipments
-	 */
-	return apply_filters( 'woocommerce_gzd_shipping_provider_method_fallback', $placeholder, $original_id );
+	return \Vendidero\Germanized\Shipments\ShippingMethod\MethodHelper::get_provider_method( $instance_id );
 }
 
 /**
@@ -508,7 +445,6 @@ function wc_gzd_create_shipment( $order_shipment, $args = array() ) {
 		$shipment->sync( $args['props'] );
 		$shipment->sync_items( $args );
 		$shipment->save();
-
 	} catch ( Exception $e ) {
 		return new WP_Error( 'error', $e->getMessage() );
 	}
@@ -671,6 +607,20 @@ function wc_gzd_get_shipment_editable_statuses() {
 	return apply_filters( 'woocommerce_gzd_shipment_editable_statuses', array( 'draft', 'requested', 'processing' ) );
 }
 
+/**
+ * @param Shipment $shipment
+ */
+function wc_gzd_get_shipment_address_addition( $shipment ) {
+	$addition        = $shipment->get_address_2();
+	$street_addition = $shipment->get_address_street_addition();
+
+	if ( ! empty( $street_addition ) ) {
+		$addition = $street_addition . ( ! empty( $addition ) ? ' ' . $addition : '' );
+	}
+
+	return trim( $addition );
+}
+
 function wc_gzd_split_shipment_street( $street_str ) {
 	$return = array(
 		'street'     => $street_str,
@@ -698,8 +648,15 @@ function wc_gzd_split_shipment_street( $street_str ) {
 	return $return;
 }
 
+/**
+ * @return ShippingProvider\Auto[]|ShippingProvider\Simple[]
+ */
 function wc_gzd_get_shipping_providers() {
 	return ShippingProvider\Helper::instance()->get_shipping_providers();
+}
+
+function wc_gzd_get_available_shipping_providers() {
+	return ShippingProvider\Helper::instance()->get_available_shipping_providers();
 }
 
 function wc_gzd_get_shipping_provider( $name ) {
@@ -721,11 +678,11 @@ function wc_gzd_get_default_shipping_provider() {
 	return apply_filters( 'woocommerce_gzd_default_shipping_provider', $default );
 }
 
-function wc_gzd_get_shipping_provider_select() {
+function wc_gzd_get_shipping_provider_select( $include_none = true ) {
 	$providers = wc_gzd_get_shipping_providers();
-	$select    = array(
+	$select    = $include_none ? array(
 		'' => _x( 'None', 'shipments', 'woocommerce-germanized' ),
-	);
+	) : array();
 
 	foreach ( $providers as $provider ) {
 		if ( ! $provider->is_activated() ) {
@@ -769,6 +726,10 @@ function wc_gzd_get_shipment_shipping_provider_title( $shipment ) {
 	}
 
 	return $title;
+}
+
+function wc_gzd_get_shipping_provider_service_locations() {
+	return array( 'settings', 'shipping_provider_settings', 'shipping_method_settings', 'packaging_settings', 'labels', 'label_services' );
 }
 
 function wc_gzd_get_shipping_provider_slug( $provider ) {
@@ -900,18 +861,41 @@ function wc_gzd_get_shipment_return_address( $shipment_order = false ) {
 
 /**
  * @param WC_Order $order
+ * @return WC_Order_Item_Shipping|false
  */
-function wc_gzd_get_shipment_order_shipping_method_id( $order ) {
+function wc_gzd_get_shipment_order_shipping_method( $order ) {
 	$methods = $order->get_shipping_methods();
-	$id      = '';
+	$method  = false;
 
 	if ( ! empty( $methods ) ) {
-		$method_vals = array_values( $methods );
-		$method      = array_shift( $method_vals );
+		$method_data = array_values( $methods );
+		$method      = array_shift( $method_data );
 
-		if ( $method ) {
-			$id = $method->get_method_id() . ':' . $method->get_instance_id();
+		if ( ! $method ) {
+			$method = false;
 		}
+	}
+
+	/**
+	 * Allows adjusting the shipping method for a certain order.
+	 *
+	 * @param WC_Order_Item_Shipping|false $method The order item.
+	 * @param WC_Order $order The order object.
+	 *
+	 * @since 3.0.0
+	 * @package Vendidero/Germanized/Shipments
+	 */
+	return apply_filters( 'woocommerce_gzd_shipment_order_shipping_method', $method, $order );
+}
+
+/**
+ * @param WC_Order $order
+ */
+function wc_gzd_get_shipment_order_shipping_method_id( $order ) {
+	$id = '';
+
+	if ( $method = wc_gzd_get_shipment_order_shipping_method( $order ) ) {
+		$id = $method->get_method_id() . ':' . $method->get_instance_id();
 	}
 
 	/**
@@ -930,12 +914,36 @@ function wc_gzd_render_shipment_action_buttons( $actions ) {
 	$actions_html = '';
 
 	foreach ( $actions as $action ) {
-		if ( isset( $action['group'] ) ) {
-			$actions_html .= '<div class="wc-gzd-shipment-action-button-group"><label>' . $action['group'] . '</label> <span class="wc-gzd-shipment-action-button-group__items">' . wc_gzd_render_shipment_action_buttons( $action['actions'] ) . '</span></div>';
-		} elseif ( isset( $action['action'], $action['url'], $action['name'] ) ) {
-			$target = isset( $action['target'] ) ? $action['target'] : '_self';
+		$action = wp_parse_args(
+			$action,
+			array(
+				'url'               => '#',
+				'group'             => '',
+				'action'            => '',
+				'target'            => '_self',
+				'classes'           => '',
+				'name'              => '',
+				'custom_attributes' => array(),
+				'title'             => '',
+			)
+		);
 
-			$actions_html .= sprintf( '<a class="button wc-gzd-shipment-action-button wc-gzd-shipment-action-button-%1$s %1$s" href="%2$s" aria-label="%3$s" title="%3$s" target="%4$s">%5$s</a>', esc_attr( $action['action'] ), esc_url( $action['url'] ), esc_attr( isset( $action['title'] ) ? $action['title'] : $action['name'] ), $target, esc_html( $action['name'] ) );
+		if ( ! empty( $action['group'] ) ) {
+			$actions_html .= '<div class="wc-gzd-shipment-action-button-group"><label>' . esc_html( $action['group'] ) . '</label> <span class="wc-gzd-shipment-action-button-group__items">' . wc_gzd_render_shipment_action_buttons( $action['actions'] ) . '</span></div>';
+		} elseif ( isset( $action['action'], $action['url'], $action['name'] ) ) {
+			$classes = 'button wc-gzd-shipment-action-button tip wc-gzd-shipment-action-button-' . $action['action'] . ' ' . $action['action'] . ' ' . $action['classes'];
+
+			if ( empty( $action['title'] ) ) {
+				$action['title'] = $action['name'];
+			}
+
+			$custom_attributes = '';
+
+			foreach ( $action['custom_attributes'] as $attribute => $val ) {
+				$custom_attributes .= ' ' . esc_attr( $attribute ) . '="' . esc_attr( $val ) . '"';
+			}
+
+			$actions_html .= sprintf( '<a class="%1$s" href="%2$s" aria-label="%3$s" title="%3$s" target="%4$s" %5$s>%6$s</a>', esc_attr( $classes ), esc_url( $action['url'] ), esc_attr( $action['title'] ), esc_attr( $action['target'] ), $custom_attributes, esc_html( $action['name'] ) );
 		}
 	}
 
@@ -1310,16 +1318,28 @@ function wc_gzd_order_is_customer_returnable( $order, $check_date = true ) {
 function wc_gzd_get_order_shipping_provider( $order ) {
 	if ( is_numeric( $order ) ) {
 		$order = wc_get_order( $order );
+	} elseif ( is_a( $order, '\Vendidero\Germanized\Shipments\Order' ) ) {
+		$order = $order->get_order();
 	}
 
 	if ( ! $order ) {
 		return false;
 	}
 
-	$provider = false;
+	$provider  = false;
+	$method_id = wc_gzd_get_shipment_order_shipping_method_id( $order );
 
-	if ( $method = wc_gzd_get_shipping_provider_method( wc_gzd_get_shipment_order_shipping_method_id( $order ) ) ) {
-		$provider = $method->get_provider_instance();
+	if ( $method = wc_gzd_get_shipping_provider_method( $method_id ) ) {
+		$provider = $method->get_shipping_provider_instance();
+	}
+
+	if ( ! $provider ) {
+		foreach ( array_reverse( wc_gzd_get_shipment_order( $order )->get_shipments() ) as $shipment ) {
+			if ( $shipment->get_shipping_provider_instance() ) {
+				$provider = $shipment->get_shipping_provider_instance();
+				break;
+			}
+		}
 	}
 
 	/**
@@ -1507,6 +1527,22 @@ if ( ! function_exists( 'wc_gzd_wp_theme_get_element_class_name' ) ) {
 
 		return '';
 	}
+}
+
+function wc_gzd_shipments_allow_deferred_sync( $type = 'shipments' ) {
+	$allow_defer = true;
+
+	if ( 'shipments' === $type || 'label' === $type || 'return_label' === $type ) {
+		if ( is_admin() && current_user_can( 'manage_woocommerce' ) ) {
+			$allow_defer = false;
+		}
+	}
+
+	if ( apply_filters( 'woocommerce_gzd_shipments_disable_deferred_sync', false ) ) {
+		$allow_defer = false;
+	}
+
+	return apply_filters( "woocommerce_gzd_shipments_allow_{$type}_deferred_sync", $allow_defer );
 }
 
 /**

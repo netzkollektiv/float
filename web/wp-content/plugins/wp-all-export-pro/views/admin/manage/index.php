@@ -206,13 +206,8 @@ $columns = apply_filters('pmxe_manage_imports_columns', $columns);
                                     <strong><?php echo wp_all_export_clear_xss($item['friendly_name']); ?></strong> <br>
                                     <div class="row-actions">
                                         <?php if (current_user_can(PMXE_Plugin::$capabilities)) { ?>
-                                            <span class="edit">
-                                                <a class="edit"
-                                                   href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'template'), $this->baseUrl)) ?>"><?php esc_html_e('Edit Template', 'wp_all_export_plugin') ?></a></span>
-                                            |
-                                            <span class="edit">
-                                                <a class="edit"
-                                                   href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options'), $this->baseUrl)) ?>"><?php esc_html_e('Settings', 'wp_all_export_plugin') ?></a></span>
+                                            <span class="edit"><a class="edit" href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'template','_wpnonce_template' => wp_create_nonce('template')), $this->baseUrl)) ?>"><?php esc_html_e('Edit Template', 'wp_all_export_plugin') ?></a></span> |
+                                            <span class="edit"><a class="edit" href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options','_wpnonce_options' => wp_create_nonce('options')), $this->baseUrl)) ?>"><?php esc_html_e('Settings', 'wp_all_export_plugin') ?></a></span>
 
                                         <?php } ?>
                                         <?php if (!$is_secure_import and $item['attch_id']): ?>
@@ -277,7 +272,7 @@ $columns = apply_filters('pmxe_manage_imports_columns', $columns);
                                                 ($item['options']['export_type'] == 'advanced' && $item['options']['wp_query_selector'] == 'wp_user_query' && !$addons->isUserAddonActive())
                                             ) {
                                                 ?>
-                                                href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options'), $this->baseUrl)) ?>"
+                                                href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options','_wpnonce_options' => wp_create_nonce('options')), $this->baseUrl)) ?>"
                                                 <?php
                                                 // Disable scheduling options for WooCo exports if WooCo Export Add-On isn't enabled and the relevant free add-on isn't enabled
                                             } else if (
@@ -297,7 +292,7 @@ $columns = apply_filters('pmxe_manage_imports_columns', $columns);
                                                 ($item['options']['export_type'] == 'advanced' && isset($item['options']['exportquery']) && in_array($item['options']['exportquery']->query['post_type'], array(array('product', 'product_variation'),)) && !$addons->isWooCommerceAddonActive() && !$addons->isWooCommerceProductAddonActive())
                                             ) {
                                                 ?>
-                                                href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options'), $this->baseUrl)) ?>"
+                                                href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options','_wpnonce_options' => wp_create_nonce('options')), $this->baseUrl)) ?>"
                                                 <?php
                                                 // Disable scheduling options for ACF exports if ACF Export Add-On isn't enabled
                                             } else if (
@@ -305,7 +300,7 @@ $columns = apply_filters('pmxe_manage_imports_columns', $columns);
                                                 ($item['options']['export_type'] == 'advanced' && $item['options']['wp_query_selector'] != 'wp_comment_query' && in_array('acf', $item['options']['cc_type']) && !$addons->isAcfAddonActive())
                                             ) {
                                                 ?>
-                                                href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options'), $this->baseUrl)) ?>"
+                                                href="<?php echo esc_url(add_query_arg(array('id' => $item['id'], 'action' => 'options','_wpnonce_options' => wp_create_nonce('options')), $this->baseUrl)) ?>"
                                                 <?php
                                             } else {
 
@@ -353,7 +348,7 @@ $columns = apply_filters('pmxe_manage_imports_columns', $columns);
 
                                     }
                                     ?>
-                                    <?php if (current_user_can(PMXE_Plugin::$capabilities && $item['client_mode_enabled'])) { ?>
+                                    <?php if (current_user_can(PMXE_Plugin::$capabilities) && $item['client_mode_enabled']) { ?>
                                         <span>Client mode enabled</span>
                                         <?php if (is_real_time_exports($item)) { ?>
                                             <br/>

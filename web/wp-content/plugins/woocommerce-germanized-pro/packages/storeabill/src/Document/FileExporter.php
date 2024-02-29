@@ -59,7 +59,13 @@ class FileExporter extends Exporter {
 	}
 
 	protected function get_file_size() {
-		return @filesize( $this->get_file_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$file_size = @filesize( $this->get_file_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+
+		if ( false === $file_size ) {
+			$file_size = 0;
+		}
+
+		return $file_size;
 	}
 
 	public function send_headers() {
@@ -106,6 +112,12 @@ class FileExporter extends Exporter {
 			$result = $file->open( $this->get_file_path() );
 		} else {
 			$result = $file->open( $this->get_file_path(), \ZipArchive::CREATE );
+			/**
+			 * Add an empty placeholder file to the zip to prevent missing zip files
+			 * for exports which do not contain any documents. $zip->close() will delete
+			 * zip files automatically in case no file is included.
+			 */
+			$file->addFromString( '.', '' );
 		}
 
 		if ( true !== $result ) {
@@ -119,7 +131,6 @@ class FileExporter extends Exporter {
 
 	protected function write_data() {
 		if ( $zip = $this->get_file() ) {
-
 			foreach ( $this->files as $file => $filename ) {
 				$zip->addFile( $file, $filename );
 			}

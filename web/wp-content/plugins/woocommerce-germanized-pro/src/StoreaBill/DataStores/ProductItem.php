@@ -23,5 +23,11 @@ class ProductItem extends DocumentItem {
 		'_sku',
 		'_price',
 		'_total',
+		'_weight',
+		'_hs_code',
+		'_manufacture_country',
+		'_length',
+		'_width',
+		'_height',
 	);
 }

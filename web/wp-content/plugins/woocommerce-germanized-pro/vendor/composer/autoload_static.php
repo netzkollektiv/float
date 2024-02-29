@@ -4,11 +4,12 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
+class ComposerStaticInit7960dbdfdde626b0a2f0adedd2153668
 {
     public static $prefixLengthsPsr4 = array (
         'V' => 
         array (
+            'Vendidero\\VendideroHelper\\' => 26,
             'Vendidero\\StoreaBill\\sevDesk\\' => 29,
             'Vendidero\\StoreaBill\\Vendor\\' => 28,
             'Vendidero\\StoreaBill\\Lexoffice\\' => 31,
@@ -32,6 +33,10 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
     );
 
     public static $prefixDirsPsr4 = array (
+        'Vendidero\\VendideroHelper\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/packages/vendidero-helper/src',
+        ),
         'Vendidero\\StoreaBill\\sevDesk\\' => 
         array (
             0 => __DIR__ . '/../..' . '/packages/storeabill-sevdesk/src',
@@ -211,13 +216,43 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\Germanized\\DPD\\Label\\Simple' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dpd/src/Label/Simple.php',
         'Vendidero\\Germanized\\DPD\\Package' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dpd/src/Package.php',
         'Vendidero\\Germanized\\DPD\\ShippingProvider\\DPD' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dpd/src/ShippingProvider/DPD.php',
+        'Vendidero\\Germanized\\DPD\\ShippingProvider\\Services\\HigherInsurance' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-dpd/src/ShippingProvider/Services/HigherInsurance.php',
         'Vendidero\\Germanized\\GLS\\Api\\Api' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/Api/Api.php',
         'Vendidero\\Germanized\\GLS\\Install' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/Install.php',
         'Vendidero\\Germanized\\GLS\\Label\\Retoure' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/Label/Retoure.php',
         'Vendidero\\Germanized\\GLS\\Label\\Simple' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/Label/Simple.php',
         'Vendidero\\Germanized\\GLS\\Package' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/Package.php',
         'Vendidero\\Germanized\\GLS\\ShippingProvider\\GLS' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/ShippingProvider/GLS.php',
+        'Vendidero\\Germanized\\GLS\\ShippingProvider\\Services\\AddonLiability' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/ShippingProvider/Services/AddonLiability.php',
+        'Vendidero\\Germanized\\GLS\\ShippingProvider\\Services\\BaseService' => __DIR__ . '/../..' . '/packages/woocommerce-germanized-gls/src/ShippingProvider/Services/BaseService.php',
         'Vendidero\\Germanized\\Pro\\Autoloader' => __DIR__ . '/../..' . '/src/Autoloader.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\Assets' => __DIR__ . '/../..' . '/src/Blocks/Assets.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypesController' => __DIR__ . '/../..' . '/src/Blocks/BlockTypesController.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\AbstractBlock' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/AbstractBlock.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\AbstractInnerBlock' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/AbstractInnerBlock.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\CheckoutBillingVatId' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/CheckoutBillingVatId.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\CheckoutShippingVatId' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/CheckoutShippingVatId.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckout' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckout.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutBillingAddressBlock' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutBillingAddressBlock.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutConfirmationStep' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutConfirmationStep.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutContactStep' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutContactStep.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutFieldsBlock' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutFieldsBlock.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutPaymentStep' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutPaymentStep.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutShippingStep' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutShippingStep.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutSidebar' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutSidebar.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\BlockTypes\\MultilevelCheckoutSubmit' => __DIR__ . '/../..' . '/src/Blocks/BlockTypes/MultilevelCheckoutSubmit.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\Integrations\\Checkout' => __DIR__ . '/../..' . '/src/Blocks/Integrations/Checkout.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\Integrations\\MultilevelCheckout' => __DIR__ . '/../..' . '/src/Blocks/Integrations/MultilevelCheckout.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\MultilevelCheckout' => __DIR__ . '/../..' . '/src/Blocks/MultilevelCheckout.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\StoreApi\\RoutesController' => __DIR__ . '/../..' . '/src/Blocks/StoreApi/RoutesController.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\StoreApi\\Routes\\V1\\CartUpdateVatId' => __DIR__ . '/../..' . '/src/Blocks/StoreApi/Routes/V1/CartUpdateVatId.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\StoreApi\\SchemaController' => __DIR__ . '/../..' . '/src/Blocks/StoreApi/SchemaController.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\StoreApi\\Schemas\\V1\\VatIdUpdateSchema' => __DIR__ . '/../..' . '/src/Blocks/StoreApi/Schemas/V1/VatIdUpdateSchema.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\StoreApi\\StoreApi' => __DIR__ . '/../..' . '/src/Blocks/StoreApi/StoreApi.php',
+        'Vendidero\\Germanized\\Pro\\Blocks\\VatId' => __DIR__ . '/../..' . '/src/Blocks/VatId.php',
+        'Vendidero\\Germanized\\Pro\\Bootstrap' => __DIR__ . '/../..' . '/src/Bootstrap.php',
+        'Vendidero\\Germanized\\Pro\\Contract\\GatewayBlockPlaceholder' => __DIR__ . '/../..' . '/src/Contract/GatewayBlockPlaceholder.php',
+        'Vendidero\\Germanized\\Pro\\Contract\\GatewayPlaceholder' => __DIR__ . '/../..' . '/src/Contract/GatewayPlaceholder.php',
         'Vendidero\\Germanized\\Pro\\Food\\Allergen' => __DIR__ . '/../..' . '/src/Food/Allergen.php',
         'Vendidero\\Germanized\\Pro\\Food\\Deposits\\Helper' => __DIR__ . '/../..' . '/src/Food/Deposits/Helper.php',
         'Vendidero\\Germanized\\Pro\\Food\\Helper' => __DIR__ . '/../..' . '/src/Food/Helper.php',
@@ -227,10 +262,27 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\Germanized\\Pro\\Legacy\\Importer' => __DIR__ . '/../..' . '/src/Legacy/Importer.php',
         'Vendidero\\Germanized\\Pro\\Legacy\\Invoice' => __DIR__ . '/../..' . '/src/Legacy/Invoice.php',
         'Vendidero\\Germanized\\Pro\\Legacy\\Pdf' => __DIR__ . '/../..' . '/src/Legacy/Pdf.php',
+        'Vendidero\\Germanized\\Pro\\Package' => __DIR__ . '/../..' . '/src/Package.php',
         'Vendidero\\Germanized\\Pro\\Packages' => __DIR__ . '/../..' . '/src/Packages.php',
         'Vendidero\\Germanized\\Pro\\Packing\\Automation' => __DIR__ . '/../..' . '/src/Packing/Automation.php',
+        'Vendidero\\Germanized\\Pro\\Registry\\AbstractDependencyType' => __DIR__ . '/../..' . '/src/Registry/AbstractDependencyType.php',
+        'Vendidero\\Germanized\\Pro\\Registry\\Container' => __DIR__ . '/../..' . '/src/Registry/Container.php',
+        'Vendidero\\Germanized\\Pro\\Registry\\FactoryType' => __DIR__ . '/../..' . '/src/Registry/FactoryType.php',
+        'Vendidero\\Germanized\\Pro\\Registry\\SharedType' => __DIR__ . '/../..' . '/src/Registry/SharedType.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\AccountingHelper' => __DIR__ . '/../..' . '/src/StoreaBill/AccountingHelper.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\Ajax' => __DIR__ . '/../..' . '/src/StoreaBill/Ajax.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\BulkHandler' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/BulkHandler.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\Controller' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/Controller.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\DefaultTemplate' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/DefaultTemplate.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\Helper' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/Helper.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\Preview' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/Preview.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\ProductItem' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/ProductItem.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\Query' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/Query.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\Shipment' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/Shipment.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\ShipmentItem' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/ShipmentItem.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\CommercialInvoice\\Shortcodes' => __DIR__ . '/../..' . '/src/StoreaBill/CommercialInvoice/Shortcodes.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\DataStores\\CommercialInvoice' => __DIR__ . '/../..' . '/src/StoreaBill/DataStores/CommercialInvoice.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\DataStores\\PackingSlip' => __DIR__ . '/../..' . '/src/StoreaBill/DataStores/PackingSlip.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\DataStores\\PostDocument' => __DIR__ . '/../..' . '/src/StoreaBill/DataStores/PostDocument.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\DataStores\\ProductItem' => __DIR__ . '/../..' . '/src/StoreaBill/DataStores/ProductItem.php',
@@ -239,18 +291,21 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\Controller' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/Controller.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\DefaultTemplate' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/DefaultTemplate.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\Email' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/Email.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\PackingSlips' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/PackingSlips.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\Preview' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/Preview.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\ProductItem' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/ProductItem.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\Query' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/Query.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\Shipment' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/Shipment.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\ShipmentItem' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/ShipmentItem.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlip\\Shortcodes' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlip/Shortcodes.php',
-        'Vendidero\\Germanized\\Pro\\StoreaBill\\PackingSlips' => __DIR__ . '/../..' . '/src/StoreaBill/PackingSlips.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PostDocument' => __DIR__ . '/../..' . '/src/StoreaBill/PostDocument.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PostDocument\\Controller' => __DIR__ . '/../..' . '/src/StoreaBill/PostDocument/Controller.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PostDocument\\DefaultTemplate' => __DIR__ . '/../..' . '/src/StoreaBill/PostDocument/DefaultTemplate.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PostDocument\\Preview' => __DIR__ . '/../..' . '/src/StoreaBill/PostDocument/Preview.php',
         'Vendidero\\Germanized\\Pro\\StoreaBill\\PostDocument\\Query' => __DIR__ . '/../..' . '/src/StoreaBill/PostDocument/Query.php',
-        'Vendidero\\Germanized\\Pro\\StoreaBill\\Shipment' => __DIR__ . '/../..' . '/src/StoreaBill/Shipment.php',
-        'Vendidero\\Germanized\\Pro\\StoreaBill\\ShipmentItem' => __DIR__ . '/../..' . '/src/StoreaBill/ShipmentItem.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\Shipments\\ProductItem' => __DIR__ . '/../..' . '/src/StoreaBill/Shipments/ProductItem.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\Shipments\\Shipment' => __DIR__ . '/../..' . '/src/StoreaBill/Shipments/Shipment.php',
+        'Vendidero\\Germanized\\Pro\\StoreaBill\\Shipments\\ShipmentItem' => __DIR__ . '/../..' . '/src/StoreaBill/Shipments/ShipmentItem.php',
         'Vendidero\\StoreaBill\\API\\REST' => __DIR__ . '/../..' . '/packages/storeabill/src/API/REST.php',
         'Vendidero\\StoreaBill\\API\\RESTResponse' => __DIR__ . '/../..' . '/packages/storeabill/src/API/RESTResponse.php',
         'Vendidero\\StoreaBill\\Admin\\Admin' => __DIR__ . '/../..' . '/packages/storeabill/src/Admin/Admin.php',
@@ -263,6 +318,7 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\StoreaBill\\Compatibility\\Bookings' => __DIR__ . '/../..' . '/packages/storeabill/src/Compatibility/Bookings.php',
         'Vendidero\\StoreaBill\\Compatibility\\Bundles' => __DIR__ . '/../..' . '/packages/storeabill/src/Compatibility/Bundles.php',
         'Vendidero\\StoreaBill\\Compatibility\\Subscriptions' => __DIR__ . '/../..' . '/packages/storeabill/src/Compatibility/Subscriptions.php',
+        'Vendidero\\StoreaBill\\Compatibility\\TranslatePress' => __DIR__ . '/../..' . '/packages/storeabill/src/Compatibility/TranslatePress.php',
         'Vendidero\\StoreaBill\\Compatibility\\WPML' => __DIR__ . '/../..' . '/packages/storeabill/src/Compatibility/WPML.php',
         'Vendidero\\StoreaBill\\Countries' => __DIR__ . '/../..' . '/packages/storeabill/src/Countries.php',
         'Vendidero\\StoreaBill\\Data' => __DIR__ . '/../..' . '/packages/storeabill/src/Data.php',
@@ -333,6 +389,7 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\StoreaBill\\Editor\\Blocks\\Logo' => __DIR__ . '/../..' . '/packages/storeabill/src/Editor/Blocks/Logo.php',
         'Vendidero\\StoreaBill\\Editor\\Blocks\\PageNumber' => __DIR__ . '/../..' . '/packages/storeabill/src/Editor/Blocks/PageNumber.php',
         'Vendidero\\StoreaBill\\Editor\\Blocks\\PlaceholderBlock' => __DIR__ . '/../..' . '/packages/storeabill/src/Editor/Blocks/PlaceholderBlock.php',
+        'Vendidero\\StoreaBill\\Editor\\Blocks\\PreferentialOriginDeclaration' => __DIR__ . '/../..' . '/packages/storeabill/src/Editor/Blocks/PreferentialOriginDeclaration.php',
         'Vendidero\\StoreaBill\\Editor\\Blocks\\ReverseChargeNotice' => __DIR__ . '/../..' . '/packages/storeabill/src/Editor/Blocks/ReverseChargeNotice.php',
         'Vendidero\\StoreaBill\\Editor\\Blocks\\SenderAddress' => __DIR__ . '/../..' . '/packages/storeabill/src/Editor/Blocks/SenderAddress.php',
         'Vendidero\\StoreaBill\\Editor\\Blocks\\ShippingAddress' => __DIR__ . '/../..' . '/packages/storeabill/src/Editor/Blocks/ShippingAddress.php',
@@ -374,6 +431,7 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\StoreaBill\\Interfaces\\Order' => __DIR__ . '/../..' . '/packages/storeabill/src/Interfaces/Order.php',
         'Vendidero\\StoreaBill\\Interfaces\\PDF' => __DIR__ . '/../..' . '/packages/storeabill/src/Interfaces/PDF.php',
         'Vendidero\\StoreaBill\\Interfaces\\PDFMerge' => __DIR__ . '/../..' . '/packages/storeabill/src/Interfaces/PDFMerge.php',
+        'Vendidero\\StoreaBill\\Interfaces\\PaymentMethod' => __DIR__ . '/../..' . '/packages/storeabill/src/Interfaces/PaymentMethod.php',
         'Vendidero\\StoreaBill\\Interfaces\\Previewable' => __DIR__ . '/../..' . '/packages/storeabill/src/Interfaces/Previewable.php',
         'Vendidero\\StoreaBill\\Interfaces\\Priceable' => __DIR__ . '/../..' . '/packages/storeabill/src/Interfaces/Priceable.php',
         'Vendidero\\StoreaBill\\Interfaces\\Product' => __DIR__ . '/../..' . '/packages/storeabill/src/Interfaces/Product.php',
@@ -429,6 +487,7 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\StoreaBill\\REST\\Server' => __DIR__ . '/../..' . '/packages/storeabill/src/REST/Server.php',
         'Vendidero\\StoreaBill\\References\\Customer' => __DIR__ . '/../..' . '/packages/storeabill/src/References/Customer.php',
         'Vendidero\\StoreaBill\\References\\Order' => __DIR__ . '/../..' . '/packages/storeabill/src/References/Order.php',
+        'Vendidero\\StoreaBill\\References\\PaymentMethod' => __DIR__ . '/../..' . '/packages/storeabill/src/References/PaymentMethod.php',
         'Vendidero\\StoreaBill\\References\\Product' => __DIR__ . '/../..' . '/packages/storeabill/src/References/Product.php',
         'Vendidero\\StoreaBill\\References\\RefundOrder' => __DIR__ . '/../..' . '/packages/storeabill/src/References/RefundOrder.php',
         'Vendidero\\StoreaBill\\Settings' => __DIR__ . '/../..' . '/packages/storeabill/src/Settings.php',
@@ -456,6 +515,7 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\StoreaBill\\WooCommerce\\OrderItemShipping' => __DIR__ . '/../..' . '/packages/storeabill/src/WooCommerce/OrderItemShipping.php',
         'Vendidero\\StoreaBill\\WooCommerce\\OrderItemTaxable' => __DIR__ . '/../..' . '/packages/storeabill/src/WooCommerce/OrderItemTaxable.php',
         'Vendidero\\StoreaBill\\WooCommerce\\OrderItemVoucher' => __DIR__ . '/../..' . '/packages/storeabill/src/WooCommerce/OrderItemVoucher.php',
+        'Vendidero\\StoreaBill\\WooCommerce\\PaymentMethod' => __DIR__ . '/../..' . '/packages/storeabill/src/WooCommerce/PaymentMethod.php',
         'Vendidero\\StoreaBill\\WooCommerce\\Product' => __DIR__ . '/../..' . '/packages/storeabill/src/WooCommerce/Product.php',
         'Vendidero\\StoreaBill\\WooCommerce\\REST\\Orders' => __DIR__ . '/../..' . '/packages/storeabill/src/WooCommerce/REST/Orders.php',
         'Vendidero\\StoreaBill\\WooCommerce\\REST\\Server' => __DIR__ . '/../..' . '/packages/storeabill/src/WooCommerce/REST/Server.php',
@@ -466,15 +526,24 @@ class ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c
         'Vendidero\\StoreaBill\\sevDesk\\Contact' => __DIR__ . '/../..' . '/packages/storeabill-sevdesk/src/Contact.php',
         'Vendidero\\StoreaBill\\sevDesk\\Package' => __DIR__ . '/../..' . '/packages/storeabill-sevdesk/src/Package.php',
         'Vendidero\\StoreaBill\\sevDesk\\Sync' => __DIR__ . '/../..' . '/packages/storeabill-sevdesk/src/Sync.php',
+        'Vendidero\\VendideroHelper\\Admin' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Admin.php',
+        'Vendidero\\VendideroHelper\\Api' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Api.php',
+        'Vendidero\\VendideroHelper\\Install' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Install.php',
+        'Vendidero\\VendideroHelper\\LicenseTable' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/LicenseTable.php',
+        'Vendidero\\VendideroHelper\\Package' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Package.php',
+        'Vendidero\\VendideroHelper\\Product' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Product.php',
+        'Vendidero\\VendideroHelper\\Request' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Request.php',
+        'Vendidero\\VendideroHelper\\Theme' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Theme.php',
+        'Vendidero\\VendideroHelper\\Updater' => __DIR__ . '/../..' . '/packages/vendidero-helper/src/Updater.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInita27955b7cc03cdc81c960ba2de199d9c::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit7960dbdfdde626b0a2f0adedd2153668::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit7960dbdfdde626b0a2f0adedd2153668::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit7960dbdfdde626b0a2f0adedd2153668::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInit7960dbdfdde626b0a2f0adedd2153668::$classMap;
 
         }, null, ClassLoader::class);
     }

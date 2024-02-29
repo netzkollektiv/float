@@ -179,7 +179,7 @@ class Fields {
 		?>
 		<fieldset class="sab-toggle-wrapper">
 			<a class="sab-toggle" href="#">
-				<span class="sab-input-toggle <?php echo ( 'yes' === $args['value'] ? 'sab-input-toggle--enabled' : 'sab-input-toggle--disabled' ); ?>">
+				<span class="sab-input-toggle woocommerce-input-toggle <?php echo ( 'yes' === $args['value'] ? 'sab-input-toggle--enabled' : 'sab-input-toggle--disabled' ); ?>">
 					<?php echo ( ( 'yes' === $args['value'] ) ? esc_html_x( 'Yes', 'storeabill-core', 'woocommerce-germanized-pro' ) : esc_html_x( 'No', 'storeabill-core', 'woocommerce-germanized-pro' ) ); ?>
 				</span>
 			</a>

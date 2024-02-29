@@ -19,6 +19,8 @@ class DocumentStylesEdit extends Component {
             fontsFacetsCSS: '',
             fontsInlineCSS: '',
         };
+
+        this.myRef = React.createRef();
     }
 
     componentDidMount() {
@@ -48,7 +50,6 @@ class DocumentStylesEdit extends Component {
     }
 
     componentDidUpdate( prevProps, prevState ) {
-
         if ( ! isEqual( this.props.fonts, prevProps.fonts ) ) {
             this.updateFontsCSS();
         }
@@ -71,19 +72,27 @@ class DocumentStylesEdit extends Component {
     addFonts() {
         const { fontsFacetsCSS, fontsInlineCSS } = this.state;
 
-        if ( jQuery( 'style#sab-block-editor-inline-css' ) <= 0 ) {
-            jQuery( '<style id="sab-block-editor-inline-css">' ).appendTo( 'head' );
+        if ( ! this.myRef.current) {
+            return;
         }
 
-        const $facetsWrapper = jQuery( 'style#sab-block-editor-inline-css' );
-        const existingFacets = $facetsWrapper.html().trim();
+        const { ownerDocument } = this.myRef.current;
+        const { defaultView } = ownerDocument;
+        const $document = jQuery( defaultView.document );
+
+        if ( $document.find( 'style#sab-block-editor-inline-css' ) <= 0 ) {
+            $document.find( 'head' ).append( '<style id="sab-block-editor-inline-css">' );
+        }
+
+        let $facetsWrapper = $document.find( 'style#sab-block-editor-inline-css' );
+        let existingFacets = $facetsWrapper.html().trim();
 
         if ( existingFacets !== fontsFacetsCSS ) {
             $facetsWrapper.html( fontsFacetsCSS );
         }
 
-        jQuery( 'body' ).find( '.sab-font-inline' ).remove();
-        jQuery( 'body' ).append( '<style type="text/css" class="sab-font-inline">' + fontsInlineCSS + '</style>' );
+        $document.find( '#sab-block-editor-inline-fonts-inline-css' ).remove();
+        $document.find( 'body' ).append( '<style id="sab-block-editor-inline-fonts-inline-css">' + fontsInlineCSS + '</style>' );
     }
 
     getAttachmentThumb( image, sizeSlug, attribute ) {
@@ -91,10 +100,21 @@ class DocumentStylesEdit extends Component {
     }
 
     applyWrapperStyles() {
-        const $mainWrapper = jQuery( '.editor-styles-wrapper' );
-        const $wrapper     = $mainWrapper.find( '.block-editor-block-list__layout:not(.edit-post-visual-editor__post-title-wrapper):first' );
-
         const { pdfAttachment, margins, fonts, fontSize, color } = this.props;
+
+        if ( ! this.myRef.current) {
+            return;
+        }
+
+        const { ownerDocument } = this.myRef.current;
+        const { defaultView } = ownerDocument;
+
+        let $mainWrapper = jQuery( defaultView.document ).find( '.editor-styles-wrapper' );
+        let $wrapper     = $mainWrapper.find( '.block-editor-block-list__layout:not(.edit-post-visual-editor__post-title-wrapper):first' );
+
+        if ( $wrapper.length <= 0 ) {
+            $wrapper = jQuery( defaultView.document ).find( '.wp-block-post-content' );
+        }
 
         if ( fontSize ) {
             $wrapper.css( 'font-size', getFontSizeStyle( fontSize ) );
@@ -133,7 +153,7 @@ class DocumentStylesEdit extends Component {
     }
 
     render() {
-        return null;
+        return <div ref={this.myRef} />;
     }
 }
 

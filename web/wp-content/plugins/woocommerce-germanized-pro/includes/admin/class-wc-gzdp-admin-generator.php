@@ -208,7 +208,7 @@ class WC_GZDP_Admin_Generator {
 			}
 		}
 
-		update_option( 'woocommerce_gzdp_generator_current_settings_' . $generator, $cur_settings );
+		update_option( 'woocommerce_gzdp_generator_current_settings_' . $generator, $cur_settings, false );
 	}
 
 	public function get_settings( $generator ) {
@@ -327,7 +327,7 @@ class WC_GZDP_Admin_Generator {
 		}
 
 		$version = $this->get_version( $generator );
-		$remote  = VD()->api->generator_version_check( $product, $generator );
+		$remote  = \Vendidero\VendideroHelper\Package::get_api()->generator_version_check( $product, $generator );
 
 		if ( ! $remote ) {
 			return false;
@@ -341,11 +341,11 @@ class WC_GZDP_Admin_Generator {
 
 		// Update generator data if remote version is newer than local version
 		if ( version_compare( $version, $remote_version, '<' ) || empty( $generator_data ) || ( ! empty( $generator_data ) && array_key_exists( 'errors', $generator_data ) ) ) {
-			$generator_data = VD()->api->to_array( VD()->api->generator_check( $product, $generator, $settings ) );
+			$generator_data = \Vendidero\VendideroHelper\Package::get_api()->to_array( \Vendidero\VendideroHelper\Package::get_api()->generator_check( $product, $generator, $settings ) );
 
 			if ( $generator_data ) {
-				update_option( 'woocommerce_gzdp_generator_' . $generator, $generator_data );
-				update_option( 'woocommerce_gzdp_generator_version_' . $generator, $remote_version );
+				update_option( 'woocommerce_gzdp_generator_' . $generator, $generator_data, false );
+				update_option( 'woocommerce_gzdp_generator_version_' . $generator, $remote_version, false );
 			} else {
 				remove_action( 'wc_germanized_settings_section_after_' . $generator, array( $this, 'close_wrapper' ) );
 				remove_action( 'wc_germanized_settings_section_before_' . $generator, array( $this, 'set_wrapper' ) );
@@ -439,7 +439,7 @@ class WC_GZDP_Admin_Generator {
 		}
 
 		$version = $this->get_version( $generator );
-		$remote  = VD()->api->generator_version_check( $product, $generator );
+		$remote  = \Vendidero\VendideroHelper\Package::get_api()->generator_version_check( $product, $generator );
 
 		if ( ! $remote ) {
 			return;
@@ -476,7 +476,7 @@ class WC_GZDP_Admin_Generator {
 
 		$settings = array( 'api_version' => $this->api_version );
 		$settings = array_merge( $settings, $this->get_options( 'woocommerce_', $this->get_required_settings( $generator ) ) );
-		$result   = VD()->api->generator_result_check( $product, $generator, $data, $settings );
+		$result   = \Vendidero\VendideroHelper\Package::get_api()->generator_result_check( $product, $generator, $data, $settings );
 
 		if ( ! $result || is_wp_error( $result ) ) {
 			$message = _x( 'There seems to be a problem while generating. Is your update flatrate still active?', 'generator', 'woocommerce-germanized-pro' );
@@ -554,7 +554,7 @@ class WC_GZDP_Admin_Generator {
 				if ( empty( $outdated_data ) ) {
 					delete_option( 'woocommerce_gzdp_generator_outdated_data' );
 				} else {
-					update_option( 'woocommerce_gzdp_generator_outdated_data', $outdated_data );
+					update_option( 'woocommerce_gzdp_generator_outdated_data', $outdated_data, false );
 				}
 			}
 		}

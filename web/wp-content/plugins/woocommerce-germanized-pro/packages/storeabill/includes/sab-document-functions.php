@@ -583,7 +583,7 @@ function sab_get_document_number_placeholders( $document_type ) {
 		'{n}'      => _x( 'Month (e.g. 5)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 	);
 
-	if ( 'invoice' === $document_type ) {
+	if ( in_array( $document_type, array( 'invoice', 'invoice_cancellation' ), true ) ) {
 		$placeholders['{order_number}'] = _x( 'Order number (e.g. 1234)', 'storeabill-core', 'woocommerce-germanized-pro' );
 	}
 
@@ -799,39 +799,45 @@ function sab_get_document_preview( $document_type, $is_editor_preview = false ) 
 	return $instance;
 }
 
-function sab_get_document_default_font_size() {
-	return apply_filters( 'storeabill_document_default_font_size', 13 );
+function sab_get_document_default_font_size( $with_unit = false ) {
+	$font_size = apply_filters( 'storeabill_document_default_font_size', 13 );
+
+	if ( $with_unit ) {
+		$font_size .= 'px';
+	}
+
+	return $font_size;
 }
 
 function sab_get_document_default_color() {
 	return apply_filters( 'storeabill_document_default_color', '#000000' );
 }
 
-function sab_get_document_font_sizes() {
+function sab_get_document_font_sizes( $with_unit = false ) {
 	return array(
 		'tiny'   => array(
 			'name' => _x( 'Tiny', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'size' => 10,
+			'size' => $with_unit ? '10px' : 10,
 			'slug' => 'tiny',
 		),
 		'small'  => array(
 			'name' => _x( 'Small', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'size' => 11,
+			'size' => $with_unit ? '11px' : 11,
 			'slug' => 'small',
 		),
 		'normal' => array(
 			'name' => _x( 'Normal', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'size' => sab_get_document_default_font_size(),
+			'size' => sab_get_document_default_font_size( $with_unit ),
 			'slug' => 'normal',
 		),
 		'medium' => array(
 			'name' => _x( 'Medium', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'size' => 14,
+			'size' => $with_unit ? '14px' : 14,
 			'slug' => 'medium',
 		),
 		'large'  => array(
 			'name' => _x( 'Large', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'size' => 18,
+			'size' => $with_unit ? '18px' : 18,
 			'slug' => 'large',
 		),
 	);

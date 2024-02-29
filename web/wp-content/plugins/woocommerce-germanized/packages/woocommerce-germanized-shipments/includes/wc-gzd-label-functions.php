@@ -107,8 +107,8 @@ function wc_gzd_get_shipment_label_weight( $shipment, $net_weight = false, $unit
 	}
 
 	if ( $provider = $shipment->get_shipping_provider_instance() ) {
-		$min_weight     = wc_get_weight( $provider->get_shipment_setting( $shipment, 'label_minimum_shipment_weight' ), $unit, 'kg' );
-		$default_weight = wc_get_weight( $provider->get_shipment_setting( $shipment, 'label_default_shipment_weight' ), $unit, 'kg' );
+		$min_weight     = wc_get_weight( $provider->get_label_minimum_shipment_weight(), $unit, 'kg' );
+		$default_weight = wc_get_weight( $provider->get_label_default_shipment_weight(), $unit, 'kg' );
 
 		if ( empty( $shipment_content_weight ) ) {
 			$shipment_weight = $default_weight;
@@ -123,7 +123,7 @@ function wc_gzd_get_shipment_label_weight( $shipment, $net_weight = false, $unit
 		}
 	}
 
-	$shipment_weight = wc_format_decimal( $shipment_weight, 2 );
+	$shipment_weight = wc_format_decimal( $shipment_weight, 3 );
 
 	return apply_filters( 'woocommerce_gzd_shipment_label_weight', $shipment_weight, $shipment, $unit );
 }

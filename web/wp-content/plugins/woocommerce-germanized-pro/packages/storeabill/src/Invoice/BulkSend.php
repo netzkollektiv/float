@@ -25,7 +25,7 @@ class BulkSend extends BulkActionHandler {
 
 		if ( ! empty( $current ) ) {
 			foreach ( $current as $invoice_id ) {
-				CacheHelper::prevent_caching();
+				CacheHelper::prevent_caching( 'bulk' );
 
 				if ( $invoice = sab_get_invoice( $invoice_id ) ) {
 					if ( $invoice->is_finalized() ) {

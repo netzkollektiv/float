@@ -40,7 +40,7 @@ class Invoice extends Document {
 		'_created_via',
 		'_currency',
 		'_prices_include_tax',
-		'_is_reverse_charge',
+		'_is_vat_exempt',
 		'_is_oss',
 		'_vat_id',
 		'_is_taxable',
@@ -93,13 +93,25 @@ class Invoice extends Document {
 		parent::create( $document );
 	}
 
+	/**
+	 * @param \Vendidero\StoreaBill\Invoice\Invoice $invoice
+	 *
+	 * @return array
+	 */
+	protected function get_search_related_properties( $invoice ) {
+		return array(
+			'address',
+			'shipping_address',
+		);
+	}
+
 	protected function format_update_value( $document, $prop ) {
 		$value = parent::format_update_value( $document, $prop );
 
 		switch ( $prop ) {
 			case 'prices_include_tax':
 			case 'round_tax_at_subtotal':
-			case 'is_reverse_charge':
+			case 'is_vat_exempt':
 			case 'is_oss':
 			case 'is_taxable':
 			case 'stores_vouchers_as_discount':
@@ -177,6 +189,14 @@ class Invoice extends Document {
 	 */
 	protected function read_extra_data( &$document ) {
 		parent::read_extra_data( $document );
+
+		if ( version_compare( $document->get_version(), '2.2.0', '<' ) ) {
+			$is_reverse_charge_data = get_metadata( 'storeabill_document', $document->get_id(), '_is_reverse_charge', true );
+
+			if ( ! empty( $is_reverse_charge_data ) ) {
+				$document->set_is_vat_exempt( $is_reverse_charge_data );
+			}
+		}
 
 		/**
 		 * Legacy support for voucher_subtotal stored as custom meta.

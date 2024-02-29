@@ -61,7 +61,7 @@ class Shortcodes extends \Vendidero\StoreaBill\Document\Shortcodes {
 	public function get_order() {
 		$shipment = $this->get_document_reference();
 
-		if ( $shipment && is_a( $shipment, '\Vendidero\Germanized\Pro\StoreaBill\Shipment' ) ) {
+		if ( $shipment && is_a( $shipment, '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Shipment' ) ) {
 			return $shipment->get_shipment()->get_order();
 		}
 
@@ -84,7 +84,7 @@ class Shortcodes extends \Vendidero\StoreaBill\Document\Shortcodes {
 	public function order_item_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'woocommerce_gzdp_packing_slip_order_item_shortcode_result', $this->format_result( $this->get_order_item_data( $atts, $this->get_order_item() ), $atts ), $atts, $this->get_order_item(), $this );
+		return apply_filters( 'woocommerce_gzdp_packing_slip_order_item_shortcode_result', $this->format_result( $this->get_order_item_data( $atts, $this->get_order_item() ), $atts, $this->get_order_item() ), $atts, $this->get_order_item(), $this );
 	}
 
 	/**
@@ -109,7 +109,7 @@ class Shortcodes extends \Vendidero\StoreaBill\Document\Shortcodes {
 	public function order_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'woocommerce_gzdp_packing_slip_order_shortcode_result', $this->format_result( $this->get_order_data( $atts, $this->get_order() ), $atts ), $atts, $this->get_order(), $this );
+		return apply_filters( 'woocommerce_gzdp_packing_slip_order_shortcode_result', $this->format_result( $this->get_order_data( $atts, $this->get_order() ), $atts, $this->get_order() ), $atts, $this->get_order(), $this );
 	}
 
 	/**

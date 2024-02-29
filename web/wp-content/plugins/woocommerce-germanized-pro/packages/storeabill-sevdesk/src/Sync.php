@@ -216,13 +216,13 @@ class Sync extends SyncHandler {
 			'customer'       => $invoice->get_customer(),
 			'first_name'     => $invoice->get_first_name(),
 			'last_name'      => $invoice->get_last_name(),
-			'email'          => $invoice->get_email(),
+			'email'          => $invoice->get_email( 'edit' ),
 			'phone'          => $invoice->get_phone(),
 			'company'        => $invoice->get_company(),
 			'title'          => $title,
 			'academic_title' => '',
 			'vat_id'         => $invoice->get_vat_id(),
-			'is_vat_exempt'  => $invoice->is_reverse_charge(),
+			'is_vat_exempt'  => $invoice->is_vat_exempt(),
 			'address'        => array(
 				'street'  => $invoice->get_address_1(),
 				'zip'     => $invoice->get_postcode(),
@@ -271,6 +271,8 @@ class Sync extends SyncHandler {
 			if ( $customer = $invoice->get_customer() ) {
 				$customer->update_external_sync_handler( self::get_name(), $contact->get_sync_data() );
 			}
+		} else {
+			return $result;
 		}
 
 		$filename = false;
@@ -312,6 +314,10 @@ class Sync extends SyncHandler {
 		foreach ( $invoice->get_items( $invoice->get_item_types_for_totals() ) as $item ) {
 			$category_id = $this->get_category_id( $item, $invoice );
 			$item_total  = $item->get_total();
+
+			if ( 0.0 === $item_total && apply_filters( "{$this->get_hook_prefix()}skip_free_items", false, $invoice, $item ) ) {
+				continue;
+			}
 
 			$item_data = array(
 				'accountingType' => array(
@@ -378,9 +384,9 @@ class Sync extends SyncHandler {
 		$status   = 100;
 		$tax_type = 'default';
 
-		if ( ! Countries::is_eu_country( $invoice->get_country() ) ) {
+		if ( ! $invoice->is_eu_vat() ) {
 			$tax_type = 'noteu';
-		} elseif ( $invoice->is_reverse_charge() ) {
+		} elseif ( $invoice->is_vat_exempt() ) {
 			$tax_type = 'eu';
 		}
 
@@ -604,6 +610,18 @@ class Sync extends SyncHandler {
 
 			$start_date_obj = clone $invoice->get_date_created();
 			$end_date_obj   = clone ( $invoice->get_date_paid() ? $invoice->get_date_paid() : $invoice->get_date_created() );
+
+			/**
+			 * Update transactions as these (new) transactions may not yet be available within sevDesk.
+			 */
+			if ( ! $is_manual ) {
+				$update_transaction_args = array(
+					'start_date' => apply_filters( "{$this->get_hook_prefix()}update_transactions_start_date", strtotime( 'today midnight' ), $invoice, $this ),
+					'end_date'   => apply_filters( "{$this->get_hook_prefix()}update_transactions_end_date", strtotime( 'today 24:00' ), $invoice, $this ),
+				);
+
+				$updated_transactions = $this->get_api()->update_transactions( $account_id, $update_transaction_args );
+			}
 
 			/**
 			 * Start searching 1 week in the past and make sure we allow searching
@@ -886,8 +904,8 @@ class Sync extends SyncHandler {
 					continue;
 				}
 
-				/* translators: 1: category name  2: category accounting system number or id */
-				$this->categories[ $category['id'] ] = sprintf( _x( '%1$s (%2$s)', 'sevdesk', 'woocommerce-germanized-pro' ), esc_html( $category['name'] ), esc_html( isset( $category['accountingSystemNumber']['number'] ) ? $category['accountingSystemNumber']['number'] : $category['id'] ) );
+				/* translators: 1: category name 2: category accounting system number or id 3: Internal id */
+				$this->categories[ $category['id'] ] = sprintf( _x( '%1$s (%2$s, Internal: %3$s)', 'sevdesk', 'woocommerce-germanized-pro' ), esc_html( $category['name'] ), esc_html( isset( $category['accountingSystemNumber']['number'] ) ? $category['accountingSystemNumber']['number'] : $category['id'] ), $category['id'] );
 			}
 		}
 
@@ -990,7 +1008,7 @@ class Sync extends SyncHandler {
 				'options'           => $category_options,
 				'custom_attributes' => array(
 					'data-allow-clear' => true,
-					'data-placeholder' => _x( 'Einnahmen / Erlöse (8200)', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
+					'data-placeholder' => _x( 'Einnahmen / Erlöse / Verkäufe (4200, Intern: 26)', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
 				),
 			);
 		}
@@ -1012,7 +1030,7 @@ class Sync extends SyncHandler {
 				'options'           => $category_options,
 				'custom_attributes' => array(
 					'data-allow-clear' => true,
-					'data-placeholder' => _x( 'Erlösminderung (8700)', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
+					'data-placeholder' => _x( 'Erlösminderung (4700, Intern: 27)', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
 				),
 			);
 		}

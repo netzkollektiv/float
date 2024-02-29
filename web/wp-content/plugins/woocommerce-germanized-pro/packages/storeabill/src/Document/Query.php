@@ -427,7 +427,7 @@ abstract class Query extends WC_Object_Query {
 			$search_columns = array();
 
 			if ( $this->args['search_columns'] ) {
-				$core_search_columns = array( 'document_id', 'document_number', 'document_country', 'document_formatted_number', 'document_reference_id', 'document_author_id', 'document_customer_id' );
+				$core_search_columns = array( 'document_id', 'document_index', 'document_number', 'document_country', 'document_formatted_number', 'document_reference_id', 'document_author_id', 'document_customer_id' );
 				$search_columns      = array_intersect( $this->args['search_columns'], $core_search_columns );
 				$search_meta_columns = array_diff( $this->args['search_columns'], $core_search_columns );
 			}
@@ -438,7 +438,7 @@ abstract class Query extends WC_Object_Query {
 				} elseif ( strlen( $search ) === 2 ) {
 					$search_columns = array( 'document_country' );
 				} else {
-					$search_columns = array( 'document_id', 'document_formatted_number' );
+					$search_columns = array( 'document_id', 'document_formatted_number', 'document_index' );
 				}
 			}
 

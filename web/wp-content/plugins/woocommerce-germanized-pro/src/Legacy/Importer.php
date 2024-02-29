@@ -3,11 +3,10 @@
 namespace Vendidero\Germanized\Pro\Legacy;
 
 use Vendidero\Germanized\Pro\StoreaBill\PackingSlip;
-use Vendidero\Germanized\Pro\StoreaBill\PackingSlips;
+use Vendidero\Germanized\Pro\StoreaBill\PackingSlip\PackingSlips;
 use Vendidero\StoreaBill\Document\Document;
 use Vendidero\StoreaBill\Tax;
 use Vendidero\StoreaBill\TaxRate;
-use Vendidero\StoreaBill\WooCommerce\Order;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -658,7 +657,7 @@ class Importer {
 			if ( \WC_GZDP_VAT_Helper::instance()->order_has_vat_exempt( $this->reference_id ) && empty( $this->document->get_total_tax() ) ) {
 				$vat_id = \WC_GZDP_VAT_Helper::instance()->get_order_vat_id( $this->reference_id );
 
-				$this->document->set_is_reverse_charge( true );
+				$this->document->set_is_vat_exempt( true );
 				$this->document->set_vat_id( $vat_id );
 
 				$vat_type = \WC_GZDP_VAT_Helper::instance()->get_vat_address_type_by_order( $this->reference_id );
@@ -1041,9 +1040,9 @@ class Importer {
 		 */
 		$this->version_after_save = '0.0.1-legacy-incomplete';
 
-		$invoice_totals     = get_post_meta( $this->post->ID, '_invoice_totals', true );
-		$invoice_tax_totals = get_post_meta( $this->post->ID, '_invoice_tax_totals', true );
-		$invoice_items      = get_post_meta( $this->post->ID, '_invoice_items', true );
+		$invoice_totals     = array_filter( (array) get_post_meta( $this->post->ID, '_invoice_totals', true ) );
+		$invoice_tax_totals = array_filter( (array) get_post_meta( $this->post->ID, '_invoice_tax_totals', true ) );
+		$invoice_items      = array_filter( (array) get_post_meta( $this->post->ID, '_invoice_items', true ) );
 
 		$shipping_tax = isset( $invoice_totals['shipping_tax'] ) ? abs( $invoice_totals['shipping_tax'] ) : 0;
 
@@ -1355,9 +1354,9 @@ class Importer {
 		$this->document->set_number( get_post_meta( $this->post->ID, '_invoice_number', true ) );
 		$this->document->set_formatted_number( $this->parse_formatted_number() );
 
-		$invoice_totals     = get_post_meta( $this->post->ID, '_invoice_totals', true );
-		$invoice_tax_totals = get_post_meta( $this->post->ID, '_invoice_tax_totals', true );
-		$invoice_items      = get_post_meta( $this->post->ID, '_invoice_items', true );
+		$invoice_totals     = array_filter( (array) get_post_meta( $this->post->ID, '_invoice_totals', true ) );
+		$invoice_tax_totals = array_filter( (array) get_post_meta( $this->post->ID, '_invoice_tax_totals', true ) );
+		$invoice_items      = array_filter( (array) get_post_meta( $this->post->ID, '_invoice_items', true ) );
 
 		$this->document->set_order_id( $this->reference_id );
 		$this->document->set_total( abs( $invoice_totals['total'] ) );
@@ -1455,7 +1454,7 @@ class Importer {
 		$this->document->set_round_tax_at_subtotal( $this->get_parent()->get_round_tax_at_subtotal() );
 		$this->document->set_customer_id( $this->get_parent()->get_customer_id() );
 		$this->document->set_currency( $this->get_parent()->get_currency() );
-		$this->document->set_is_reverse_charge( $this->get_parent()->is_reverse_charge() );
+		$this->document->set_is_vat_exempt( $this->get_parent()->is_vat_exempt() );
 		$this->document->set_payment_method_name( $this->get_parent()->get_payment_method_name() );
 		$this->document->set_payment_method_title( $this->get_parent()->get_payment_method_title() );
 		$this->document->set_date_of_service( $this->get_parent()->get_date_of_service() );

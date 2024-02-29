@@ -135,7 +135,21 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 	 * @return array
 	 */
 	public function get_column_names() {
-		return apply_filters( "{$this->get_hook_prefix()}column_names", $this->column_names, $this );
+		$column_names = apply_filters( "{$this->get_hook_prefix()}column_names", $this->column_names, $this );
+
+		return $column_names;
+	}
+
+	public function set_filters( $filters ) {
+		$this->filters = $filters;
+
+		if ( ! empty( $this->get_columns_to_export() ) ) {
+			$this->set_column_names( $this->column_names );
+		}
+	}
+
+	public function set_column_names( $column_names ) {
+		$this->column_names = $this->get_sorted_columns( $column_names );
 	}
 
 	protected function include_column( $prop ) {
@@ -195,6 +209,10 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 
 				if ( 'object' === $args['type'] && is_array( $args['properties'] ) && $this->spread_column( $prop ) ) {
 					foreach ( $args['properties'] as $inner_prop => $inner_args ) {
+						if ( 'shipping_address' === $prop ) {
+							$inner_args['description'] = sprintf( _x( 'Shipping %1$s', 'storeabill-core', 'woocommerce-germanized-pro' ), $inner_args['description'] );
+						}
+
 						$columns[ $prop . '_' . $inner_prop ] = $this->get_schema_label( $inner_args, $inner_prop );
 					}
 				} else {
@@ -206,6 +224,39 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 		$columns = array_merge( $columns, $this->get_additional_default_column_names() );
 
 		return apply_filters( "{$this->get_hook_prefix()}default_column_names", $columns, $this );
+	}
+
+	protected function get_clean_column_id( $column_id ) {
+		return strstr( $column_id, ':' ) ? current( explode( ':', $column_id ) ) : $column_id;
+	}
+
+	/**
+	 * Sort columns by the columns to export list. Exclude columns that need special treatment (e.g. spreading)
+	 * from sorting.
+	 *
+	 * @param $columns_to_sort
+	 * @param $sort_by
+	 *
+	 * @return array
+	 */
+	protected function get_sorted_columns( $columns_to_sort = null, $sort_by = null ) {
+		$sort_by_columns = is_null( $sort_by ) ? $this->get_columns_to_export() : (array) $sort_by;
+		$columns_to_sort = is_null( $columns_to_sort ) ? $this->column_names : (array) $columns_to_sort;
+		$sorted_columns  = array();
+
+		foreach ( $sort_by_columns as $column_to_export ) {
+			if ( ! $this->column_needs_extra_handling( $column_to_export ) && isset( $columns_to_sort[ $column_to_export ] ) ) {
+				$sorted_columns[ sab_clean( $column_to_export ) ] = sab_clean( $columns_to_sort[ $column_to_export ] );
+
+				unset( $columns_to_sort[ $column_to_export ] );
+			}
+		}
+
+		foreach ( $columns_to_sort as $column_id => $column_name ) {
+			$sorted_columns[ sab_clean( $column_id ) ] = sab_clean( $column_name );
+		}
+
+		return $sorted_columns;
 	}
 
 	protected function get_additional_default_column_names() {
@@ -268,11 +319,12 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 				<label for="sab-exporter-columns"><?php echo esc_html_x( 'Which columns should be exported?', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></label>
 			</th>
 			<td>
-				<select id="sab-exporter-columns" name="columns[]" class="sab-exporter-columns sab-enhanced-select" style="width:100%;" multiple data-placeholder="<?php echo esc_html_x( 'Export all columns', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>">
+				<select id="sab-exporter-columns" name="columns[]" class="sab-exporter-columns sab-enhanced-select" style="width:100%;" multiple data-sortable="true" data-placeholder="<?php echo esc_html_x( 'Export all columns', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>">
 					<?php
 					$default_columns = $this->get_default_filter_setting( 'columns', array() );
+					$columns         = $this->get_sorted_columns( $this->get_default_column_names(), $default_columns );
 
-					foreach ( $this->get_default_column_names() as $column_id => $column_name ) {
+					foreach ( $columns as $column_id => $column_name ) {
 						echo '<option value="' . esc_attr( $column_id ) . '" ' . selected( $column_id, in_array( $column_id, $default_columns, true ) ? $column_id : '', false ) . '>' . esc_html( $column_name ) . '</option>';
 					}
 					?>

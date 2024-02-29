@@ -39,17 +39,17 @@ window.storeabill.admin = window.storeabill.admin || {};
         onBulkSubmit: function() {
             var self   = storeabill.admin.bulk_actions,
                 action = $( this ).parents( '.bulkactions' ).find( 'select[name^=action]' ).val(),
-                type   = self.params.hasOwnProperty( 'object_type' ) ? self.params.object_type : $( this ).parents( '#posts-filter' ).find( 'input[name=' + self.params.object_input_type_name + ']' ).val(),
+                $filterForm = $( this ).parents( '#posts-filter' ).length > 0 ? $( this ).parents( '#posts-filter' ) : $( this ).parents( '#wc-orders-filter' ),
+                type   = self.params.hasOwnProperty( 'object_type' ) ? self.params.object_type : $filterForm.find( 'input[name=' + self.params.object_input_type_name + ']' ).val(),
                 ids    = [];
 
-            self.getForm().find( 'input[name="' + self.params.table_type + '[]"]:checked' ).each( function() {
+            self.getForm().find( 'input[name="' + self.getInputIdName() + '[]"]:checked' ).each( function() {
                 ids.push( $( this ).val() );
             });
 
             if ( self.params.bulk_actions.hasOwnProperty( action ) && ids.length > 0 ) {
-
                 var actionData = self.params.bulk_actions[ action ];
-                var sort       = self.getCurrentSort( actionData['id_order_by_column'] );
+                var sort= self.getCurrentSort( actionData['id_order_by_column'] );
 
                 /**
                  * In case ids are sorted descending - reverse array in case
@@ -61,6 +61,8 @@ window.storeabill.admin = window.storeabill.admin || {};
 
                 $( '.sab-bulk-action-wrapper' ).find( '.bulk-title' ).text( actionData['title'] );
                 $( '.sab-bulk-action-wrapper' ).addClass( 'processing' );
+                $( '.sab-bulk-action-wrapper' ).parents( '.tablenav' ).addClass( 'sab-bulk-action-running' );
+
                 self.getForm().find( '.bulkactions button' ).prop( 'disabled', true ).addClass( 'disabled' );
 
                 // Handle bulk action processing
@@ -70,10 +72,20 @@ window.storeabill.admin = window.storeabill.admin || {};
             }
         },
 
+        getInputIdName: function() {
+            var self = storeabill.admin.bulk_actions;
+
+            if ( $( 'input[name="' + self.params.table_type + '[]"]' ).length > 0 ) {
+                return self.params.table_type;
+            } else {
+                return 'id';
+            }
+        },
+
         getForm: function() {
             var self = storeabill.admin.bulk_actions;
 
-            return $( 'input[name="' + self.params.table_type + '[]"]:checked' ).parents( 'form' );
+            return $( 'input[name="' + self.getInputIdName() + '[]"]:checked' ).parents( 'form' );
         },
 
         handleBulkAction: function( action, step, ids, type ) {
@@ -95,7 +107,6 @@ window.storeabill.admin = window.storeabill.admin || {};
                 dataType: 'json',
                 success: function( response ) {
                     if ( response.success ) {
-
                         if ( 'done' === response.step ) {
                             $( '.sab-bulk-action-wrapper' ).find( '.sab-bulk-progress' ).val( response.percentage );
 
@@ -103,6 +114,8 @@ window.storeabill.admin = window.storeabill.admin || {};
 
                             setTimeout( function() {
                                 $( '.sab-bulk-action-wrapper' ).removeClass( 'processing' );
+                                $( '.sab-bulk-action-wrapper' ).parents( '.tablenav' ).removeClass( 'sab-bulk-action-running' );
+
                                 self.getForm().find( '.bulkactions button' ).prop( 'disabled', false ).removeClass( 'disabled' );
                             }, 2000 );
                         } else {
@@ -113,6 +126,8 @@ window.storeabill.admin = window.storeabill.admin || {};
                     } else {
                         $( '.sab-bulk-notice-wrapper' ).find( '.notice' ).remove();
                         $( '.sab-bulk-action-wrapper' ).removeClass( 'processing' );
+                        $( '.sab-bulk-action-wrapper' ).parents( '.tablenav' ).removeClass( 'sab-bulk-action-running' );
+
                         self.getForm().find( '.bulkactions button' ).prop( 'disabled', false ).removeClass( 'disabled' );
 
                         if ( response.hasOwnProperty( 'messages' ) ) {

@@ -1,5 +1,15 @@
 @charset "UTF-8";
 
+.is-dark-theme {
+  .block-editor-block-list__layout .block-editor-block-list__block.is-highlighted:after,
+  .block-editor-block-list__layout .block-editor-block-list__block.is-highlighted~.is-multi-selected:after,
+  .block-editor-block-list__layout .block-editor-block-list__block:not([contenteditable]):focus:after,
+  .block-editor-block-list__layout .is-block-moving-mode.block-editor-block-list__block.has-child-selected:after,
+  .block-editor-block-list__layout.is-navigate-mode .block-editor-block-list__block.is-selected:after {
+    box-shadow: 0 0 0 var(--wp-admin-border-width-focus) var(--wp-admin-theme-color);
+  }
+}
+
 .wp-block {
   max-width: 100%;
   width: 100%;
@@ -59,6 +69,8 @@ mark {
   }
 }
 
+body.block-editor-iframe__body,
+.edit-post-visual-editor__content-area .is-desktop-preview,
 .editor-styles-wrapper.block-editor-writing-flow,
 .edit-post-visual-editor.editor-styles-wrapper,
 .edit-post-visual-editor > .editor-styles-wrapper,
@@ -82,11 +94,11 @@ mark {
  * Hide the preview dropdown (no mobile styles needed)
  * and force to show the default preview link instead.
  */
-.block-editor-post-preview__dropdown {
+.block-editor-post-preview__dropdown, .editor-preview-dropdown {
   display: none !important;
 }
 
-.editor-post-preview {
+.editor-post-preview, .edit-post-header__post-preview-button {
   display: inline-flex !important;
 }
 
@@ -119,12 +131,19 @@ mark {
   }
 }
 
+table.block-editor-list-view-tree {
+  tr:first-child {
+    display: none;
+  }
+}
+
 .wp-block[data-type="storeabill/document-styles"] {
   display: none;
 }
 
 /**
  * Hide the block mover toolbar for header and footer
+ * Does not work in latest Gutenberg as the data-type has been removed.
  */
 .block-editor-block-contextual-toolbar[data-type="storeabill/header"], .block-editor-block-contextual-toolbar[data-type="storeabill/footer"]  {
   .block-editor-block-mover {
@@ -132,7 +151,8 @@ mark {
   }
 }
 
-div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-block, .wp-block-group__inner-container):not(.edit-post-visual-editor__post-title-wrapper) {
+div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-block, .wp-block-group__inner-container):not(.edit-post-visual-editor__post-title-wrapper),
+body.block-editor-iframe__body .wp-block-post-content {
   background: #fff;
   width: 21cm;
   min-height: 29.7cm;
@@ -187,7 +207,7 @@ div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-b
   .sab-visibility-notice {
     position: absolute;
     opacity: .3;
-    top: 0;
+    top: -5px;
     right: 0;
     font-size: .9em;
     margin: 0;
@@ -201,7 +221,7 @@ div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-b
 
   &.is-selected {
     .sab-visibility-notice {
-      opacity: 1;
+      opacity: .8;
     }
   }
 }

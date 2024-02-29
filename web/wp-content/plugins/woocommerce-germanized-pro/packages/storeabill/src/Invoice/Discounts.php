@@ -140,4 +140,13 @@ class Discounts extends \WC_Discounts {
 		}
 		return $items_to_apply;
 	}
+
+	/**
+	 * Get items to validate.
+	 *
+	 * @return object[]
+	 */
+	public function get_items_to_validate() {
+		return apply_filters( 'storeabill_invoice_discounts_get_items_to_validate', $this->get_items(), $this );
+	}
 }

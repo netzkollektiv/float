@@ -334,7 +334,7 @@ abstract class Table extends WP_List_Table {
 		} elseif ( strlen( $search ) === 2 ) {
 			$search_columns = array( 'document_country' );
 		} else {
-			$search_columns = array( 'document_id', 'document_formatted_number', '_reference_number' );
+			$search_columns = array( 'document_id', 'document_index', 'document_formatted_number', '_reference_number' );
 		}
 
 		return $search_columns;

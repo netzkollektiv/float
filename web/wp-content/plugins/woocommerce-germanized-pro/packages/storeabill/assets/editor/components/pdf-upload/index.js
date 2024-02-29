@@ -102,7 +102,7 @@ function PDFUpload( {
                     allowedTypes={['application/pdf']}
                     value={ pdfAttachmentId }
                     render={({open}) => (
-                        <Button onClick={open} isDefault isLarge>
+                        <Button onClick={open} isDefault>
                             {_x('Replace PDF template', 'storeabill-core', 'storeabill')}
                         </Button>
                     )}

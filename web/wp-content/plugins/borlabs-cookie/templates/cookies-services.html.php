@@ -27,7 +27,7 @@ if (\BorlabsCookie\Cookie\Backend\License::getInstance()->isPluginUnlocked()) {
                                     <?php
                                         if (!empty($cookieServices)) {
                                             foreach ($cookieServices as $service => $name) {
-                                                echo "<option value=\"".esc_attr($service)."\">".esc_html($name)."</option>";
+                                                echo "<option value=\"".esc_attr($service)."\"".($service === 'Custom' ? ' selected' : '').">".esc_html($name)."</option>";
                                             }
                                         }
                                     ?>

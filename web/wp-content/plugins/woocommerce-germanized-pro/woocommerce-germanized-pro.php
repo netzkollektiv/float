@@ -3,13 +3,13 @@
  * Plugin Name: Germanized for WooCommerce Pro
  * Plugin URI: https://vendidero.de/woocommerce-germanized
  * Description: Extends Germanized for WooCommerce with professional features such as PDF invoices, legal text generators and many more.
- * Version: 3.6.10
+ * Version: 3.10.0
  * Author: vendidero
  * Author URI: https://vendidero.de
  * Requires at least: 5.4
- * Tested up to: 6.2
+ * Tested up to: 6.4
  * WC requires at least: 3.9
- * WC tested up to: 7.7
+ * WC tested up to: 8.5
  *
  * Text Domain: woocommerce-germanized-pro
  * Domain Path: /i18n/languages/
@@ -70,7 +70,7 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 		 *
 		 * @var string
 		 */
-		public $version = '3.6.10';
+		public $version = '3.10.0';
 
 		/**
 		 * Single instance of WooCommerce Germanized Main Class
@@ -134,7 +134,6 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 		 * adds some initialization hooks and inits WooCommerce Germanized
 		 */
 		public function __construct() {
-
 			// Auto-load classes on demand
 			if ( function_exists( '__autoload' ) ) {
 				spl_autoload_register( '__autoload' );
@@ -199,6 +198,7 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 		public function declare_feature_compatibility() {
 			if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
 				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
 			}
 		}
 
@@ -317,6 +317,8 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 
 			// WPML Helper
 			include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/class-wc-gzdp-wpml-helper.php';
+
+			\Vendidero\Germanized\Pro\Package::init( $this );
 		}
 
 		/**
@@ -363,7 +365,6 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 			$this->load_elementor_module();
 
 			\Vendidero\Germanized\Pro\StoreaBill\LegalPages::init();
-			\Vendidero\Germanized\Pro\Packing\Automation::init();
 		}
 
 		/**
@@ -439,8 +440,31 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 		 *
 		 * @return string
 		 */
-		public function plugin_url() {
-			return untrailingslashit( plugins_url( '/', __FILE__ ) );
+		public function plugin_url( $rel_path = '' ) {
+			$url = untrailingslashit( plugins_url( '/', __FILE__ ) );
+
+			if ( ! empty( $rel_path ) ) {
+				$url = trailingslashit( $url ) . $rel_path;
+			}
+
+			return $url;
+		}
+
+		public function get_assets_build_url( $script_or_style ) {
+			$assets_url = $this->plugin_url() . '/build';
+			$is_debug   = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG;
+			$is_style   = '.css' === substr( $script_or_style, -4 );
+			$is_static  = strstr( $script_or_style, 'static/' );
+
+			if ( $is_style && ! strstr( $script_or_style, '-styles' ) ) {
+				$script_or_style = str_replace( '.css', '-styles.css', $script_or_style );
+			}
+
+			if ( $is_debug && $is_static && ! $is_style ) {
+				$assets_url = $this->plugin_url() . '/assets/js';
+			}
+
+			return trailingslashit( $assets_url ) . $script_or_style;
 		}
 
 		/**
@@ -448,8 +472,14 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 		 *
 		 * @return string
 		 */
-		public function plugin_path() {
-			return untrailingslashit( plugin_dir_path( __FILE__ ) );
+		public function plugin_path( $rel_path = '' ) {
+			$path = untrailingslashit( plugin_dir_path( __FILE__ ) );
+
+			if ( ! empty( $rel_path ) ) {
+				$path = trailingslashit( $path ) . $rel_path;
+			}
+
+			return $path;
 		}
 
 		/**
@@ -477,7 +507,8 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 			include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/class-wc-gzdp-invoice-factory.php';
 			include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/class-wc-gzdp-invoice-shortcodes.php';
 
-			\Vendidero\Germanized\Pro\StoreaBill\PackingSlips::init();
+			\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\PackingSlips::init();
+			\Vendidero\Germanized\Pro\StoreaBill\CommercialInvoice\Helper::init();
 			\Vendidero\Germanized\Pro\StoreaBill\AccountingHelper::init();
 		}
 
@@ -519,20 +550,7 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 							return;
 						}
 
-						/**
-						 * Init (just in case the request is from the frontend)
-						 */
-						if ( is_null( VD()->api ) ) {
-							VD()->init();
-						}
-
-						$api = VD()->api;
-
-						if ( is_null( $api ) ) {
-							return;
-						}
-
-						$remote_data = $api->generator_version_check( $product, $generator );
+						$remote_data = \Vendidero\VendideroHelper\Package::get_api()->generator_version_check( $product, $generator );
 
 						if ( ! $remote_data ) {
 							return;
@@ -554,7 +572,7 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 				}
 			}
 
-			update_option( 'woocommerce_gzdp_generator_outdated_data', $outdated );
+			update_option( 'woocommerce_gzdp_generator_outdated_data', $outdated, false );
 		}
 
 		public function load_vat_module() {
@@ -601,16 +619,7 @@ if ( ! class_exists( 'WooCommerce_Germanized_Pro' ) ) :
 		}
 
 		public function get_vd_product() {
-			$product = VD()->get_product( $this->plugin_file );
-
-			// Make sure that the helper has loaded products
-			if ( is_null( $product ) || ! $product ) {
-				VD()->load();
-
-				$product = VD()->get_product( $this->plugin_file );
-			}
-
-			return $product;
+			return \Vendidero\VendideroHelper\Package::get_product( $this->plugin_file );
 		}
 
 		public function log( $message, $type = 'info', $source = 'core' ) {

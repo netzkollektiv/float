@@ -88,7 +88,7 @@ if ( ! class_exists('XmlExportWooCommerce') )
 
               if (strpos($obj->name, "pa_") === 0 and strlen($obj->name) > 3 ){
 
-                  if ( count($this->init_fields) < $max_input_vars / 10 ){
+                  if ( count($this->init_fields) < (int)$max_input_vars / 10 ){
                       $this->init_fields[] = array(
                           'name'  => $obj->label,
                           'label' => $obj->name,
@@ -101,7 +101,7 @@ if ( ! class_exists('XmlExportWooCommerce') )
             if ( ! empty(self::$products_data['attributes']))
             {
               foreach (self::$products_data['attributes'] as $attribute) {
-                  if ( count($this->init_fields) < $max_input_vars / 10 ) {
+                  if ( count($this->init_fields) < (int)$max_input_vars / 10 ) {
                       $this->init_fields[] = $this->fix_titles(array(
                           'name' => str_replace('attribute_', '', $attribute->meta_key),
                           'label' => $attribute->meta_key,
@@ -215,7 +215,7 @@ if ( ! class_exists('XmlExportWooCommerce') )
 					{
 						$uc_title = ucwords(trim(str_replace("_", " ", $title)));
 
-						if($title == __('Excerpt')) {
+						if($title == __('Excerpt') || $title == 'Excerpt') {
 							return __('Short Description');
 						}
 

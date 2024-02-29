@@ -3,81 +3,63 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
 namespace BorlabsCookie\Cookie;
 
+/**
+ * Class HMAC.
+ */
 class HMAC
 {
-    private static $instance = null;
+    private static $instance;
 
+    /**
+     * @return null|HMAC
+     */
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
-    }
-
-    private function __clone()
-    {
-    }
-
-    private function __wakeup()
-    {
     }
 
     public function __construct()
     {
     }
 
-    /**
-     * isValid function.
-     *
-     * @access public
-     * @param mixed $data
-     * @param mixed $salt
-     * @param mixed $hash
-     * @return void
-     */
-    public function isValid($data, $salt, $hash)
+    public function __clone()
     {
-        $isValid = false;
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
+    }
 
-        if (!is_string($data)) {
-            $data = json_encode($data);
-        }
-
-        $dataHash = hash_hmac('sha256', $data, $salt);
-
-        if ($dataHash == $hash) {
-            $isValid = true;
-        }
-
-        return $isValid;
+    public function __wakeup()
+    {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
     }
 
     /**
      * hash function.
      *
-     * @access public
      * @param mixed $data
      * @param mixed $salt
-     * @return void
+     *
+     * @return string
      */
     public function hash($data, $salt)
     {
@@ -85,8 +67,32 @@ class HMAC
             $data = json_encode($data);
         }
 
-        $hash = hash_hmac('sha256', $data, $salt);
+        return hash_hmac('sha256', $data, $salt);
+    }
 
-        return $hash;
+    /**
+     * isValid function.
+     *
+     * @param mixed $data
+     * @param mixed $salt
+     * @param mixed $hash
+     *
+     * @return bool
+     */
+    public function isValid($data, $salt, $hash)
+    {
+        $is_valid = false;
+
+        if (!is_string($data)) {
+            $data = json_encode($data);
+        }
+
+        $data_hash = hash_hmac('sha256', $data, $salt);
+
+        if ($data_hash == $hash) {
+            $is_valid = true;
+        }
+
+        return $is_valid;
     }
 }

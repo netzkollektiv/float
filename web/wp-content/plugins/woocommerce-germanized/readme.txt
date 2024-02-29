@@ -2,10 +2,10 @@
 Contributors: vendidero, vdwoocommercesupport
 Tags: woocommerce, woocommerce german, woocommerce DE, woocommerce germany, woocommerce deutsch, woo, woocommerce deutschland, woocommerce germanized, woocommerce addon, woocommerce plugin, woocommerce german addon, woocommerce germany addon, woocommerce dhl, dhl, shipments, dpd, gls, post
 Requires at least: 5.4
-Tested up to: 6.2
+Tested up to: 6.4
 WC requires at least: 3.9
-WC tested up to: 7.5
-Stable tag: 3.12.2
+WC tested up to: 8.5
+Stable tag: 3.15.6
 Requires PHP: 5.6
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -205,6 +205,140 @@ Bug reports may be filed via our [GitHub repository](https://github.com/vendider
 6. Edit pdf documents (Pro)
 
 == Changelog ==
+= 3.15.6 =
+* Improvement: Do not override classic checkout table via template, inject images via filters instead
+* Improvement: Exclude virtual (but not non-virtual download) products from split-tax calculation
+* Improvement: Force showing editable checkboxes for manually created orders
+* Improvement: Hide block-based price labels within classic cart/checkout
+* Improvement: Do only apply buffer in case auto packing shipments is enabled
+* Improvement: Added (optional) packaging inner dimensions
+* Improvement: While packing within cart apply global rules first to exclude certain packaging options
+* Improvement: Added cart-wide shipping class rule type to shipping methods
+* Improvement: Allow users to manually select non-fitting packaging options
+* Improvement: Address split edge-case treatment
+* Fix: Split-tax calculation for block-based Checkouts
+* Fix: PayPal Payments compatibility
+* Fix: DP default tracking URL
+
+= 3.15.5 =
+* New: Photovoltaic system VAT exempts for Austria
+* Improvement: Use placeholders within photovoltaic system legal (checkbox, notice) text to output law details based on country
+
+= 3.15.4 =
+* New: Support WooCommerce cart dropdown template block
+* Improvement: Use 1 gram as minimum resolution for label customs data
+* Improvement: Shipping method cart data compatibility with product bundles
+* Improvement: Do not defer label creation in case shipment has already been marked as shipped
+* Improvement: Maybe defer frontend script loading as Woo does starting with 8.4
+* Improvement: Price label replacement within price html
+* Improvement: Do only move checkboxes for elementor in case checkout is built with Elementor Pro
+* Fix: DHL valid address only checkbox
+* Fix: Shipments order item update validation
+* Fix: Shipping method condition field name overrides
+
+= 3.15.3 =
+* Improvement: Deutsche Post available product selection based on shipment dimensions
+* Improvement: Create non auto-packed shipment in case no packaging options are available
+* Fix: Return label missing address data
+* Fix: Setup wizard styles
+
+= 3.15.2 =
+* Improvement: Disable paid for order email notification for certain gateways
+* Fix: Make sure return label is automatically created before sending customer notification
+* Fix: Use default label configuration for label REST API requests in case no arguments are supplied
+* Fix: CashOnDelivery DHL Service default booking
+* Fix: Warenpost International Services for EU shipments
+* Fix: Allow refreshing Deutsche Post product data in general settings
+
+= 3.15.1 =
+* Improvement: Remove WSDL library dependency
+* Fix: Issue with the DHL inlay return service
+* Fix: Prevent get_current_screen error with additional check before usage
+* Fix: Use ReturnTypeWillChange to prevent PHP warnings in packing impl
+* Fix: Default shipping provider for orders without shipping method
+
+= 3.15.0 =
+* New: Custom shipping methods and rule-based shipping for shipping providers
+* New: Add label configuration sets to packaging options
+* New: Support auto-packing orders based on available packaging options
+* New: Added additional options, e.g. shipping class/provider restrictions to packaging
+* New: Use Woo Action scheduler to automatically create shipments as a background task
+* Improvement: Checkbox status reporting UI (order page sidebar)
+* Fix: Dynamic, missing properties in gateways
+
+= 3.14.1 =
+* Improvement: Show return address only in case the return is in processing state
+* Improvement: Hide shipping order item shipping provider meta
+* Improvement: Clear action queue on deactivation
+* Improvement: Use regex for checkout block markup replacements
+* Fix: Order shipping status in case returns exist
+* Fix: Use a tweak to prevent missing block checkout data error
+* Fix: Type issue when resetting shipping rate taxes
+
+= 3.14.0 =
+* New: Support WooCommerce Cart & Checkout Block
+* New: Support Full-Site-Editing, added price label blocks for Single Product Template
+* New: WP 6.4 Support
+* Improvement: Elementor Pro checkout layout
+* Improvement: Unit price recalculation queue
+
+= 3.13.5 =
+* Fix: Local wsdl files naming conventions (Windows issue only)
+
+= 3.13.4 =
+* Improvement: Queue price changes and refresh unit prices via one AJAX request
+* Improvement: Observe price changes within product categories too
+* Improvement: Better FSE support
+* Improvement: Register PayPal Payments carrier detection
+* Improvement: Customs data item weight distribution
+* Improvement: Removed deprecated DHL SOAP API shipping notification attribute
+* Improvement: Added local wsdl files for Internetmarke
+* Fix: Removed legacy WPML string translation compatibility script
+* Fix: Bug in setup wizard which could lead to tax incl option reset
+* Fix: Use WeakMap (>= PHP 8.0) to build product cache instead of dynamic class properties
+* Fix: Variation defect description
+* Fix: Shipping method cache hardening
+* Fix: HPOS bug in conjunction with shipment order status automation
+
+= 3.13.3 =
+* New: Woo 7.9 support
+* New: DHL Empfängerunterschrift
+* Improvement: DHL REST API street number validation
+* Improvement: DHL REST API shipper contact name
+* Improvement: Order confirmation timing while using checkout block
+* Improvement: Remove HTML comments from plain legal text attachments
+* Improvement: Klarna Checkout ignored fields
+* Fix: Check whether bundle methods exist before usage
+* Fix: EU tax rate to class mapping for english setups
+
+= 3.13.2 =
+* Improvement: Variation content replacement
+* Fix: WPML compatibility loading check
+* Fix: Do only check for legal meta box on pages
+
+= 3.13.1 =
+* New: Woo 7.8.0 support
+* New: Allow excluding certain products from returns
+* Improvement: Review order heading show/hide logic
+* Improvement: Respect tax display mode while recalculating unit prices
+* Improvement: Product Bundles bundle total price labelling and revocation exempt detection
+* Fix: Do not automatically create shipments for renewal orders unless configured
+* Fix: DHL Paket (new) REST API authentication
+
+= 3.13.0 =
+* Improvement: Refactored shipment modals
+* Improvement: DHL Paket REST API support
+* Improvement: Shipment action GUI adjustments
+* Improvement: Support separate DHL participation number for GoGreen
+* Improvement: Customs description product field
+* Improvement: Send paid for order notification for failed to pending
+* Improvement: Allow filtering other textdomains for email title adjustments, e.g. Woo Subscriptions
+* Improvement: Explicitly recalculate voucher amount while recalculating order totals
+* Improvement: REST API schema
+* Improvement: Product Addons compatibility
+* Fix: Prevent object term relationship deletion when food option is disabled
+* Fix: Do not trigger the change event for the (hidden) WooCommerce core terms
+
 = 3.12.2 =
 * Feature: Optionally tax additional costs based on the main service instead of splitting taxes
 * Improvement: Support photovoltaic systems containing zero tax class as default option

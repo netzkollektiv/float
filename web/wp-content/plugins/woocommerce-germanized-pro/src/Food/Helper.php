@@ -1274,7 +1274,7 @@ class Helper {
 				<?php endforeach; ?>
 			</select>
 			<p class="description">
-				<?php echo wp_kses_post( sprintf( _x( 'Apply a rounding rule based on the <a href="%1$s">EU food guide</a>', 'nutrients', 'woocommerce-germanized-pro' ), 'https://www.lebensmittelverband.de/embed/europaeische-kommission-gd-gesundheit-leitfaden-toleranzen' ) ); ?>
+				<?php echo wp_kses_post( sprintf( _x( 'Apply a rounding rule based on the <a href="%1$s">EU food guide</a>', 'nutrients', 'woocommerce-germanized-pro' ), 'https://food.ec.europa.eu/system/files/2021-11/labelling_nutrition-vitamins_minerals-guidance_tolerances_1212_de.pdf' ) ); ?>
 			</p>
 		</div>
 
@@ -1361,7 +1361,7 @@ class Helper {
 					<?php endforeach; ?>
 				</select>
 				<p class="description">
-					<?php echo wp_kses_post( sprintf( _x( 'Apply a rounding rule based on the <a href="%1$s">EU food guide</a>', 'nutrients', 'woocommerce-germanized-pro' ), 'https://www.lebensmittelverband.de/embed/europaeische-kommission-gd-gesundheit-leitfaden-toleranzen' ) ); ?>
+					<?php echo wp_kses_post( sprintf( _x( 'Apply a rounding rule based on the <a href="%1$s">EU food guide</a>', 'nutrients', 'woocommerce-germanized-pro' ), 'https://food.ec.europa.eu/system/files/2021-11/labelling_nutrition-vitamins_minerals-guidance_tolerances_1212_de.pdf' ) ); ?>
 				</p>
 			</td>
 		</tr>
@@ -1446,6 +1446,17 @@ class Helper {
 		$nutrients       = array();
 		$last_title      = false;
 		$nutrients_exist = false;
+
+		/**
+		 * In case of a variation/child product decide whether nutrients
+		 * exist by default based on the parent product as the raw nutrient value
+		 * returned does not inherit parent data.
+		 */
+		if ( $product->get_parent_id() > 0 ) {
+			if ( $parent_product = wc_gzd_get_gzd_product( $product->get_parent_id() ) ) {
+				$nutrients_exist = $parent_product->has_nutrients() ? true : false;
+			}
+		}
 
 		foreach ( self::get_nutrients() as $nutrient ) {
 			$new_nutrient       = false;

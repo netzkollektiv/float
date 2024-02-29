@@ -55,10 +55,16 @@ class Admin {
 				 * Render bulk progress
 				 */
 				add_action( 'manage_posts_extra_tablenav', array( __CLASS__, 'render_bulk_actions' ), 150, 1 );
+				add_action( 'woocommerce_order_list_table_extra_tablenav', array( __CLASS__, 'order_tablenav' ), 150, 2 );
+
 				add_filter( 'bulk_actions-' . ( 'shop_order' === self::get_order_screen_id() ? 'edit-shop_order' : self::get_order_screen_id() ), array( __CLASS__, 'add_bulk_actions' ) );
 				add_filter( 'storeabill_shop_order_bulk_action_handlers', array( __CLASS__, 'register_bulk_actions' ), 10 );
 			}
 		);
+	}
+
+	public static function order_tablenav( $order_type, $which ) {
+		self::render_bulk_actions( $which );
 	}
 
 	public static function maybe_adjust_setting() {
@@ -166,7 +172,7 @@ class Admin {
 			$finished    = ( isset( $_GET['bulk_action_handling'] ) && 'finished' === $_GET['bulk_action_handling'] ) ? true : false;
 			$bulk_action = ( isset( $_GET['current_bulk_action'] ) ) ? sab_clean( wp_unslash( $_GET['current_bulk_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-			if ( $finished && ( $handler = \Vendidero\StoreaBill\Admin\Admin::get_bulk_action_handler( $bulk_action, 'shop_order' ) ) && check_admin_referer( $handler->get_done_nonce_action() ) ) {
+			if ( $finished && ( $handler = \Vendidero\StoreaBill\Admin\Admin::get_bulk_action_handler( $bulk_action, 'shop_order' ) ) && check_admin_referer( $handler->get_done_nonce_action(), 'sab_bulk_action_nonce' ) ) {
 				$handler->finish();
 			}
 			?>

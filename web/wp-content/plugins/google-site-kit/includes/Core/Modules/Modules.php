@@ -17,18 +17,16 @@ use Google\Site_Kit\Core\Permissions\Permissions;
 use Google\Site_Kit\Core\Storage\Options;
 use Google\Site_Kit\Core\Storage\User_Options;
 use Google\Site_Kit\Core\Authentication\Authentication;
-use Google\Site_Kit\Core\Util\Feature_Flags;
 use Google\Site_Kit\Core\Util\Method_Proxy_Trait;
 use Google\Site_Kit\Modules\AdSense;
 use Google\Site_Kit\Modules\Analytics;
 use Google\Site_Kit\Modules\Analytics_4;
-use Google\Site_Kit\Modules\Optimize;
 use Google\Site_Kit\Modules\PageSpeed_Insights;
 use Google\Site_Kit\Modules\Search_Console;
 use Google\Site_Kit\Modules\Site_Verification;
 use Google\Site_Kit\Modules\Tag_Manager;
-use Google\Site_Kit\Core\Util\Build_Mode;
-use Google\Site_Kit\Core\Util\URL;
+use Google\Site_Kit\Modules\Ads;
+use Google\Site_Kit\Core\Util\Feature_Flags;
 use Exception;
 
 /**
@@ -133,6 +131,14 @@ final class Modules {
 	private $rest_controller;
 
 	/**
+	 * REST_Dashboard_Sharing_Controller instance.
+	 *
+	 * @since 1.109.0
+	 * @var REST_Dashboard_Sharing_Controller
+	 */
+	private $dashboard_sharing_controller;
+
+	/**
 	 * Core module class names.
 	 *
 	 * @since 1.21.0
@@ -142,7 +148,7 @@ final class Modules {
 		Site_Verification::MODULE_SLUG  => Site_Verification::class,
 		Search_Console::MODULE_SLUG     => Search_Console::class,
 		Analytics::MODULE_SLUG          => Analytics::class,
-		Optimize::MODULE_SLUG           => Optimize::class,
+		Analytics_4::MODULE_SLUG        => Analytics_4::class,
 		Tag_Manager::MODULE_SLUG        => Tag_Manager::class,
 		AdSense::MODULE_SLUG            => AdSense::class,
 		PageSpeed_Insights::MODULE_SLUG => PageSpeed_Insights::class,
@@ -173,9 +179,12 @@ final class Modules {
 		$this->authentication   = $authentication ?: new Authentication( $this->context, $this->options, $this->user_options );
 		$this->assets           = $assets ?: new Assets( $this->context );
 
-		$this->core_modules[ Analytics_4::MODULE_SLUG ] = Analytics_4::class;
+		if ( Feature_Flags::enabled( 'adsModule' ) ) {
+			$this->core_modules[ Ads::MODULE_SLUG ] = Ads::class;
+		}
 
-		$this->rest_controller = new REST_Modules_Controller( $this );
+		$this->rest_controller              = new REST_Modules_Controller( $this );
+		$this->dashboard_sharing_controller = new REST_Dashboard_Sharing_Controller( $this );
 	}
 
 	/**
@@ -217,10 +226,7 @@ final class Modules {
 
 		$this->rest_controller->register();
 		$this->sharing_settings->register();
-
-		if ( Feature_Flags::enabled( 'dashboardSharing' ) ) {
-			( new REST_Dashboard_Sharing_Controller( $this ) )->register();
-		}
+		$this->dashboard_sharing_controller->register();
 
 		add_filter(
 			'googlesitekit_assets',
@@ -258,13 +264,13 @@ final class Modules {
 
 				$extra_scopes = $this->user_options->get( OAuth_Client::OPTION_ADDITIONAL_AUTH_SCOPES );
 				if ( is_array( $extra_scopes ) ) {
-					$readonly_scope_index = array_search( Analytics::READONLY_SCOPE, $extra_scopes, true );
+					$readonly_scope_index = array_search( Analytics_4::READONLY_SCOPE, $extra_scopes, true );
 					if ( $readonly_scope_index >= 0 ) {
 						unset( $extra_scopes[ $readonly_scope_index ] );
 
 						$auth_scopes = $this->user_options->get( OAuth_Client::OPTION_AUTH_SCOPES );
 						if ( is_array( $auth_scopes ) ) {
-							$auth_scopes[] = Analytics::READONLY_SCOPE;
+							$auth_scopes[] = Analytics_4::READONLY_SCOPE;
 							$auth_scopes   = array_unique( $auth_scopes );
 
 							$this->user_options->set( OAuth_Client::OPTION_ADDITIONAL_AUTH_SCOPES, array_values( $extra_scopes ) );
@@ -319,36 +325,7 @@ final class Modules {
 		add_filter( 'option_' . Module_Sharing_Settings::OPTION, $this->get_method_proxy( 'populate_default_shared_ownership_module_settings' ) );
 		add_filter( 'default_option_' . Module_Sharing_Settings::OPTION, $this->get_method_proxy( 'populate_default_shared_ownership_module_settings' ), 20 );
 
-		add_action(
-			'add_option_' . Module_Sharing_Settings::OPTION,
-			function( $option, $values ) {
-				array_walk(
-					$values,
-					function( $value, $module_slug ) {
-						if ( ! $this->module_exists( $module_slug ) ) {
-							return;
-						}
-
-						$module = $this->get_module( $module_slug );
-
-						if ( ! $module instanceof Module_With_Service_Entity ) {
-
-							$module->get_settings()->merge(
-								array(
-									'ownerID' => get_current_user_id(),
-								)
-							);
-
-						};
-					}
-				);
-			},
-			10,
-			2
-		);
-
-		add_action(
-			'update_option_' . Module_Sharing_Settings::OPTION,
+		$this->sharing_settings->on_change(
 			function( $old_values, $values ) {
 				if ( is_array( $values ) && is_array( $old_values ) ) {
 					array_walk(
@@ -361,6 +338,17 @@ final class Modules {
 							$module = $this->get_module( $module_slug );
 
 							if ( ! $module instanceof Module_With_Service_Entity ) {
+								// If the option was just added, set the ownerID directly and bail.
+								if ( empty( $old_values ) ) {
+									$module->get_settings()->merge(
+										array(
+											'ownerID' => get_current_user_id(),
+										)
+									);
+
+									return;
+								}
+
 								$changed_settings = false;
 
 								if ( is_array( $value ) ) {
@@ -401,9 +389,7 @@ final class Modules {
 						}
 					);
 				}
-			},
-			10,
-			2
+			}
 		);
 	}
 
@@ -541,6 +527,24 @@ final class Modules {
 	}
 
 	/**
+	 * Gets the connected modules.
+	 *
+	 * @since 1.105.0
+	 *
+	 * @return array Connected modules as $slug => $module pairs.
+	 */
+	public function get_connected_modules() {
+		$modules = $this->get_available_modules();
+
+		return array_filter(
+			$modules,
+			function( Module $module ) {
+				return $this->is_module_connected( $module->slug );
+			}
+		);
+	}
+
+	/**
 	 * Gets the module identified by the given slug.
 	 *
 	 * @since 1.0.0
@@ -643,17 +647,16 @@ final class Modules {
 	 * @return bool True if module is connected, false otherwise.
 	 */
 	public function is_module_connected( $slug ) {
-		try {
-			$module = $this->get_module( $slug );
-		} catch ( Exception $e ) {
+		if ( ! $this->is_module_active( $slug ) ) {
 			return false;
 		}
+
+		$module = $this->get_module( $slug );
 
 		// TODO: Remove this when UA is sunset.
 		// Consider UA to be connected if GA4 is connected.
 		if (
 			Analytics::MODULE_SLUG === $slug &&
-			Feature_Flags::enabled( 'ga4Reporting' ) &&
 			! $module->is_connected() &&
 			$this->is_module_connected( Analytics_4::MODULE_SLUG )
 		) {
@@ -661,6 +664,20 @@ final class Modules {
 		}
 
 		return (bool) $module->is_connected();
+	}
+
+	/**
+	 * Checks whether the module identified by the given slug is shareable.
+	 *
+	 * @since 1.105.0
+	 *
+	 * @param string $slug Unique module slug.
+	 * @return bool True if module is shareable, false otherwise.
+	 */
+	public function is_module_shareable( $slug ) {
+		$modules = $this->get_shareable_modules();
+
+		return isset( $modules[ $slug ] );
 	}
 
 	/**
@@ -869,17 +886,18 @@ final class Modules {
 	}
 
 	/**
-	 * Gets the shareable active modules.
+	 * Gets the shareable connected modules.
 	 *
 	 * @since 1.50.0
+	 * @since 1.105.0 Updated to only return connected shareable modules.
 	 *
 	 * @return array Shareable modules as $slug => $module pairs.
 	 */
 	public function get_shareable_modules() {
-		$all_active_modules = $this->get_active_modules();
+		$all_connected_modules = $this->get_connected_modules();
 
 		return array_filter(
-			$all_active_modules,
+			$all_connected_modules,
 			function( Module $module ) {
 				return $module->is_shareable();
 			}

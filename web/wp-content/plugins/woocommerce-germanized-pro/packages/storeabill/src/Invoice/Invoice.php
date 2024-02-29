@@ -83,7 +83,7 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		'currency'                    => '',
 		'prices_include_tax'          => false,
 		'tax_display_mode'            => 'incl',
-		'is_reverse_charge'           => false,
+		'is_vat_exempt'               => false,
 		'is_oss'                      => false,
 		'is_taxable'                  => true,
 		'round_tax_at_subtotal'       => null,
@@ -160,7 +160,9 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		}
 
 		if ( ! $this->get_date_of_service_end( 'edit' ) ) {
-			$this->set_date_of_service_end( $this->get_date_of_service() );
+			$date_of_service = $this->get_date_of_service();
+
+			$this->set_date_of_service_end( $date_of_service ? clone $date_of_service : null );
 		}
 
 		/**
@@ -238,6 +240,12 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 
 	abstract public function get_invoice_type();
 
+	protected function get_additional_number_placeholders() {
+		return array(
+			'{order_number}' => $this->get_order_number(),
+		);
+	}
+
 	public function get_data() {
 		$data = parent::get_data();
 
@@ -281,14 +289,17 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		$data['subtotal_tax'] = $this->get_subtotal_tax();
 		$data['subtotal_net'] = $this->get_subtotal_net();
 
-		$data['is_oss']                     = $this->is_oss();
-		$data['is_reverse_charge']          = $this->is_reverse_charge();
-		$data['is_eu_cross_border_taxable'] = $this->is_eu_cross_border_taxable();
-		$data['is_eu']                      = $this->is_eu();
-		$data['is_eu_vat']                  = $this->is_eu_vat();
-		$data['is_third_country']           = $this->is_third_country();
-		$data['taxable_country']            = $this->get_taxable_country();
-		$data['taxable_postcode']           = $this->get_taxable_postcode();
+		$data['is_oss']                       = $this->is_oss();
+		$data['is_b2b']                       = $this->is_b2b();
+		$data['is_reverse_charge']            = $this->is_reverse_charge();
+		$data['is_vat_exempt']                = $this->is_vat_exempt();
+		$data['is_eu_intra_community_supply'] = $this->is_eu_intra_community_supply();
+		$data['is_eu_cross_border_taxable']   = $this->is_eu_cross_border_taxable();
+		$data['is_eu']                        = $this->is_eu();
+		$data['is_eu_vat']                    = $this->is_eu_vat();
+		$data['is_third_country']             = $this->is_third_country();
+		$data['taxable_country']              = $this->get_taxable_country();
+		$data['taxable_postcode']             = $this->get_taxable_postcode();
 
 		$data['discount_percentage']             = $this->get_discount_percentage();
 		$data['formatted_discount_notice']       = $this->get_formatted_discount_notice();
@@ -451,7 +462,6 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		}
 
 		foreach ( $total_types as $total_type ) {
-
 			if ( has_filter( "{$this->get_hook_prefix()}total_type_{$total_type}" ) ) {
 				$document_totals = array_merge( apply_filters( "{$this->get_hook_prefix()}total_type_{$total_type}", array(), $this, $total_type ), $document_totals );
 			} elseif ( 'nets' === $total_type ) {
@@ -530,7 +540,7 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 				$taxes = $this->get_tax_totals();
 
 				foreach ( $taxes as $tax_total ) {
-					$total = $tax_total->get_total_net( false ) + $tax_total->get_total_tax( false );
+					$total = $tax_total->get_total_gross();
 
 					if ( $total <= 0 ) {
 						$total = 0.0;
@@ -539,7 +549,7 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 					$document_totals[] = new Total(
 						$this,
 						array(
-							'total'        => Numbers::round_to_precision( $total ),
+							'total'        => $total,
 							'type'         => 'gross_tax_shares',
 							'placeholders' => array(
 								'{rate}'           => $tax_total->get_tax_rate()->get_percent(),
@@ -694,6 +704,13 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		return $this->order;
 	}
 
+	/**
+	 * @return bool|\Vendidero\StoreaBill\Interfaces\PaymentMethod
+	 */
+	public function get_payment_method_instance() {
+		return \Vendidero\StoreaBill\References\PaymentMethod::get_payment_method( $this->get_payment_method_name(), $this->get_order_type() );
+	}
+
 	public function get_edit_url() {
 		if ( $order = $this->get_order() ) {
 			return $order->get_edit_url();
@@ -790,14 +807,41 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		return false;
 	}
 
+	public function is_b2b() {
+		$company = $this->get_taxable_company();
+		$vat_id  = $this->get_vat_id();
+		$is_b2b  = false;
+
+		if ( ! empty( $vat_id ) ) {
+			$is_b2b = true;
+		} elseif ( ! empty( $company ) ) {
+			$is_b2b = true;
+		}
+
+		return apply_filters( "{$this->get_general_hook_prefix()}is_b2b", $is_b2b, $this );
+	}
+
 	public function is_eu_cross_border_taxable() {
 		$country = $this->get_taxable_country();
 
-		if ( ! $this->is_reverse_charge() && ( Countries::get_base_country() !== $country && Countries::is_eu_vat_country( $this->get_taxable_country(), $this->get_taxable_postcode() ) ) ) {
+		if ( ! $this->is_vat_exempt() && ( Countries::get_base_country() !== $country && Countries::is_eu_vat_country( $this->get_taxable_country(), $this->get_taxable_postcode() ) ) ) {
 			return true;
 		}
 
 		return false;
+	}
+
+	public function is_eu_intra_community_supply() {
+		$country                   = $this->get_taxable_country();
+		$is_intra_community_supply = false;
+
+		if ( $this->is_vat_exempt() ) {
+			if ( ! $this->is_reverse_charge() && Countries::get_base_country() !== $country && $this->is_eu_vat() ) {
+				$is_intra_community_supply = true;
+			}
+		}
+
+		return apply_filters( "{$this->get_general_hook_prefix()}is_eu_intra_community_supply", $is_intra_community_supply, $this );
 	}
 
 	/**
@@ -1331,7 +1375,7 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 	}
 
 	public function has_differing_shipping_address() {
-		$fields_excluded = apply_filters( "{$this->get_general_hook_prefix()}has_shipping_address_comparison_excluded_fields", array( 'title', 'email', 'phone', 'vat_id' ), $this );
+		$fields_excluded = apply_filters( "{$this->get_general_hook_prefix()}has_shipping_address_comparison_fields", array( 'title', 'email', 'phone', 'vat_id' ), $this );
 
 		/**
 		 * This callback is being used to remove certain data from addresses
@@ -1405,6 +1449,16 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		return apply_filters( "{$this->get_hook_prefix()}taxable_country", $country, $this );
 	}
 
+	public function get_taxable_company() {
+		$company = $this->get_company();
+
+		if ( $this->has_differing_shipping_address() ) {
+			$company = $this->get_shipping_company();
+		}
+
+		return apply_filters( "{$this->get_hook_prefix()}taxable_company", $company, $this );
+	}
+
 	public function get_taxable_postcode() {
 		$postcode = $this->get_postcode();
 
@@ -1417,6 +1471,10 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 
 	public function get_shipping_country( $context = 'view' ) {
 		return $this->get_shipping_address_prop( 'country', $context );
+	}
+
+	public function get_shipping_company( $context = 'view' ) {
+		return $this->get_shipping_address_prop( 'company', $context );
 	}
 
 	public function get_shipping_postcode( $context = 'view' ) {
@@ -1654,14 +1712,37 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 	}
 
 	/**
-	 * Returns whether this invoice has a reverse charge VAT.
+	 * Returns whether this invoice is a reverse of charge.
 	 *
 	 * @param string $context
 	 *
 	 * @return bool True if prices include tax.
 	 */
 	public function get_is_reverse_charge( $context = 'view' ) {
-		return $this->get_prop( 'is_reverse_charge', $context );
+		$has_tax           = $this->get_total_tax() > 0;
+		$is_b2b            = $this->is_b2b();
+		$is_reverse_charge = false;
+
+		if ( ! $has_tax && $this->is_virtual() ) {
+			if ( Countries::base_country_is_eu() && $this->is_eu_vat() ) {
+				$is_reverse_charge = $this->is_vat_exempt();
+			} elseif ( $this->is_third_country() ) {
+				$is_reverse_charge = $is_b2b;
+			}
+		}
+
+		return apply_filters( "{$this->get_hook_prefix()}is_reverse_charge", $is_reverse_charge, $this, $context );
+	}
+
+	/**
+	 * Returns whether this invoice is a vat exempt.
+	 *
+	 * @param string $context
+	 *
+	 * @return bool True if prices include tax.
+	 */
+	public function get_is_vat_exempt( $context = 'view' ) {
+		return $this->get_prop( 'is_vat_exempt', $context );
 	}
 
 	/**
@@ -2132,13 +2213,22 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 	 * @param bool|string $value Either bool or string (yes/no).
 	 */
 	public function set_is_reverse_charge( $value ) {
-		$is_reverse_charge = sab_string_to_bool( $value );
+		$this->set_is_vat_exempt( $value );
+	}
 
-		if ( $is_reverse_charge ) {
+	/**
+	 * Set whether invoice has a VAT exempt.
+	 *
+	 * @param bool|string $value Either bool or string (yes/no).
+	 */
+	public function set_is_vat_exempt( $value ) {
+		$is_vat_exempt = sab_string_to_bool( $value );
+
+		if ( $is_vat_exempt ) {
 			$this->set_is_taxable( false );
 		}
 
-		$this->set_prop( 'is_reverse_charge', $is_reverse_charge );
+		$this->set_prop( 'is_vat_exempt', $is_vat_exempt );
 	}
 
 	/**
@@ -2627,6 +2717,15 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 	}
 
 	/**
+	 * Helper method for get_is_vat_exempt.
+	 *
+	 * @return bool
+	 */
+	public function is_vat_exempt() {
+		return $this->get_is_vat_exempt();
+	}
+
+	/**
 	 * Helper function to detect whether the invoice does only contain virtual items or not.
 	 *
 	 * @return bool
@@ -3096,9 +3195,7 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 
 		// Calculate taxes for products first
 		foreach ( $this->get_items( 'product' ) as $item ) {
-
 			if ( is_a( $item, '\Vendidero\StoreaBill\Interfaces\Taxable' ) ) {
-
 				if ( ! in_array( 'product', $this->get_item_types_additional_costs(), true ) ) {
 					$item->set_prices_include_tax( $this->prices_include_tax() );
 				}
@@ -3110,7 +3207,6 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 		}
 
 		foreach ( $this->get_items( $item_types_without_product ) as $item ) {
-
 			if ( is_a( $item, '\Vendidero\StoreaBill\Interfaces\Taxable' ) ) {
 				/**
 				 * Do not force the same tax rule (e.g. incl or excl) for additional costs (such as shipping or fees)
@@ -3135,6 +3231,21 @@ abstract class Invoice extends Document implements \Vendidero\StoreaBill\Interfa
 
 		// Reset tax totals
 		$this->tax_totals = null;
+	}
+
+	/**
+	 * @param string $key the merge key
+	 *
+	 * @return \Vendidero\StoreaBill\TaxRate|null
+	 */
+	public function get_tax_rate( $key ) {
+		foreach ( $this->get_tax_totals() as $total ) {
+			if ( $key === $total->get_tax_rate()->get_merge_key() ) {
+				return $total->get_tax_rate() ? $total->get_tax_rate() : null;
+			}
+		}
+
+		return null;
 	}
 
 	/**

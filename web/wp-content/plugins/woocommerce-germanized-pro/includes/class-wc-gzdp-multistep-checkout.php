@@ -27,11 +27,6 @@ class WC_GZDP_Multistep_Checkout {
 	}
 
 	public function __construct() {
-
-		if ( is_admin() ) {
-			$this->admin_hooks();
-		}
-
 		if ( ! $this->is_enabled() ) {
 			return;
 		}
@@ -167,13 +162,14 @@ class WC_GZDP_Multistep_Checkout {
 			return;
 		}
 
-		$suffix = $assets->suffix;
+		$suffix = '';
+		$gzdp   = WC_germanized_pro();
 
 		if ( 'navigation' !== $this->get_layout_style() ) {
-			$suffix = '-' . sanitize_key( $this->get_layout_style() ) . $suffix;
+			$suffix = '-' . sanitize_key( $this->get_layout_style() );
 		}
 
-		wp_register_style( 'wc-gzdp-checkout', WC_germanized_pro()->plugin_url() . '/assets/css/checkout-multistep' . $suffix . '.css', array(), WC_GERMANIZED_PRO_VERSION );
+		wp_register_style( 'wc-gzdp-checkout', $gzdp->get_assets_build_url( 'static/checkout-multistep' . $suffix . '.css' ), array(), WC_GERMANIZED_PRO_VERSION );
 		wp_enqueue_style( 'wc-gzdp-checkout' );
 
 		wp_add_inline_style( 'wc-gzdp-checkout', $this->get_custom_css() );
@@ -314,10 +310,10 @@ class WC_GZDP_Multistep_Checkout {
 			return;
 		}
 
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+		$assets = WC_GZDP_Assets::instance();
 
 		// Multistep Checkout
-		wp_register_script( 'wc-gzdp-checkout-multistep-fetch', WC_germanized_pro()->plugin_url() . '/assets/js/checkout-multistep-fetch' . $suffix . '.js', array( 'jquery', 'woocommerce' ), WC_GERMANIZED_PRO_VERSION, true );
+		$assets->register_script( 'wc-gzdp-checkout-multistep-fetch', 'static/checkout-multistep-fetch.js', array( 'jquery', 'woocommerce' ) );
 		wp_enqueue_script( 'wc-gzdp-checkout-multistep-fetch' );
 	}
 
@@ -326,8 +322,11 @@ class WC_GZDP_Multistep_Checkout {
 			return;
 		}
 
+		$gzdp   = WC_germanized_pro();
+		$assets = WC_GZDP_Assets::instance();
+
 		// Multistep Checkout
-		wp_register_script( 'wc-gzdp-checkout-multistep', WC_germanized_pro()->plugin_url() . '/assets/js/checkout-multistep' . $assets->suffix . '.js', array( 'wc-checkout', 'wc-gzdp-checkout-multistep-fetch' ), WC_GERMANIZED_PRO_VERSION, true );
+		$assets->register_script( 'wc-gzdp-checkout-multistep', 'static/checkout-multistep.js', array( 'wc-checkout', 'wc-gzdp-checkout-multistep-fetch' ) );
 
 		wp_localize_script(
 			'wc-gzdp-checkout-multistep',
@@ -361,7 +360,7 @@ class WC_GZDP_Multistep_Checkout {
 		}
 
 		if ( apply_filters( 'woocommerce_gzdp_multistep_checkout_enable_payment_compatibility_mode', $enable_payment_compatibility_script ) ) {
-			wp_register_script( 'wc-gzdp-checkout-multistep-payment-compatibility', WC_germanized_pro()->plugin_url() . '/assets/js/checkout-multistep-payment-compatibility' . $assets->suffix . '.js', array( 'wc-gzdp-checkout-multistep' ), WC_GERMANIZED_PRO_VERSION, true );
+			$assets->register_script( 'wc-gzdp-checkout-multistep-payment-compatibility', 'static/checkout-multistep-payment-compatibility.js', array( 'wc-gzdp-checkout-multistep' ) );
 
 			wp_localize_script(
 				'wc-gzdp-checkout-multistep-payment-compatibility',
@@ -396,13 +395,12 @@ class WC_GZDP_Multistep_Checkout {
 
 		// Payment method compatibility: Paymill
 		if ( WC_GZDP_Dependencies::instance()->is_plugin_activated( 'paymill/paymill.php' ) ) {
-
 			// Change submit id
-			wp_register_script( 'wc-gzdp-paymill-multistep-helper', WC_germanized_pro()->plugin_url() . '/assets/js/checkout-multistep-paymill-helper.js', array( 'wc-gzdp-checkout-multistep' ), WC_GERMANIZED_PRO_VERSION, true );
+			$assets->register_script( 'wc-gzdp-paymill-multistep-helper', 'static/checkout-multistep-paymill-helper.js', array( 'wc-gzdp-checkout-multistep' ) );
 			wp_enqueue_script( 'wc-gzdp-paymill-multistep-helper' );
 
 			// Handle payment step
-			wp_register_script( 'wc-gzdp-paymill-multistep-helper-submit', WC_germanized_pro()->plugin_url() . '/assets/js/checkout-multistep-paymill-submit-helper.js', array( 'paymill_bridge_custom' ), WC_GERMANIZED_PRO_VERSION, true );
+			$assets->register_script( 'wc-gzdp-paymill-multistep-helper-submit', 'static/checkout-multistep-paymill-submit-helper.js', array( 'paymill_bridge_custom' ) );
 			wp_enqueue_script( 'wc-gzdp-paymill-multistep-helper-submit' );
 
 		}
@@ -669,11 +667,6 @@ class WC_GZDP_Multistep_Checkout {
 
 	}
 
-	public function admin_hooks() {
-		add_filter( 'woocommerce_gzd_settings_sections', array( $this, 'register_section' ), 4 );
-		add_filter( 'woocommerce_gzd_get_settings_checkout', array( $this, 'get_settings' ) );
-	}
-
 	public function print_steps() {
 		// On first visit: Set to first checkout step
 		WC()->session->set( 'checkout_step', 'address' );
@@ -698,23 +691,7 @@ class WC_GZDP_Multistep_Checkout {
 	}
 
 	public function get_settings() {
-
 		$settings = array(
-
-			array(
-				'title' => '',
-				'type'  => 'title',
-				'id'    => 'checkout_general_options',
-			),
-
-			array(
-				'title'   => _x( 'Enable', 'multistep', 'woocommerce-germanized-pro' ),
-				'desc'    => _x( 'Enable Multistep Checkout.', 'multistep', 'woocommerce-germanized-pro' ),
-				'id'      => 'woocommerce_gzdp_checkout_enable',
-				'type'    => 'gzd_toggle',
-				'default' => 'no',
-			),
-
 			array(
 				'title'    => _x( 'Style', 'multistep', 'woocommerce-germanized-pro' ),
 				'desc'     => _x( 'Choose a layout style.', 'multistep', 'woocommerce-germanized-pro' ),
@@ -809,17 +786,6 @@ class WC_GZDP_Multistep_Checkout {
 				'id'       => 'woocommerce_gzdp_checkout_verify_data_output',
 				'default'  => 'yes',
 				'type'     => 'gzd_toggle',
-			),
-
-			array(
-				'type' => 'sectionend',
-				'id'   => 'checkout_general_options',
-			),
-
-			array(
-				'title' => _x( 'Colors', 'multistep', 'woocommerce-germanized-pro' ),
-				'type'  => 'title',
-				'id'    => 'checkout_color_options',
 			),
 
 			array(
@@ -929,12 +895,6 @@ class WC_GZDP_Multistep_Checkout {
 					'data-show_if_woocommerce_gzdp_checkout_layout_style' => 'plain',
 				),
 			),
-
-			array(
-				'type' => 'sectionend',
-				'id'   => 'checkout_color_options',
-			),
-
 		);
 
 		return $settings;

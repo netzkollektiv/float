@@ -2,6 +2,8 @@
 
 namespace Vendidero\OneStopShop;
 
+use Vendidero\EUTaxHelper\Helper;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -14,7 +16,7 @@ class Package {
 	 *
 	 * @var string
 	 */
-	const VERSION = '1.3.7';
+	const VERSION = '1.6.1';
 
 	/**
 	 * Init the package
@@ -39,6 +41,7 @@ class Package {
 
 	protected static function init_hooks() {
 		add_action( 'init', array( __CLASS__, 'load_plugin_textdomain' ) );
+		add_action( 'init', array( __CLASS__, 'check_version' ), 10 );
 
 		/**
 		 * Listen to action scheduler hooks for report generation
@@ -77,6 +80,8 @@ class Package {
 		add_action( 'woocommerce_note_updated', array( '\Vendidero\OneStopShop\Admin', 'on_wc_admin_note_update' ) );
 
 		add_filter( 'woocommerce_eu_tax_helper_oss_procedure_is_enabled', array( __CLASS__, 'oss_procedure_is_enabled' ) );
+
+		Helper::init();
 	}
 
 	public static function cleanup() {
@@ -207,6 +212,14 @@ class Package {
 
 	public static function get_delivery_notification_threshold() {
 		return apply_filters( 'oss_woocommerce_delivery_notification_threshold', self::get_delivery_threshold() * 0.95 );
+	}
+
+	public static function is_hpos_enabled() {
+		if ( ! is_callable( array( '\Automattic\WooCommerce\Utilities\OrderUtil', 'custom_orders_table_usage_is_enabled' ) ) ) {
+			return false;
+		}
+
+		return \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
 	}
 
 	public static function get_delivery_threshold_left() {
@@ -598,7 +611,6 @@ class Package {
 
 	public static function setup_recurring_actions() {
 		if ( $queue = Queue::get_queue() ) {
-
 			// Schedule once per day at 2:00
 			if ( null === $queue->get_next( 'oss_woocommerce_daily_cleanup', array(), 'oss_woocommerce' ) ) {
 				$timestamp = strtotime( 'tomorrow midnight' );
@@ -673,11 +685,23 @@ class Package {
 		Install::install();
 	}
 
+	public static function check_version() {
+		if ( self::has_dependencies() && ! defined( 'IFRAME_REQUEST' ) && ( get_option( 'one_stop_shop_woocommerce' ) !== self::get_version() ) ) {
+			Install::install();
+
+			do_action( 'oss_woocommerce_updated' );
+		}
+	}
+
 	public static function deactivate() {
 		if ( self::has_dependencies() && Admin::supports_wc_admin() ) {
 			foreach ( Admin::get_notes() as $oss_note ) {
 				Admin::delete_wc_admin_note( $oss_note );
 			}
+		}
+
+		if ( $queue = Queue::get_queue() ) {
+			$queue->cancel_all( '', array(), 'oss_woocommerce' );
 		}
 	}
 

@@ -3,18 +3,18 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
@@ -23,62 +23,42 @@ namespace BorlabsCookie\Cookie\Backend;
 use BorlabsCookie\Cookie\Config;
 use BorlabsCookie\Cookie\Multilanguage;
 use BorlabsCookie\Cookie\Tools;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 
 class CSS
 {
+    public const ANIMATE_CSS_SOURCE_FOLDER = 'node_modules/animate.css/source';
+
     private static $instance;
 
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
     }
 
-    private function __clone()
+    public function __construct()
     {
     }
 
-    private function __wakeup()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    protected function __construct()
+    public function __wakeup()
     {
-    }
-
-    /**
-     * save function.
-     *
-     * @access public
-     * @param mixed $language (default: null)
-     * @return void
-     */
-    public function save($language = null)
-    {
-        // Get language code
-        if (empty($language)) {
-            $language = Multilanguage::getInstance()->getCurrentLanguageCode();
-        }
-
-        // Build new CSS file
-        $this->buildCSSFile($language);
-
-        // Update style version
-        $styleVersion = get_option('BorlabsCookieStyleVersion_' . $language, 1);
-        $styleVersion = intval($styleVersion) + 1;
-
-        update_option('BorlabsCookieStyleVersion_' . $language, $styleVersion, false);
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
     }
 
     /**
      * buildCSSFile function.
      *
-     * @access public
      * @param mixed $language (default: null)
-     * @return void
      */
     public function buildCSSFile($language = null)
     {
@@ -92,22 +72,35 @@ class CSS
         $css = '';
 
         if (file_exists(WP_CONTENT_DIR . '/cache/borlabs-cookie')) {
-
             if (defined('BORLABS_COOKIE_DEV_MODE') && BORLABS_COOKIE_DEV_MODE === true) {
                 $css .= '/* Using main css file */';
             } else {
-                $css .= file_get_contents($pluginPath . 'css/borlabs-cookie.css');
+                $css .= file_get_contents($pluginPath . 'assets/css/borlabs-cookie.css');
             }
 
-            // Animation CSS
-            if (Config::getInstance()->get('cookieBoxAnimation')) {
-                if (file_exists($pluginPath . 'vendor/animate/animations/' . Config::getInstance()->get('cookieBoxAnimationIn') . '.css')) {
-                    $css .= file_get_contents($pluginPath . 'vendor/animate/animations/' . Config::getInstance()->get('cookieBoxAnimationIn') . '.css');
-                }
+            // Animation vars
+            $animationVars = $this->findAnimateCSSFilepath('_vars');
 
-                if (file_exists($pluginPath . 'vendor/animate/animations/' . Config::getInstance()->get('cookieBoxAnimationOut') . '.css')) {
-                    $css .= file_get_contents($pluginPath . 'vendor/animate/animations/' . Config::getInstance()->get('cookieBoxAnimationOut') . '.css');
-                }
+            if (file_exists($animationVars)) {
+                $animationVarsCSS = file_get_contents($animationVars);
+                $css .= str_replace('.animated', '._brlbs-animated', $animationVarsCSS);
+            }
+
+            // Animation in
+            $animationIn = $this->findAnimateCSSFilepath(Config::getInstance()->get('cookieBoxAnimationIn'));
+
+            if (file_exists($animationIn)) {
+                $css .= $this->transformAnimationCSS(Config::getInstance()->get('cookieBoxAnimationIn'), $animationIn);
+            }
+
+            // Animation out
+            $animationOut = $this->findAnimateCSSFilepath(Config::getInstance()->get('cookieBoxAnimationOut'));
+
+            if (file_exists($animationOut)) {
+                $css .= $this->transformAnimationCSS(
+                    Config::getInstance()->get('cookieBoxAnimationOut'),
+                    $animationOut
+                );
             }
 
             $css .= $this->getCookieBoxCSS();
@@ -115,17 +108,55 @@ class CSS
             $css .= $this->getContentBlockerCSS();
 
             file_put_contents(
-                WP_CONTENT_DIR . '/cache/borlabs-cookie/borlabs-cookie_' . get_current_blog_id() . '_' . $language . '.css',
-                preg_replace("/[ \t]+/", " ", preg_replace("/\s*$^\s*/m", "\n", $css))
+                WP_CONTENT_DIR . '/cache/borlabs-cookie/borlabs-cookie_' . get_current_blog_id() . '_' . $language
+                . '.css',
+                preg_replace("/[ \t]+/", ' ', preg_replace('/\\s*$^\\s*/m', "\n", $css))
             );
         }
     }
 
     /**
-     * getCookieBoxCSS function.
+     * getContentBlockerCSS function.
      *
-     * @access public
-     * @return void
+     * @param mixed $language (default: null)
+     */
+    public function getContentBlockerCSS($language = null)
+    {
+        global $wpdb;
+
+        // Get language code
+        if (empty($language)) {
+            $language = Multilanguage::getInstance()->getCurrentLanguageCode();
+        }
+
+        $css = '';
+
+        $tableName = $wpdb->prefix . 'borlabs_cookie_content_blocker';
+
+        $contentBlocker = $wpdb->get_results(
+            '
+            SELECT
+                `preview_css`
+            FROM
+                `' . $tableName . "`
+            WHERE
+                `language` = '" . esc_sql($language) . "'
+                AND
+                `status` = 1
+        "
+        );
+
+        if (!empty($contentBlocker)) {
+            foreach ($contentBlocker as $key => $data) {
+                $css .= $data->preview_css;
+            }
+        }
+
+        return $css;
+    }
+
+    /**
+     * getCookieBoxCSS function.
      */
     public function getCookieBoxCSS()
     {
@@ -146,8 +177,10 @@ class CSS
         $css .= '#BorlabsCookieBox a:hover { color: %cookieBoxPrimaryLinkHoverColor%; }';
         $css .= '#BorlabsCookieBox ._brlbs-btn { background: %cookieBoxBtnColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxBtnTxtColor%; }';
         $css .= '#BorlabsCookieBox ._brlbs-btn:hover { background: %cookieBoxBtnHoverColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxBtnHoverTxtColor%; }';
-        $css .= '#BorlabsCookieBox ._brlbs-refuse-btn a { background: %cookieBoxRefuseBtnColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxRefuseBtnTxtColor%; }';
-        $css .= '#BorlabsCookieBox ._brlbs-refuse-btn a:hover { background: %cookieBoxRefuseBtnHoverColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxRefuseBtnHoverTxtColor%; }';
+        $css .= '#BorlabsCookieBox ._brlbs-refuse-btn a, #BorlabsCookieBox a._brlbs-refuse-btn { background: %cookieBoxRefuseBtnColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxRefuseBtnTxtColor%; }';
+        $css .= '#BorlabsCookieBox ._brlbs-refuse-btn a:hover, #BorlabsCookieBox a._brlbs-refuse-btn:hover { background: %cookieBoxRefuseBtnHoverColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxRefuseBtnHoverTxtColor%; }';
+        $css .= '#BorlabsCookieBox ._brlbs-manage-btn a { background: %cookieBoxIndividualSettingsBtnColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxIndividualSettingsBtnTxtColor%; }';
+        $css .= '#BorlabsCookieBox ._brlbs-manage-btn a:hover { background: %cookieBoxIndividualSettingsBtnHoverColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxIndividualSettingsBtnHoverTxtColor%; }';
         $css .= '#BorlabsCookieBox ._brlbs-btn-accept-all { background: %cookieBoxAcceptAllBtnColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxAcceptAllBtnTxtColor%; }';
         $css .= '#BorlabsCookieBox ._brlbs-btn-accept-all:hover { background: %cookieBoxAcceptAllBtnHoverColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxAcceptAllBtnHoverTxtColor%; }';
         $css .= '#BorlabsCookieBox ._brlbs-btn-accept-all { background: %cookieBoxAcceptAllBtnColor%; border-radius: %cookieBoxBtnBorderRadius%px; color: %cookieBoxAcceptAllBtnTxtColor%; }';
@@ -155,7 +188,7 @@ class CSS
         $css .= '#BorlabsCookieBox ._brlbs-legal { color: %cookieBoxSecondaryLinkColor%; }';
         $css .= '#BorlabsCookieBox ._brlbs-legal a { color: inherit; }';
         $css .= '#BorlabsCookieBox ._brlbs-legal a:hover { color: %cookieBoxSecondaryLinkHoverColor%; }';
-        $css .= '#BorlabsCookieBox ._brlbs-branding { color: '.$brandingColor.'; }';
+        $css .= '#BorlabsCookieBox ._brlbs-branding { color: ' . $brandingColor . '; }';
         $css .= '#BorlabsCookieBox ._brlbs-branding a { color: inherit; }';
         $css .= '#BorlabsCookieBox ._brlbs-branding a:hover { color: inherit; }';
         $css .= '#BorlabsCookieBox ._brlbs-manage a { color: %cookieBoxPrimaryLinkColor%; }';
@@ -201,11 +234,18 @@ class CSS
         // Content Blocker
         $bgColorHSL = Tools::getInstance()->hexToHsl(Config::getInstance()->get('contentBlockerBgColor'));
         $css .= '.BorlabsCookie ._brlbs-content-blocker { font-family: %contentBlockerFontFamily%; font-size: %contentBlockerFontSize%px; }';
-        $css .= '.BorlabsCookie ._brlbs-content-blocker ._brlbs-caption { background: hsla(' . round($bgColorHSL[0]) . ', ' . round($bgColorHSL[1]) . '%, ' . round($bgColorHSL[2]) . '%, ' . (Config::getInstance()->get('contentBlockerBgOpacity') / 100) . '); color: %contentBlockerTxtColor%; }';
+        $css .= '.BorlabsCookie ._brlbs-content-blocker ._brlbs-caption { background: hsla(' . round($bgColorHSL[0])
+            . ', ' . round($bgColorHSL[1]) . '%, ' . round($bgColorHSL[2]) . '%, ' . (Config::getInstance()->get(
+                'contentBlockerBgOpacity'
+            ) / 100) . '); color: %contentBlockerTxtColor%; }';
         $css .= '.BorlabsCookie ._brlbs-content-blocker ._brlbs-caption a { color: %contentBlockerLinkColor%; }';
         $css .= '.BorlabsCookie ._brlbs-content-blocker ._brlbs-caption a:hover { color: %contentBlockerLinkHoverColor%; }';
         $css .= '.BorlabsCookie ._brlbs-content-blocker a._brlbs-btn { background: %contentBlockerBtnColor%; border-radius: %contentBlockerBtnBorderRadius%px; color: %contentBlockerBtnTxtColor%; }';
         $css .= '.BorlabsCookie ._brlbs-content-blocker a._brlbs-btn:hover { background: %contentBlockerBtnHoverColor%; color: %contentBlockerBtnHoverTxtColor%; }';
+
+        // Widget
+
+        $css .= '#BorlabsCookieBoxWidget svg {color: %cookieBoxWidgetColor%;}';
 
         // Miscellaneous
         // Change CSS values if "Show Accept all Button" is active
@@ -217,7 +257,7 @@ class CSS
             $css .= 'a._brlbs-btn-cookie-preference:hover { background: %cookieBoxBtnHoverColor% !important; color: %cookieBoxBtnHoverTxtColor% !important; }';
         }
 
-        $css = str_replace(
+        return str_replace(
             [
                 '%cookieBoxCookieGroupJustification%',
                 '%cookieBoxFontFamily%',
@@ -242,6 +282,10 @@ class CSS
                 '%cookieBoxRefuseBtnHoverColor%',
                 '%cookieBoxRefuseBtnTxtColor%',
                 '%cookieBoxRefuseBtnHoverTxtColor%',
+                '%cookieBoxIndividualSettingsBtnColor%',
+                '%cookieBoxIndividualSettingsBtnHoverColor%',
+                '%cookieBoxIndividualSettingsBtnTxtColor%',
+                '%cookieBoxIndividualSettingsBtnHoverTxtColor%',
                 '%cookieBoxAcceptAllBtnColor%',
                 '%cookieBoxAcceptAllBtnHoverColor%',
                 '%cookieBoxAcceptAllBtnTxtColor%',
@@ -275,6 +319,7 @@ class CSS
                 '%contentBlockerBtnHoverTxtColor%',
                 '%contentBlockerLinkColor%',
                 '%contentBlockerLinkHoverColor%',
+                '%cookieBoxWidgetColor%'
             ],
             [
                 Config::getInstance()->get('cookieBoxCookieGroupJustification'),
@@ -300,6 +345,10 @@ class CSS
                 Config::getInstance()->get('cookieBoxRefuseBtnHoverColor'),
                 Config::getInstance()->get('cookieBoxRefuseBtnTxtColor'),
                 Config::getInstance()->get('cookieBoxRefuseBtnHoverTxtColor'),
+                Config::getInstance()->get('cookieBoxIndividualSettingsBtnColor'),
+                Config::getInstance()->get('cookieBoxIndividualSettingsBtnHoverColor'),
+                Config::getInstance()->get('cookieBoxIndividualSettingsBtnTxtColor'),
+                Config::getInstance()->get('cookieBoxIndividualSettingsBtnHoverTxtColor'),
                 Config::getInstance()->get('cookieBoxAcceptAllBtnColor'),
                 Config::getInstance()->get('cookieBoxAcceptAllBtnHoverColor'),
                 Config::getInstance()->get('cookieBoxAcceptAllBtnTxtColor'),
@@ -333,50 +382,63 @@ class CSS
                 Config::getInstance()->get('contentBlockerBtnHoverTxtColor'),
                 Config::getInstance()->get('contentBlockerLinkColor'),
                 Config::getInstance()->get('contentBlockerLinkHoverColor'),
+                Config::getInstance()->get('cookieBoxWidgetColor'),
             ],
             $css
         );
-
-        return $css;
     }
 
     /**
-     * getContentBlockerCSS function.
+     * save function.
      *
-     * @access public
      * @param mixed $language (default: null)
-     * @return void
      */
-    public function getContentBlockerCSS($language = null)
+    public function save($language = null)
     {
-        global $wpdb;
-
         // Get language code
         if (empty($language)) {
             $language = Multilanguage::getInstance()->getCurrentLanguageCode();
         }
 
-        $css = '';
+        // Build new CSS file
+        $this->buildCSSFile($language);
 
-        $tableName = $wpdb->prefix . 'borlabs_cookie_content_blocker';
+        // Update style version
+        $styleVersion = get_option('BorlabsCookieStyleVersion_' . $language, 1);
+        $styleVersion = (int) $styleVersion + 1;
 
-        $contentBlocker = $wpdb->get_results('
-            SELECT
-                `preview_css`
-            FROM
-                `'.$tableName.'`
-            WHERE
-                `language` = "'.esc_sql($language).'"
-                AND
-                `status` = 1
-        ');
+        update_option('BorlabsCookieStyleVersion_' . $language, $styleVersion, false);
+    }
 
-        if (!empty($contentBlocker)) {
-            foreach ($contentBlocker as $key => $data) {
-                $css .= $data->preview_css;
+    private function findAnimateCSSFilepath(string $animation)
+    {
+        $filepath = '';
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(BORLABS_COOKIE_PLUGIN_PATH . self::ANIMATE_CSS_SOURCE_FOLDER)
+        );
+
+        foreach ($iterator as $fileData) {
+            if (basename($fileData->getPathname()) === $animation . '.css') {
+                $filepath = $fileData->getPathname();
+
+                break;
             }
         }
 
-        return $css;
+        return $filepath;
+    }
+
+    /**
+     * Performs cleanups and css specificity transformations to make animate.css code
+     * integrate with the borlabs cookie box.
+     */
+    private function transformAnimationCSS(string $animationName, string $animationFilePath)
+    {
+        // Rename animation
+        $css = str_replace($animationName, '_brlbs-' . $animationName, file_get_contents($animationFilePath));
+
+        // Animation classes need to be scoped in #BorlabsCookieBox because all: revert is
+        // set on the element to prevent unwanted style overrides from the theme
+        return str_replace('._brlbs-' . $animationName, '#BorlabsCookieBox ._brlbs-' . $animationName, $css);
     }
 }

@@ -625,6 +625,12 @@ final class PMXE_Wpallimport
 
                         XmlExportWooCommerceOrder::prepare_import_template($options, self::$templateOptions, $element_name, $ID);
                     }
+
+					// Run addon hooks
+					foreach (XmlExportEngine::get_addons() as $addon) {
+						apply_filters("pmxe_{$addon}_addon_prepare_import_template", $options, self::$templateOptions, $element_name, $ID);
+					}
+
 					break;
 			}
 		}		

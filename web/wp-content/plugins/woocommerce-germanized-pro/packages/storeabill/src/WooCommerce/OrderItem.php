@@ -158,7 +158,6 @@ class OrderItem implements SyncableReferenceItem {
 	 * @return bool|mixed
 	 */
 	public function __call( $method, $args ) {
-
 		if ( method_exists( $this->order_item, $method ) ) {
 			return call_user_func_array( array( $this->order_item, $method ), $args );
 		}

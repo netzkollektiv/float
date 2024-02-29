@@ -18,10 +18,14 @@ class Countries {
 	}
 
 	public static function base_country_supports_oss_procedure() {
+		return apply_filters( 'storeabill_base_country_supports_oss_procedure', self::base_country_is_eu() );
+	}
+
+	public static function base_country_is_eu() {
 		$base_country     = self::get_base_country();
 		$eu_vat_countries = self::get_eu_vat_countries();
 
-		return apply_filters( 'storeabill_base_country_supports_oss_procedure', in_array( $base_country, $eu_vat_countries, true ) );
+		return apply_filters( 'storeabill_base_country_is_eu', in_array( $base_country, $eu_vat_countries, true ) );
 	}
 
 	public static function get_base_state() {

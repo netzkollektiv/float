@@ -289,7 +289,7 @@ function sab_replace_block_styles( $html ) {
 }
 
 function _sab_parse_blocks_recursively( $block ) {
-	if ( empty( $block['innerContent'] ) ) {
+	if ( empty( $block['innerContent'] ) || null === $block['blockName'] ) {
 		return $block;
 	}
 
@@ -406,7 +406,7 @@ function _sab_parse_blocks_recursively( $block ) {
 
 						$html = preg_replace( '/(<[^>]+) style=".*?"/i', '$1 style="' . esc_attr( $style ) . '"', $html );
 					} else {
-						$html = str_replace( '>', ' style="' . esc_attr( $style ) . '">', $html );
+						$html = str_replace( '<div class=', '<div style="' . esc_attr( $style ) . '" class=', $html );
 					}
 
 					$block['innerBlocks'][ $inner_key ]['innerContent'][0] = $html;
@@ -453,10 +453,12 @@ function _sab_parse_blocks_recursively( $block ) {
 			 * Save HTML
 			 */
 			if ( $changed ) {
-				$html = $dom->saveXML( $figure );
+				$html = sab_get_dom_html_content( $figure );
 
-				$block['innerHTML']       = $html;
-				$block['innerContent'][0] = $html;
+				if ( ! is_wp_error( $html ) ) {
+					$block['innerHTML']       = $html;
+					$block['innerContent'][0] = $html;
+				}
 			}
 		}
 	} elseif ( 'core/spacer' === $block['blockName'] ) {
@@ -542,7 +544,7 @@ function _sab_maybe_render_block_filter( $html, $block ) {
 		return $html;
 	}
 
-	if ( strpos( $block['blockName'], 'storeabill/' ) !== false ) {
+	if ( null !== $block['blockName'] && strpos( $block['blockName'], 'storeabill/' ) !== false ) {
 		if ( $sab_block = \Vendidero\StoreaBill\Editor\Helper::get_block( $block['blockName'] ) ) {
 			if ( is_a( $sab_block, '\Vendidero\StoreaBill\Editor\Blocks\DynamicBlock' ) ) {
 				$html = $sab_block->pre_render( $html, $block );
@@ -644,7 +646,14 @@ function sab_render_blocks( $blocks, $arguments_to_inherit = array() ) {
 	$total           = count( $blocks );
 
 	foreach ( $blocks as $block ) {
-		$block['attrs'] = array_replace_recursive( $arguments_to_inherit, $block['attrs'] );
+		$block = wp_parse_args(
+			$block,
+			array(
+				'attrs' => array(),
+			)
+		);
+
+		$block['attrs'] = array_replace_recursive( $arguments_to_inherit, (array) $block['attrs'] );
 
 		$block['attrs']['renderNumber'] = ++$count;
 		$block['attrs']['renderTotal']  = $total;
@@ -672,20 +681,74 @@ function sab_load_html_dom( $html ) {
 		return false;
 	}
 
-	libxml_use_internal_errors( true );
+	$lib_xml_state            = \libxml_use_internal_errors( true );
 	$dom                      = new DOMDocument( '1.0', 'utf-8' );
 	$dom->preserveWhiteSpace  = true; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-	$dom->formatOutput        = false; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+	$dom->formatOutput        = true; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 	$dom->strictErrorChecking = false; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+
+	$html              = str_replace( '&nbsp;', '@nbsp;', $html );
+	$has_document_type = \stripos( $html, '<!DOCTYPE' ) !== false;
+
+	if ( $has_document_type ) {
+		$html = \preg_replace( '/<!DOCTYPE\\s++html(?=[\\s>])/i', '<!DOCTYPE html', $html, 1 );
+	} else {
+		$html = '<!DOCTYPE html>' . $html;
+	}
 
 	// Load without HTML wrappers
 	@$dom->loadHTML( '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $html ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase, WordPress.PHP.NoSilencedErrors.Discouraged
+
 	// Explicitly force utf-8 encoding
 	$dom->encoding = 'UTF-8';
 
-	libxml_clear_errors();
+	\libxml_clear_errors();
+	\libxml_use_internal_errors( $lib_xml_state );
+
+	$html_element = $dom->getElementsByTagName( 'html' )->item( 0 );
+
+	if ( ! $html_element instanceof \DOMElement ) {
+		Package::log( 'Issue detected while parsing DOM html.' );
+		Package::extended_log( 'Issue while parsing html:' );
+		Package::extended_log( $html );
+
+		return false;
+	}
 
 	return $dom;
+}
+
+/**
+ * @param DOMDocument|DOMNode $dom
+ *
+ * @return string|WP_Error
+ */
+function sab_get_dom_html_content( $dom ) {
+	if ( is_a( $dom, 'DOMDocument' ) ) {
+		$body = $dom->getElementsByTagName( 'body' )->item( 0 );
+		$html = $dom->saveXML( $body );
+
+		if ( false === $html ) {
+			return new WP_Error( 500, 'Error while saving HTML via DOMDocument' );
+		}
+
+		$html = \preg_replace( '%</?+body(?:\\s[^>]*+)?+>%', '', $html );
+	} elseif ( is_a( $dom, 'DOMNode' ) ) {
+		$html = $dom->ownerDocument->saveXML( $dom ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+
+		if ( false === $html ) {
+			return new WP_Error( 500, 'Error while saving HTML via DOMDocument' );
+		}
+	} else {
+		$html = '';
+	}
+
+	$unrecognized_tagname_matcher = '(?:command|embed|keygen|source|track|wbr)';
+
+	$html = \preg_replace( '%</' . $unrecognized_tagname_matcher . '>%', '', $html );
+	$html = str_replace( '@nbsp;', '&nbsp;', $html );
+
+	return $html;
 }
 
 function sab_blocks_convert_rgba( $content ) {
@@ -711,6 +774,7 @@ function sab_blocks_convert_shortcodes( $content ) {
 		$finder       = new DomXPath( $dom );
 		$nodes        = $finder->query( "//*[contains(concat(' ', normalize-space(@class), ' '), ' $new_selector ')]" );
 		$nodes        = is_array( $nodes ) || is_a( $nodes, 'DOMNodeList' ) ? $nodes : array( $nodes );
+		$has_adjusted = false;
 
 		/**
 		 * Force opening and closing the editor-placeholder span.
@@ -718,11 +782,16 @@ function sab_blocks_convert_shortcodes( $content ) {
 		 * which will lead to problems while replacing the old node content with the new content.
 		 */
 		$content = str_replace( '<span class="editor-placeholder"/>', '<span class="editor-placeholder"></span>', $content );
-		/**
-		 * HTML entity decode the original content as it may contain elements like &euro; or &nbsp; (e.g. added via sab_price()) instead of € which might not be replaceable
-		 * using str_replace.
-		 */
-		$content = html_entity_decode( $content );
+
+		$use_legacy_shortcode_replacement = apply_filters( 'storeabill_use_legacy_shortcode_regex_replacement', false );
+
+		if ( $use_legacy_shortcode_replacement ) {
+			/**
+			 * HTML entity decode the original content as it may contain elements like &euro; or &nbsp; (e.g. added via sab_price()) instead of € which might not be replaceable
+			 * using str_replace. Explicitly set encoding to utf-8 to prevent bugs with PHP installs using different default charsets.
+			 */
+			$content = html_entity_decode( $content, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+		}
 
 		if ( ! empty( $nodes ) ) {
 			foreach ( $nodes as $node ) {
@@ -733,6 +802,7 @@ function sab_blocks_convert_shortcodes( $content ) {
 					$classes           = explode( ' ', $node->getAttribute( 'class' ) );
 					$spans             = $node->getElementsByTagName( 'span' );
 					$found_placeholder = false;
+					$has_adjusted      = true;
 
 					if ( ! empty( $spans ) ) {
 						foreach ( $spans as $span ) {
@@ -767,7 +837,7 @@ function sab_blocks_convert_shortcodes( $content ) {
 						}
 					}
 
-					// In case we didnt find the placeholder: Remove inner HTML and add shortcode instead.
+					// In case we didn't find the placeholder: Remove inner HTML and add shortcode instead.
 					if ( ! $found_placeholder ) {
 						$shortcode_node = $dom->createTextNode( $shortcode );
 						$children       = $node->childNodes; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
@@ -787,28 +857,41 @@ function sab_blocks_convert_shortcodes( $content ) {
 					$node->removeAttribute( 'data-tooltip' );
 					$node->removeAttribute( 'contenteditable' );
 
-					/**
-					 * This replacement is necessary as we need to explicitly store editor-placeholder with opening and closing tags
-					 * so that the RichText content does not encapsulate the content within.
-					 */
-					$old_html  = str_replace( array( '<span class="editor-placeholder"/>' ), array( '<span class="editor-placeholder"></span>' ), $old_html );
-					$node_html = $node->ownerDocument->saveXML( $node ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-					$node_html = str_replace( '<span class="editor-placeholder"/>', '<span class="editor-placeholder"></span>', $node_html );
+					if ( $use_legacy_shortcode_replacement ) {
+						/**
+						 * This replacement is necessary as we need to explicitly store editor-placeholder with opening and closing tags
+						 * so that the RichText content does not encapsulate the content within.
+						 */
+						$old_html  = str_replace( array( '<span class="editor-placeholder"/>' ), array( '<span class="editor-placeholder"></span>' ), $old_html );
+						$node_html = $node->ownerDocument->saveXML( $node ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+						$node_html = str_replace( '<span class="editor-placeholder"/>', '<span class="editor-placeholder"></span>', $node_html );
 
-					$content = str_replace( $old_html, $node_html, $content );
+						$content = str_replace( $old_html, $node_html, $content );
 
-					/**
-					 * Replace with special char decoded as fallback
-					 */
-					$old_html = htmlspecialchars_decode( $old_html );
-					$content  = str_replace( $old_html, $node_html, $content );
+						/**
+						 * Replace with special char decoded as fallback
+						 */
+						$old_html = htmlspecialchars_decode( $old_html );
+						$content  = str_replace( $old_html, $node_html, $content );
 
-					/**
-					 * Replace with entity decoded html as fallback
-					 */
-					$old_html = sab_convert_html_shortcode_content( $old_html );
-					$content  = str_replace( $old_html, $node_html, $content );
+						/**
+						 * Replace with entity decoded html as fallback
+						 */
+						$old_html = sab_convert_html_shortcode_content( $old_html );
+						$content  = str_replace( $old_html, $node_html, $content );
+					}
 				}
+			}
+		}
+
+		if ( ! $use_legacy_shortcode_replacement && $has_adjusted ) {
+			$the_content = sab_get_dom_html_content( $dom );
+
+			if ( is_wp_error( $the_content ) ) {
+				add_filter( 'storeabill_use_legacy_shortcode_regex_replacement', '__return_true', 1000 );
+				$content = sab_blocks_convert_shortcodes( $content );
+			} else {
+				$content = $the_content;
 			}
 		}
 	} else {

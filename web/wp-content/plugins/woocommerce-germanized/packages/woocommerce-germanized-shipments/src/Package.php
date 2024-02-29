@@ -2,9 +2,17 @@
 
 namespace Vendidero\Germanized\Shipments;
 
+use DVDoug\BoxPacker\ItemList;
 use Exception;
+use Vendidero\Germanized\DHL\ShippingProvider\DHL;
+use Vendidero\Germanized\Shipments\DataStores\ShippingProvider;
+use Vendidero\Germanized\Shipments\Labels\ConfigurationSet;
 use Vendidero\Germanized\Shipments\Packaging\ReportHelper;
-use Vendidero\Germanized\Shipments\ShippingProvider\Method;
+use Vendidero\Germanized\Shipments\Packing\CartItem;
+use Vendidero\Germanized\Shipments\ShippingMethod\MethodHelper;
+use Vendidero\Germanized\Shipments\ShippingMethod\ShippingMethod;
+use Vendidero\Germanized\Shipments\ShippingProvider\Helper;
+use Vendidero\Germanized\Shipments\ShippingProvider\ProductList;
 use WC_Shipping;
 use WC_Shipping_Method;
 
@@ -19,11 +27,11 @@ class Package {
 	 *
 	 * @var string
 	 */
-	const VERSION = '2.3.1';
+	const VERSION = '3.0.5';
 
 	public static $upload_dir_suffix = '';
 
-	protected static $method_settings = null;
+	protected static $iso = null;
 
 	/**
 	 * Init the package - load the REST API Server class.
@@ -56,16 +64,21 @@ class Package {
 			self::inject_endpoints();
 		}
 
-		add_action( 'woocommerce_load_shipping_methods', array( __CLASS__, 'load_shipping_methods' ), 5, 1 );
-		// Use a high priority here to make sure we are hooking even after plugins such as flexible shipping
-		add_filter( 'woocommerce_shipping_methods', array( __CLASS__, 'set_method_filters' ), 5000, 1 );
-
 		// Guest returns
 		add_filter( 'wc_get_template', array( __CLASS__, 'add_return_shipment_guest_endpoints' ), 10, 2 );
 		add_action( 'init', array( __CLASS__, 'register_shortcodes' ) );
 		add_action( 'init', array( __CLASS__, 'check_version' ), 10 );
 
 		add_action( 'woocommerce_gzd_wpml_compatibility_loaded', array( __CLASS__, 'load_wpml_compatibility' ), 10 );
+		add_filter( 'woocommerce_shipping_method_add_rate_args', array( __CLASS__, 'manipulate_shipping_rates' ), 1000, 2 );
+	}
+
+	public static function manipulate_shipping_rates( $args, $method ) {
+		if ( $method = wc_gzd_get_shipping_provider_method( $method ) ) {
+			$args['meta_data']['_shipping_provider'] = $method->get_shipping_provider();
+		}
+
+		return $args;
 	}
 
 	public static function add_return_shipment_guest_endpoints( $template, $template_name ) {
@@ -128,25 +141,16 @@ class Package {
 		WPMLHelper::init( $compatibility );
 	}
 
-	public static function get_excluded_methods() {
-		return apply_filters( 'woocommerce_gzd_shipments_get_methods_excluded_from_provider_settings', array( 'pr_dhl_paket', 'flexible_shipping_info' ) );
+	public static function get_method_settings( $force_load_all = false ) {
+		wc_deprecated_function( __FUNCTION__, '3.0.0', 'MethodHelper::get_method_settings()' );
+
+		return MethodHelper::get_method_settings( $force_load_all );
 	}
 
-	public static function set_method_filters( $methods ) {
-		foreach ( $methods as $method => $class ) {
-			if ( in_array( $method, self::get_excluded_methods(), true ) ) {
-				continue;
-			}
+	public static function get_excluded_methods() {
+		wc_deprecated_function( __FUNCTION__, '3.0.0', 'MethodHelper::get_excluded_methods()' );
 
-			add_filter( 'woocommerce_shipping_instance_form_fields_' . $method, array( __CLASS__, 'add_method_settings' ), 10, 1 );
-			/**
-			 * Use this filter as a backup to support plugins like Flexible Shipping which may override methods
-			 */
-			add_filter( 'woocommerce_settings_api_form_fields_' . $method, array( __CLASS__, 'add_method_settings' ), 10, 1 );
-			add_filter( 'woocommerce_shipping_' . $method . '_instance_settings_values', array( __CLASS__, 'filter_method_settings' ), 10, 2 );
-		}
-
-		return $methods;
+		return array();
 	}
 
 	/**
@@ -158,77 +162,30 @@ class Package {
 		return version_compare( phpversion(), '7.1', '>=' ) && apply_filters( 'woocommerce_gzd_enable_rucksack_packaging', true );
 	}
 
-	public static function get_method_settings() {
-		if ( is_null( self::$method_settings ) ) {
-			self::$method_settings = Method::get_admin_settings();
-		}
+	public static function is_integration() {
+		$gzd_installed = class_exists( 'WooCommerce_Germanized' );
 
-		return self::$method_settings;
+		return $gzd_installed;
 	}
 
-	public static function filter_method_settings( $p_settings, $method ) {
-		$shipping_provider_settings = self::get_method_settings();
-		$shipping_provider          = isset( $p_settings['shipping_provider'] ) ? $p_settings['shipping_provider'] : '';
-		$shipping_method            = wc_gzd_get_shipping_provider_method( $method );
+	/**
+	 * @return int[]
+	 */
+	public static function get_shipping_classes() {
+		$term_args = array(
+			'taxonomy'     => 'product_shipping_class',
+			'hide_empty'   => 0,
+			'orderby'      => 'name',
+			'hierarchical' => 0,
+			'fields'       => 'id=>name',
+		);
 
-		/**
-		 * Make sure the (maybe) new selected provider is used on updating the settings.
-		 */
-		$shipping_method->set_provider( $shipping_provider );
+		$terms = get_terms( $term_args );
 
-		foreach ( $p_settings as $setting => $value ) {
-			if ( array_key_exists( $setting, $shipping_provider_settings ) ) {
-				// Check if setting does neither belong to global setting nor shipping provider prefix
-				if ( 'shipping_provider' !== $setting && ! $shipping_method->setting_belongs_to_provider( $setting ) ) {
-					unset( $p_settings[ $setting ] );
-				} elseif ( $shipping_method->get_fallback_setting_value( $setting ) === $value ) {
-					unset( $p_settings[ $setting ] );
-				} elseif ( '' === $value ) {
-					unset( $p_settings[ $setting ] );
-				}
-			}
-		}
-
-		/**
-		 * Filter that returns shipping method settings cleaned from global shipping provider method settings.
-		 * This filter might be useful to remove some default setting values from
-		 * shipping provider method settings e.g. DHL settings.
-		 *
-		 * @param array               $p_settings The settings
-		 * @param WC_Shipping_Method $method The shipping method instance
-		 *
-		 * @since 3.0.6
-		 * @package Vendidero/Germanized/Shipments
-		 */
-		return apply_filters( 'woocommerce_gzd_shipping_provider_method_clean_settings', $p_settings, $method );
-	}
-
-	public static function add_method_settings( $p_settings ) {
-		$wc = WC();
-
-		/**
-		 * Prevent undefined index notices during REST API calls.
-		 *
-		 * @see WC_REST_Shipping_Zone_Methods_V2_Controller::get_settings()
-		 */
-		if ( is_callable( array( $wc, 'is_rest_api_request' ) ) && $wc->is_rest_api_request() ) {
-			return $p_settings;
-		}
-
-		$shipping_provider_settings = self::get_method_settings();
-
-		return array_merge( $p_settings, $shipping_provider_settings );
-	}
-
-	public static function load_shipping_methods( $package ) {
-		$shipping = WC_Shipping::instance();
-
-		foreach ( $shipping->shipping_methods as $key => $method ) {
-			if ( in_array( $key, self::get_excluded_methods(), true ) ) {
-				continue;
-			}
-
-			$shipping_provider_method = new Method( $method );
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		} else {
+			return $terms;
 		}
 	}
 
@@ -249,6 +206,36 @@ class Package {
 				}
 			}
 		}
+	}
+
+	public static function get_country_iso_alpha3( $country_code ) {
+		$country_code = strtoupper( $country_code );
+		$iso          = self::get_countries_iso_alpha3();
+
+		if ( isset( $iso[ $country_code ] ) ) {
+			return $iso[ $country_code ];
+		}
+
+		return $country_code;
+	}
+
+	protected static function get_countries_iso_alpha3() {
+		if ( is_null( self::$iso ) ) {
+			self::$iso = include self::get_path() . '/i18n/iso-3.php';
+		}
+
+		return (array) self::$iso;
+	}
+
+	public static function get_country_iso_alpha2( $country_code ) {
+		$country_code = strtoupper( $country_code );
+		$iso          = self::get_countries_iso_alpha3();
+
+		if ( in_array( $country_code, $iso, true ) ) {
+			return array_search( $country_code, $iso, true );
+		}
+
+		return $country_code;
 	}
 
 	public static function get_base_country() {
@@ -468,7 +455,7 @@ class Package {
 		return md5( serialize( $key ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
 	}
 
-	public static function log( $message, $type = 'info' ) {
+	public static function log( $message, $type = 'info', $source = '' ) {
 		$enable_logging = defined( 'WP_DEBUG' ) && WP_DEBUG ? true : false;
 
 		/**
@@ -480,20 +467,20 @@ class Package {
 		 * @package Vendidero/Germanized/Shipments
 		 */
 		if ( ! apply_filters( 'woocommerce_gzd_shipments_enable_logging', $enable_logging ) ) {
-			return false;
+			return;
 		}
 
 		$logger = wc_get_logger();
 
 		if ( ! $logger ) {
-			return false;
+			return;
 		}
 
 		if ( ! is_callable( array( $logger, $type ) ) ) {
 			$type = 'info';
 		}
 
-		$logger->{$type}( $message, array( 'source' => 'wc-gzd-shipments' ) );
+		$logger->{$type}( $message, array( 'source' => 'wc-gzd-shipments' . ( ! empty( $source ) ? '-' . $source : '' ) ) );
 	}
 
 	public static function get_upload_dir_suffix() {
@@ -593,6 +580,7 @@ class Package {
 		}
 
 		Ajax::init();
+		MethodHelper::init();
 		Automation::init();
 		Labels\Automation::init();
 		Labels\DownloadHandler::init();
@@ -683,8 +671,8 @@ class Package {
 	 *
 	 * @return string
 	 */
-	public static function get_path() {
-		return dirname( __DIR__ );
+	public static function get_path( $rel_path = '' ) {
+		return trailingslashit( dirname( __DIR__ ) ) . $rel_path;
 	}
 
 	/**
@@ -692,12 +680,27 @@ class Package {
 	 *
 	 * @return string
 	 */
-	public static function get_url() {
-		return plugins_url( '', __DIR__ );
+	public static function get_url( $rel_path = '' ) {
+		return trailingslashit( plugins_url( '', __DIR__ ) ) . $rel_path;
 	}
 
-	public static function get_assets_url() {
-		return self::get_url() . '/assets';
+	public static function load_blocks() {
+		$woo_version = defined( 'WC_VERSION' ) ? WC_VERSION : '1.0.0';
+
+		return version_compare( $woo_version, '8.2.0', '>=' );
+	}
+
+	public static function get_assets_url( $script_or_style ) {
+		$assets_url = self::get_url() . '/build';
+		$is_debug   = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG;
+		$is_style   = '.css' === substr( $script_or_style, -4 );
+		$is_static  = strstr( $script_or_style, 'static/' );
+
+		if ( $is_debug && $is_static && ! $is_style ) {
+			$assets_url = self::get_url() . '/assets/js';
+		}
+
+		return trailingslashit( $assets_url ) . $script_or_style;
 	}
 
 	public static function get_setting( $name, $default = false ) {
@@ -736,5 +739,41 @@ class Package {
 
 	public static function is_valid_mysql_date( $mysql_date ) {
 		return ( '0000-00-00 00:00:00' === $mysql_date || null === $mysql_date ) ? false : true;
+	}
+
+	public static function extract_args_from_id( $id ) {
+		$args = array(
+			'shipping_provider_name' => '',
+			'shipment_type'          => '',
+			'zone'                   => '',
+			'setting_group'          => '',
+			'setting_name'           => '',
+			'meta'                   => '',
+		);
+
+		$data = preg_split( '/-([a-z]-[a-zA-Z_0-9]+)-{0,1}/', $id, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY );
+
+		if ( false !== $data ) {
+			foreach ( $data as $d ) {
+				$arg = substr( $d, 0, 2 );
+				$val = substr( $d, 2 );
+
+				if ( 'p-' === $arg ) {
+					$args['shipping_provider_name'] = $val;
+				} elseif ( 's-' === $arg ) {
+					$args['shipment_type'] = $val;
+				} elseif ( 'z-' === $arg ) {
+					$args['zone'] = $val;
+				} elseif ( 'g-' === $arg ) {
+					$args['setting_group'] = $val;
+				} elseif ( 'n-' === $arg ) {
+					$args['setting_name'] = $val;
+				} elseif ( 'm-' === $arg ) {
+					$args['meta'] = $val;
+				}
+			}
+		}
+
+		return $args;
 	}
 }

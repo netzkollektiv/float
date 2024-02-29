@@ -401,6 +401,7 @@ class Helper {
 		};
 
 		add_action( 'woocommerce_before_data_object_save', $check_customer_saving_callback, 10, 2 );
+		add_action( 'woocommerce_before_customer_object_save', $check_customer_saving_callback, 10, 2 );
 	}
 
 	protected static function document_type_supports_customer_download( $document_type ) {

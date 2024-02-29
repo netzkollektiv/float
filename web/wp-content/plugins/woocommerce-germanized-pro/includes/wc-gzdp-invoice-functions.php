@@ -63,6 +63,51 @@ function wc_gzdp_get_packing_slip( $packing_slip ) {
 	return $packing_slip;
 }
 
+/**
+ * @param $args
+ *
+ * @return \Vendidero\Germanized\Pro\StoreaBill\CommercialInvoice[]|\Vendidero\StoreaBill\Document\Document[]
+ */
+function wc_gzdp_get_commercial_invoices( $args ) {
+	$query = new \Vendidero\Germanized\Pro\StoreaBill\CommercialInvoice\Query( $args );
+
+	return $query->get_commercial_invoices();
+}
+
+/**
+ * @param integer|\Vendidero\Germanized\Shipments\Shipment $shipment_id
+ *
+ * @return bool|\Vendidero\Germanized\Pro\StoreaBill\CommercialInvoice
+ */
+function wc_gzdp_get_commercial_invoice_by_shipment( $shipment_id ) {
+	$commercial_invoice = false;
+
+	if ( $shipment = wc_gzd_get_shipment( $shipment_id ) ) {
+		$commercial_invoices = wc_gzdp_get_commercial_invoices(
+			array(
+				'reference_id'   => $shipment->get_id(),
+				'reference_type' => 'germanized',
+				'limit'          => 1,
+			)
+		);
+
+		if ( ! empty( $commercial_invoices ) ) {
+			return wc_gzdp_get_commercial_invoice( $commercial_invoices[0] );
+		}
+	}
+
+	return $commercial_invoice;
+}
+
+/**
+ * @param int|\Vendidero\Germanized\Pro\StoreaBill\CommercialInvoice $commercial_invoice
+ *
+ * @return bool|\Vendidero\Germanized\Pro\StoreaBill\CommercialInvoice
+ */
+function wc_gzdp_get_commercial_invoice( $commercial_invoice ) {
+	return sab_get_document( $commercial_invoice, 'commercial_invoice' );
+}
+
 function wc_gzdp_get_default_invoice_status() {
 	wc_deprecated_function( 'wc_gzdp_get_default_invoice_status', '3.0.0' );
 

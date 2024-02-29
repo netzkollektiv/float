@@ -186,10 +186,6 @@ class Helper {
 					};
 
 					$sync_user_callback = function( $user_id ) use ( $sync_callback, $handler_name ) {
-						if ( ! current_user_can( 'manage_storeabill' ) ) {
-							return;
-						}
-
 						if ( $customer = Customer::get_customer( $user_id ) ) {
 							if ( empty( $customer->get_last_name() ) ) {
 								return;

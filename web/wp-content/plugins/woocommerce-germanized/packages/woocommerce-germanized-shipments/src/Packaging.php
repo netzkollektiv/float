@@ -7,6 +7,9 @@
  */
 namespace Vendidero\Germanized\Shipments;
 
+use Vendidero\Germanized\Shipments\Interfaces\LabelConfigurationSet;
+use Vendidero\Germanized\Shipments\Labels\ConfigurationSetTrait;
+use Vendidero\Germanized\Shipments\ShippingProvider\Helper;
 use WC_Data;
 use WC_Data_Store;
 use Exception;
@@ -17,7 +20,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Packaging Class.
  */
-class Packaging extends WC_Data {
+class Packaging extends WC_Data implements LabelConfigurationSet {
+
+	use ConfigurationSetTrait;
 
 	/**
 	 * This is the name of this object type.
@@ -50,15 +55,21 @@ class Packaging extends WC_Data {
 	 * @var array
 	 */
 	protected $data = array(
-		'date_created'       => null,
-		'weight'             => 0,
-		'max_content_weight' => 0,
-		'width'              => 0,
-		'height'             => 0,
-		'length'             => 0,
-		'order'              => 0,
-		'type'               => '',
-		'description'        => '',
+		'date_created'                => null,
+		'weight'                      => 0,
+		'max_content_weight'          => 0,
+		'width'                       => 0,
+		'height'                      => 0,
+		'length'                      => 0,
+		'inner_width'                 => 0,
+		'inner_height'                => 0,
+		'inner_length'                => 0,
+		'order'                       => 0,
+		'type'                        => '',
+		'description'                 => '',
+		'available_shipping_provider' => array(),
+		'available_shipping_classes'  => array(),
+		'configuration_sets'          => array(),
 	);
 
 	/**
@@ -216,6 +227,109 @@ class Packaging extends WC_Data {
 		return $this->get_prop( 'height', $context );
 	}
 
+	/**
+	 * Returns the inner packaging length in cm.
+	 *
+	 * @param  string $context What the value is for. Valid values are 'view' and 'edit'.
+	 * @return string
+	 */
+	public function get_inner_length( $context = 'view' ) {
+		$inner_length = $this->get_prop( 'inner_length', $context );
+
+		if ( 'view' === $context && empty( $inner_length ) ) {
+			$inner_length = $this->get_length( $context );
+		}
+
+		return $inner_length;
+	}
+
+	/**
+	 * Returns the packaging inner width in cm.
+	 *
+	 * @param  string $context What the value is for. Valid values are 'view' and 'edit'.
+	 * @return string
+	 */
+	public function get_inner_width( $context = 'view' ) {
+		$inner_width = $this->get_prop( 'inner_width', $context );
+
+		if ( 'view' === $context && empty( $inner_width ) ) {
+			$inner_width = $this->get_width( $context );
+		}
+
+		return $inner_width;
+	}
+
+	/**
+	 * Returns the packaging inner height in cm.
+	 *
+	 * @param  string $context What the value is for. Valid values are 'view' and 'edit'.
+	 * @return string
+	 */
+	public function get_inner_height( $context = 'view' ) {
+		$inner_height = $this->get_prop( 'inner_height', $context );
+
+		if ( 'view' === $context && empty( $inner_height ) ) {
+			$inner_height = $this->get_height( $context );
+		}
+
+		return $inner_height;
+	}
+
+	public function has_inner_dimensions() {
+		return ! empty( $this->get_inner_width( 'edit' ) ) || ! empty( $this->get_inner_length( 'edit' ) ) || ! empty( $this->get_inner_height( 'edit' ) );
+	}
+
+	/**
+	 * Returns the available shipping provider names.
+	 *
+	 * @param  string $context What the value is for. Valid values are 'view' and 'edit'.
+	 * @return array
+	 */
+	public function get_available_shipping_provider( $context = 'view' ) {
+		$provider_names = $this->get_prop( 'available_shipping_provider', $context );
+
+		if ( 'view' === $context && empty( $provider_names ) ) {
+			$provider_names = array_keys( Helper::instance()->get_available_shipping_providers() );
+		}
+
+		return $provider_names;
+	}
+
+	/**
+	 * Returns the available shipping classes.
+	 *
+	 * @param  string $context What the value is for. Valid values are 'view' and 'edit'.
+	 * @return array
+	 */
+	public function get_available_shipping_classes( $context = 'view' ) {
+		$classes = $this->get_prop( 'available_shipping_classes', $context );
+
+		if ( 'view' === $context && empty( $classes ) ) {
+			$classes = array_keys( Package::get_shipping_classes() );
+		}
+
+		return $classes;
+	}
+
+	public function supports_shipping_class( $shipping_class ) {
+		$classes  = $this->get_available_shipping_classes( 'edit' );
+		$supports = false;
+
+		if ( empty( $classes ) || in_array( $shipping_class, $classes, true ) ) {
+			$supports = true;
+		}
+
+		return $supports;
+	}
+
+	public function supports_shipping_provider( $provider ) {
+		if ( is_a( $provider, 'Vendidero\Germanized\Shipments\Interfaces\ShippingProvider' ) ) {
+			$provider = $provider->get_name();
+		}
+
+		return apply_filters( "{$this->get_general_hook_prefix()}supports_shipping_provider", ( in_array( $provider, $this->get_available_shipping_provider(), true ) || empty( $provider ) ), $provider, $this );
+	}
+
 	public function has_dimensions() {
 		$width  = $this->get_width();
 		$length = $this->get_length();
@@ -237,12 +351,33 @@ class Packaging extends WC_Data {
 		);
 	}
 
+	/**
+	 * Returns inner dimensions.
+	 *
+	 * @return string|array
+	 */
+	public function get_inner_dimensions() {
+		return array(
+			'length' => wc_format_decimal( $this->get_inner_length(), false, true ),
+			'width'  => wc_format_decimal( $this->get_inner_width(), false, true ),
+			'height' => wc_format_decimal( $this->get_inner_height(), false, true ),
+		);
+	}
+
 	public function get_formatted_dimensions() {
 		return wc_gzd_format_shipment_dimensions( $this->get_dimensions(), wc_gzd_get_packaging_dimension_unit() );
 	}
 
+	public function get_formatted_inner_dimensions() {
+		return wc_gzd_format_shipment_dimensions( $this->get_inner_dimensions(), wc_gzd_get_packaging_dimension_unit() );
+	}
+
 	public function get_volume() {
 		return (float) $this->get_length() * (float) $this->get_width() * (float) $this->get_height();
+	}
+
+	public function get_inner_volume() {
+		return (float) $this->get_inner_length() * (float) $this->get_inner_width() * (float) $this->get_inner_height();
 	}
 
 	/**
@@ -311,6 +446,24 @@ class Packaging extends WC_Data {
 	}
 
 	/**
+	 * Set packaging shipping providers
+	 *
+	 * @param array $provider_names The provider names
+	 */
+	public function set_available_shipping_provider( $provider_names ) {
+		$this->set_prop( 'available_shipping_provider', array_filter( (array) $provider_names ) );
+	}
+
+	/**
+	 * Set packaging shipping classes
+	 *
+	 * @param array $classes The shipping classes
+	 */
+	public function set_available_shipping_classes( $classes ) {
+		$this->set_prop( 'available_shipping_classes', array_filter( array_map( 'absint', (array) $classes ) ) );
+	}
+
+	/**
 	 * Set packaging width in cm.
 	 *
 	 * @param string $width The width.
@@ -335,5 +488,53 @@ class Packaging extends WC_Data {
 	 */
 	public function set_height( $height ) {
 		$this->set_prop( 'height', empty( $height ) ? 0 : wc_format_decimal( $height, 1, true ) );
+	}
+
+	/**
+	 * Set packaging inner width in cm.
+	 *
+	 * @param string $width The width.
+	 */
+	public function set_inner_width( $width ) {
+		$this->set_prop( 'inner_width', empty( $width ) ? 0 : wc_format_decimal( $width, 1, true ) );
+	}
+
+	/**
+	 * Set packaging inner length in cm.
+	 *
+	 * @param string $length The length.
+	 */
+	public function set_inner_length( $length ) {
+		$this->set_prop( 'inner_length', empty( $length ) ? 0 : wc_format_decimal( $length, 1, true ) );
+	}
+
+	/**
+	 * Set packaging inner height in cm.
+	 *
+	 * @param string $height The height.
+	 */
+	public function set_inner_height( $height ) {
+		$this->set_prop( 'inner_height', empty( $height ) ? 0 : wc_format_decimal( $height, 1, true ) );
+	}
+
+	protected function get_configuration_set_setting_type() {
+		return 'packaging';
+	}
+
+	public function save() {
+		$changes = $this->get_changes();
+
+		/**
+		 * Maybe reset inner dimensions when changing outer dimensions.
+		 */
+		if ( ! empty( $changes ) ) {
+			foreach ( array( 'length', 'width', 'height' ) as $dim ) {
+				if ( isset( $changes[ $dim ] ) && ! isset( $changes[ "inner_{$dim}" ] ) ) {
+					$this->{"set_inner_{$dim}"}( 0 );
+				}
+			}
+		}
+
+		return parent::save();
 	}
 }

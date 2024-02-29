@@ -13,4 +13,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class PostDocument extends Document {
 
+	protected function get_search_related_properties( $document ) {
+		return array();
+	}
 }

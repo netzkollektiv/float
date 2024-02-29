@@ -18,6 +18,24 @@ class Bundles implements Compatibility {
 	public static function init() {
 		add_action( 'storeabill_before_render_document', array( __CLASS__, 'register_hooks' ), 50 );
 		add_action( 'storeabill_after_render_document', array( __CLASS__, 'unregister_hooks' ), 50 );
+		add_filter( 'storeabill_product_is_virtual', array( __CLASS__, 'is_virtual' ), 10, 2 );
+	}
+
+	/**
+	 * Do not treat non-virtual bundles as virtual. By default WCB marks unassembled bundles as virtual.
+	 * This might lead to issues during accounting and syncing.
+	 *
+	 * @param boolean $is_virtual
+	 * @param \WC_Product $product
+	 *
+	 * @return boolean
+	 */
+	public static function is_virtual( $is_virtual, $product ) {
+		if ( is_a( $product, 'WC_Product_Bundle' ) && is_callable( array( $product, 'is_virtual_bundle' ) ) && ! $product->is_virtual_bundle() ) {
+			$is_virtual = false;
+		}
+
+		return $is_virtual;
 	}
 
 	protected static function get_bundle_document_types() {

@@ -189,8 +189,8 @@ trait ExporterTrait {
 			"{$this->get_hook_prefix()}new_default_settings",
 			array(
 				'filters'    => $this->get_filters(),
-				'start_date' => $this->get_gm_date( $this->get_start_date() ),
-				'end_date'   => $this->get_gm_date( $this->get_end_date() ),
+				'start_date' => $this->get_start_date() ? $this->get_gm_date( $this->get_start_date() ) : '',
+				'end_date'   => $this->get_end_date() ? $this->get_gm_date( $this->get_end_date() ) : '',
 			),
 			$this
 		);

@@ -5,6 +5,7 @@ namespace Vendidero\StoreaBill\WooCommerce;
 use Vendidero\StoreaBill\Invoice\TaxableItem;
 use Vendidero\StoreaBill\Interfaces\SyncableReferenceItem;
 use Vendidero\StoreaBill\TaxRate;
+use Vendidero\StoreaBill\Utilities\Numbers;
 use WC_Order_Item;
 
 defined( 'ABSPATH' ) || exit;
@@ -23,7 +24,6 @@ class OrderItemTaxable extends OrderItem {
 	 * @param TaxableItem $document_item
 	 */
 	public function sync( &$document_item, $args = array() ) {
-
 		$args = wp_parse_args(
 			$args,
 			array(
@@ -54,24 +54,42 @@ class OrderItemTaxable extends OrderItem {
 			$order_tax_rates,
 			function( $tax_rate ) use ( $item_taxes, $document_item ) {
 				foreach ( $tax_rate->get_reference_ids() as $ref_id ) {
-					/**
-					 * Do only include tax rates for the item which do actually exist.
-					 * This may by default explicitly include zero tax rates as these tax rates are needed, e.g. for calculating tax shares.
-					 */
-					if ( ( array_key_exists( $ref_id, $item_taxes['total'] ) && '' !== $item_taxes['total'][ $ref_id ] ) || ( array_key_exists( 'subtotal', $item_taxes ) && array_key_exists( $ref_id, $item_taxes['subtotal'] ) && '' !== $item_taxes['subtotal'][ $ref_id ] ) ) {
-						return true;
+					$tax_total          = array_key_exists( $ref_id, $item_taxes['total'] ) ? $item_taxes['total'][ $ref_id ] : '';
+					$tax_subtotal       = array_key_exists( 'subtotal', $item_taxes ) && array_key_exists( $ref_id, $item_taxes['subtotal'] ) ? $item_taxes['subtotal'][ $ref_id ] : $tax_total;
+					$refunded_tax_total = 0.0;
+
+					if ( $order = $this->get_order_item()->get_order() ) {
+						$refunded_tax_total = (float) $order->get_tax_refunded_for_item( $this->get_order_item()->get_id(), $ref_id, $this->get_order_item()->get_type() );
 					}
+
+					$tax_total        = '' !== $tax_total ? Numbers::round_to_precision( (float) $tax_total - $refunded_tax_total ) : $tax_total;
+					$tax_subtotal     = '' !== $tax_subtotal ? Numbers::round_to_precision( (float) $tax_subtotal - $refunded_tax_total ) : $tax_subtotal;
+					$include_tax_rate = '' !== $tax_total || '' !== $tax_subtotal;
 
 					/**
 					 * Special case for items which do not include taxes (e.g. free shipping) but may include
 					 * taxes during refunds, e.g. refunding a negative amount to add shipping costs on refunding items.
 					 */
-					if ( $order = $this->get_order_item()->get_order() ) {
-						$refunded_tax_total = (float) $order->get_tax_refunded_for_item( $this->get_order_item()->get_id(), $ref_id, $this->get_order_item()->get_type() );
+					if ( $refunded_tax_total < 0.0 ) {
+						return true;
+					}
 
-						if ( $refunded_tax_total < 0.0 ) {
-							return true;
+					/**
+					 * Exclude tax rate in case the tax total amount for the item has been fully refunded, e.g.
+					 * a (subsequent) tax refund for a certain order.
+					 */
+					if ( 0.0 !== $refunded_tax_total ) {
+						if ( 0.0 === $tax_total && 0.0 === $tax_subtotal ) {
+							$include_tax_rate = false;
 						}
+					}
+
+					/**
+					 * Do only include tax rates for the item which do actually exist.
+					 * This may by default explicitly include zero tax rates as these tax rates are needed, e.g. for calculating tax shares.
+					 */
+					if ( $include_tax_rate ) {
+						return true;
 					}
 				}
 

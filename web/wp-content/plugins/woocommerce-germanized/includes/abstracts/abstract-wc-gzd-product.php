@@ -46,6 +46,15 @@ class WC_GZD_Product {
 			$product = wc_get_product( $product );
 		}
 
+		$this->set_wc_product( $product );
+	}
+
+	/**
+	 * @param WC_Product $product
+	 *
+	 * @return void
+	 */
+	public function set_wc_product( $product ) {
 		$this->child = $product;
 	}
 
@@ -1136,24 +1145,24 @@ class WC_GZD_Product {
 			return $price_html;
 		}
 
-		preg_match( '/<del.*>(.*?)<\\/del>/si', $price_html, $match_regular );
-		preg_match( '/<ins.*>(.*?)<\\/ins>/si', $price_html, $match_sale );
-		preg_match( '/<small .*>(.*?)<\\/small>/si', $price_html, $match_suffix );
+		$regular_regex = '/<del([^>]*)>(.*?)<\/del>/is';
+		$sale_regex    = '/<ins([^>]*)>(.*?)<\/ins>/is';
+
+		preg_match( $regular_regex, $price_html, $match_regular );
+		preg_match( $sale_regex, $price_html, $match_sale );
 
 		if ( empty( $match_sale ) || empty( $match_regular ) ) {
 			return $price_html;
 		}
 
-		$new_price_regular = $match_regular[0];
-		$new_price_sale    = $match_sale[0];
-		$new_price_suffix  = ( empty( $match_suffix ) ? '' : ' ' . $match_suffix[0] );
-
 		if ( ! empty( $sale_label ) && isset( $match_regular[1] ) ) {
-			$new_price_regular = '<span class="wc-gzd-sale-price-label">' . $sale_label . '</span> ' . $match_regular[0];
+			// Replace the first occurrence only, e.g. in case unit price is attached to the price html
+			$price_html = preg_replace( $regular_regex, '<span class="wc-gzd-sale-price-label">' . $sale_label . '</span> $0', $price_html, 1 );
 		}
 
 		if ( ! empty( $sale_regular_label ) && isset( $match_sale[1] ) ) {
-			$new_price_sale = '<span class="wc-gzd-sale-price-label wc-gzd-sale-price-regular-label">' . $sale_regular_label . '</span> ' . $match_sale[0];
+			// Replace the first occurrence only, e.g. in case unit price is attached to the price html
+			$price_html = preg_replace( $sale_regex, '<span class="wc-gzd-sale-price-label wc-gzd-sale-price-regular-label">' . $sale_regular_label . '</span> $0', $price_html, 1 );
 		}
 
 		/**
@@ -1164,9 +1173,8 @@ class WC_GZD_Product {
 		 * @param WC_GZD_Product $product The product object.
 		 *
 		 * @since 1.8.5
-		 *
 		 */
-		return apply_filters( 'woocommerce_gzd_product_sale_price_with_labels_html', $new_price_regular . ' ' . $new_price_sale . $new_price_suffix, $org_price_html, $this );
+		return apply_filters( 'woocommerce_gzd_product_sale_price_with_labels_html', $price_html, $org_price_html, $this );
 	}
 
 	public function get_price_html_from_to( $from, $to, $show_labels = true ) {
@@ -1225,15 +1233,13 @@ class WC_GZD_Product {
 		}
 
 		if ( $this->child->is_taxable() || $this->is_differential_taxed() ) {
-
 			$tax_display_mode = get_option( 'woocommerce_tax_display_shop' );
 			$tax_rates        = WC_Tax::get_rates( $this->child->get_tax_class() );
 
 			if ( ! empty( $tax_rates ) ) {
-
 				$tax_rates = array_values( $tax_rates );
 
-				// If is variable or is virtual vat exception dont show exact tax rate
+				// If is variable or is virtual vat exception don't show exact tax rate
 				if ( $this->is_virtual_vat_exception() || $this->child->is_type( 'variable' ) || $this->child->is_type( 'grouped' ) || get_option( 'woocommerce_gzd_hide_tax_rate_shop' ) === 'yes' ) {
 					$tax_notice = ( 'incl' === $tax_display_mode && ! $is_vat_exempt ? __( 'incl. VAT', 'woocommerce-germanized' ) : __( 'excl. VAT', 'woocommerce-germanized' ) );
 				} else {
@@ -1269,7 +1275,6 @@ class WC_GZD_Product {
 	 * @return boolean
 	 */
 	public function has_unit() {
-
 		if ( $this->get_unit() !== '' && $this->get_unit_price_regular() > 0 && $this->get_unit_base() !== '' ) {
 			return true;
 		}
@@ -2146,7 +2151,7 @@ class WC_GZD_Product {
 		 */
 		if ( $deposit_type = $this->get_deposit_type_term( 'edit' ) ) {
 			wp_set_post_terms( $this->get_wc_product()->get_id(), array( $deposit_type->slug ), 'product_deposit_type', false );
-		} else {
+		} elseif ( taxonomy_exists( 'product_deposit_type' ) ) {
 			wp_delete_object_term_relationships( $this->get_wc_product()->get_id(), 'product_deposit_type' );
 		}
 	}

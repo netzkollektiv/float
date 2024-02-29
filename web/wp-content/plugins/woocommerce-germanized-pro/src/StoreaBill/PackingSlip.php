@@ -2,6 +2,7 @@
 
 namespace Vendidero\Germanized\Pro\StoreaBill;
 
+use Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Shipment;
 use Vendidero\StoreaBill\Document\Document;
 use Vendidero\StoreaBill\Interfaces\Order;
 

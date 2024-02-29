@@ -3,25 +3,22 @@
  * ----------------------------------------------------------------------
  *
  *                          Borlabs Cookie
- *                      developed by Borlabs
+ *                    developed by Borlabs GmbH
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2018-2020 Borlabs - Benjamin A. Bornschein. All rights reserved.
+ * Copyright 2018-2022 Borlabs GmbH. All rights reserved.
  * This file may not be redistributed in whole or significant part.
  * Content of this file is protected by international copyright laws.
  *
  * ----------------- Borlabs Cookie IS NOT FREE SOFTWARE -----------------
  *
- * @copyright Borlabs - Benjamin A. Bornschein, https://borlabs.io
- * @author Benjamin A. Bornschein, Borlabs ben@borlabs.io
+ * @copyright Borlabs GmbH, https://borlabs.io
+ * @author Benjamin A. Bornschein
  *
  */
 
 namespace BorlabsCookie\Cookie\Frontend;
-
-use BorlabsCookie\Cookie\Config;
-use BorlabsCookie\Cookie\Multilanguage;
 
 class CookieBlocker
 {
@@ -29,8 +26,8 @@ class CookieBlocker
 
     public static function getInstance()
     {
-        if (null === self::$instance) {
-            self::$instance = new self;
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
 
         return self::$instance;
@@ -40,24 +37,57 @@ class CookieBlocker
     {
     }
 
-    private function __clone()
+    public function __clone()
     {
+        trigger_error('Cloning is not allowed.', E_USER_ERROR);
     }
 
-    private function __wakeup()
+    public function __wakeup()
     {
+        trigger_error('Unserialize is forbidden.', E_USER_ERROR);
+    }
+
+    /**
+     * deleteImpreciseCookie function.
+     *
+     * @param mixed $cookieName
+     * @param mixed $impreciseCookieName
+     */
+    public function deleteImpreciseCookie($impreciseCookieName)
+    {
+        if (!empty($_COOKIE)) {
+            $impreciseCookieName = str_replace('*', '', $impreciseCookieName);
+
+            foreach ($_COOKIE as $cookieName => $cookieData) {
+                if (strpos($cookieName, $impreciseCookieName) !== false) {
+                    unset($_COOKIE[$cookieName]);
+
+                    setcookie($cookieName, null, -1, '/');
+                }
+            }
+        }
+    }
+
+    /**
+     * deletePreciseCookie function.
+     *
+     * @param mixed $cookieName
+     */
+    public function deletePreciseCookie($cookieName)
+    {
+        if (!empty($_COOKIE[$cookieName])) {
+            unset($_COOKIE[$cookieName]);
+
+            setcookie($cookieName, null, -1, '/');
+        }
     }
 
     /**
      * handleBlocking function.
-     *
-     * @access public
-     * @return void
      */
     public function handleBlocking()
     {
         if (!empty($_COOKIE)) {
-
             // Get all Cookies were blocking is active
             $cookieGroups = Cookies::getInstance()->getAllCookieGroups();
 
@@ -66,10 +96,8 @@ class CookieBlocker
                     if (!empty($groupData->cookies)) {
                         foreach ($groupData->cookies as $cookieData) {
                             if (!empty($cookieData->settings['blockCookiesBeforeConsent'])) {
-
                                 // Check if consent was given
                                 if (Cookies::getInstance()->checkConsent($cookieData->cookie_id) === false) {
-
                                     // Find and block/delete cookies
                                     $cookieNameList = $this->prepareCookieNamesList($cookieData->cookie_name);
 
@@ -94,16 +122,13 @@ class CookieBlocker
     /**
      * prepareCookieNamesList function.
      *
-     * @access public
      * @param mixed $cookieNames
-     * @return void
      */
-    public function prepareCookieNamesList ($cookieNames)
+    public function prepareCookieNamesList($cookieNames)
     {
         $cookieNameList = [];
 
         if (!empty($cookieNames) && is_string($cookieNames)) {
-
             $cookieNames = explode(',', $cookieNames);
 
             if (!empty($cookieNames)) {
@@ -118,46 +143,5 @@ class CookieBlocker
         }
 
         return $cookieNameList;
-    }
-
-    /**
-     * deletePreciseCookie function.
-     *
-     * @access public
-     * @param mixed $cookieName
-     * @return void
-     */
-    public function deletePreciseCookie($cookieName)
-    {
-        if (!empty($_COOKIE[$cookieName])) {
-
-            unset($_COOKIE[$cookieName]);
-
-            setcookie($cookieName, null, -1, '/');
-        }
-    }
-
-    /**
-     * deleteImpreciseCookie function.
-     *
-     * @access public
-     * @param mixed $cookieName
-     * @return void
-     */
-    public function deleteImpreciseCookie($impreciseCookieName)
-    {
-        if (!empty($_COOKIE)) {
-
-            $impreciseCookieName = str_replace('*', '', $impreciseCookieName);
-
-            foreach ($_COOKIE as $cookieName => $cookieData) {
-                if (strpos($cookieName, $impreciseCookieName) !== false) {
-
-                    unset($_COOKIE[$cookieName]);
-
-                    setcookie($cookieName, null, -1, '/');
-                }
-            }
-        }
     }
 }

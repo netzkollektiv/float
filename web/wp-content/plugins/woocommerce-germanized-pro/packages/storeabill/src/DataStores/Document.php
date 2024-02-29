@@ -115,6 +115,7 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 			'document_formatted_number' => $document->get_formatted_number( 'edit' ),
 			'document_status'           => $this->get_status( $document ),
 			'document_type'             => $document->get_type(),
+			'document_index'            => $this->get_search_index( $document ),
 			'document_reference_type'   => $document->get_reference_type( 'edit' ),
 			'document_journal_type'     => $document->get_journal_type( 'edit' ),
 			'document_relative_path'    => $document->get_relative_path( 'edit' ),
@@ -170,6 +171,40 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 	}
 
 	/**
+	 * @param \Vendidero\StoreaBill\Document\Document $document
+	 * @return string
+	 */
+	protected function get_search_index( $document ) {
+		$index = array();
+
+		foreach ( $this->get_search_related_properties( $document ) as $property ) {
+			$getter = "get_{$property}";
+
+			if ( is_callable( array( $document, $getter ) ) ) {
+				$result = $document->$getter();
+
+				if ( is_array( $result ) ) {
+					$index = array_merge( $index, $result );
+				} else {
+					$index[] = $result;
+				}
+			}
+		}
+
+		$index = array_filter( array_unique( $index ) );
+
+		return implode( ' ', $index );
+	}
+
+	/**
+	 * @param \Vendidero\StoreaBill\Document\Document $document
+	 * @return array
+	 */
+	protected function get_search_related_properties( $document ) {
+		return array( 'address' );
+	}
+
+	/**
 	 * Get the status to save to the object.
 	 *
 	 * @since 3.6.0
@@ -216,6 +251,11 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 			$changed_props[] = 'country';
 		}
 
+		if ( count( array_intersect( $this->get_search_related_properties( $document ), $changed_props ) ) ) {
+			// Update search index
+			$document_data['document_index'] = $this->get_search_index( $document );
+		}
+
 		if ( ! empty( $changed_props ) ) {
 			$document->set_version( SAB_VERSION );
 		}
@@ -248,6 +288,8 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		}
 
 		if ( ! empty( $document_data ) ) {
+			$document_data['document_index'] = $this->get_search_index( $document );
+
 			$wpdb->update(
 				$wpdb->storeabill_documents,
 				$document_data,

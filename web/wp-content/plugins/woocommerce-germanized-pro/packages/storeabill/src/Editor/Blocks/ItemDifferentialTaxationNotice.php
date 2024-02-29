@@ -50,14 +50,14 @@ class ItemDifferentialTaxationNotice extends ItemTableColumnBlock {
 		 */
 		$document = $GLOBALS['document'];
 
-		$attributes        = $this->parse_attributes( $attributes );
-		$output            = '';
-		$is_reverse_charge = ( is_a( $document, '\Vendidero\StoreaBill\Invoice\Invoice' ) && $document->is_reverse_charge() ) ? true : false;
+		$attributes    = $this->parse_attributes( $attributes );
+		$output        = '';
+		$is_vat_exempt = ( is_a( $document, '\Vendidero\StoreaBill\Invoice\Invoice' ) && $document->is_vat_exempt() ) ? true : false;
 
 		/**
 		 * Show notice only for products subject to differential taxation (in case there is no reverse charge available)
 		 */
-		if ( is_a( $document_item, '\Vendidero\StoreaBill\Invoice\ProductItem' ) && $document_item->has_differential_taxation() && ! $is_reverse_charge ) {
+		if ( is_a( $document_item, '\Vendidero\StoreaBill\Invoice\ProductItem' ) && $document_item->has_differential_taxation() && ! $is_vat_exempt ) {
 			$output = $content;
 		}
 

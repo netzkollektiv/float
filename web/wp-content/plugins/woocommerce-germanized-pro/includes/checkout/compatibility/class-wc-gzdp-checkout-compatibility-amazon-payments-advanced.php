@@ -50,8 +50,10 @@ class WC_GZDP_Checkout_Compatibility_Amazon_Payments_Advanced {
 	}
 
 	public function set_scripts( $multistep, $assets ) {
+		$assets = WC_GZDP_Assets::instance();
+
 		// Multistep Checkout
-		wp_register_script( 'wc-gzdp-amazon-multistep-helper', WC_germanized_pro()->plugin_url() . '/assets/js/checkout-multistep-amazon-helper' . $assets->suffix . '.js', array( 'wc-gzdp-checkout-multistep' ), WC_GERMANIZED_PRO_VERSION, true );
+		$assets->register_script( 'wc-gzdp-amazon-multistep-helper', 'static/checkout-multistep-amazon-helper.js', array( 'wc-gzdp-checkout-multistep' ) );
 
 		wp_localize_script(
 			'wc-gzdp-amazon-multistep-helper',
@@ -65,10 +67,10 @@ class WC_GZDP_Checkout_Compatibility_Amazon_Payments_Advanced {
 	}
 
 	public function set_sca_scripts() {
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+		$assets = WC_GZDP_Assets::instance();
 
 		// Multistep Checkout
-		wp_register_script( 'wc-gzdp-amazon-multistep-sca-helper', WC_germanized_pro()->plugin_url() . '/assets/js/checkout-multistep-amazon-sca-helper' . $suffix . '.js', array( 'jquery' ), WC_GERMANIZED_PRO_VERSION, true );
+		$assets->register_script( 'wc-gzdp-amazon-multistep-sca-helper', 'static/checkout-multistep-amazon-sca-helper.js', array( 'jquery' ) );
 
 		if ( is_checkout() ) {
 			wp_enqueue_script( 'wc-gzdp-amazon-multistep-sca-helper' );

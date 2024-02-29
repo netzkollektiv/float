@@ -99,7 +99,7 @@ class Auth extends REST implements OAuth {
 			array(
 				'client_id'     => Package::get_client_id(),
 				'response_type' => 'code',
-				'redirect_uri'  => '/api/oauth2/authorization_code',
+				'redirect_uri'  => '/oauth2/code',
 				'scopes'        => 'profile.read,vouchers.read,vouchers.write,contacts.read,contacts.write,files.write,transaction-assignment-hint.write',
 			),
 			$this->get_url() . 'authorize'
@@ -149,7 +149,7 @@ class Auth extends REST implements OAuth {
 				array(
 					'grant_type'   => 'authorization_code',
 					'code'         => $authorization_code,
-					'redirect_uri' => '/api/oauth2/authorization_code',
+					'redirect_uri' => '/oauth2/code',
 				)
 			)
 		);
@@ -167,7 +167,7 @@ class Auth extends REST implements OAuth {
 			$this->update_expires_on( $expires );
 
 			$refresh_token_expires = new \DateTime();
-			$refresh_token_expires->modify( '+23 months' );
+			$refresh_token_expires->modify( '+89 days' );
 
 			$this->update_refresh_token_expires_on( $refresh_token_expires );
 
@@ -180,7 +180,7 @@ class Auth extends REST implements OAuth {
 	}
 
 	public function disconnect() {
-		$this->get_sync_helper()->get_api()->revoke();
+		$this->revoke();
 
 		$this->update_refresh_token( '' );
 		$this->update_access_token( '' );
@@ -198,6 +198,19 @@ class Auth extends REST implements OAuth {
 		return $this->get_sync_helper()->get_setting( 'refresh_token' );
 	}
 
+	public function revoke() {
+		$result = $this->get_sync_helper()->parse_response(
+			$this->post(
+				'revoke',
+				array(
+					'token' => $this->get_refresh_token(),
+				)
+			)
+		);
+
+		return $result;
+	}
+
 	public function refresh() {
 		$result = $this->get_sync_helper()->parse_response(
 			$this->post(
@@ -211,6 +224,15 @@ class Auth extends REST implements OAuth {
 
 		if ( ! is_wp_error( $result ) && $result->get( 'access_token' ) ) {
 			$this->update_access_token( $result->get( 'access_token' ) );
+
+			if ( $result->get( 'refresh_token' ) ) {
+				$this->update_refresh_token( $result->get( 'refresh_token' ) );
+
+				$refresh_token_expires = new \DateTime();
+				$refresh_token_expires->modify( '+89 days' );
+
+				$this->update_refresh_token_expires_on( $refresh_token_expires );
+			}
 
 			$expires_in = absint( $result->get( 'expires_in' ) );
 			$expires    = new \DateTime();

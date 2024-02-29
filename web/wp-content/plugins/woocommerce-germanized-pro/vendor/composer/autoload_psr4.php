@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Vendidero\\VendideroHelper\\' => array($baseDir . '/packages/vendidero-helper/src'),
     'Vendidero\\StoreaBill\\sevDesk\\' => array($baseDir . '/packages/storeabill-sevdesk/src'),
     'Vendidero\\StoreaBill\\Vendor\\' => array($baseDir . '/packages/storeabill/lib/packages'),
     'Vendidero\\StoreaBill\\Lexoffice\\' => array($baseDir . '/packages/storeabill-lexoffice/src'),

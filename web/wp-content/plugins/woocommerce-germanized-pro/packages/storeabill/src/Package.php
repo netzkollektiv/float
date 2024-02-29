@@ -21,7 +21,7 @@ class Package {
 	 *
 	 * @var string
 	 */
-	const VERSION = '2.1.1';
+	const VERSION = '2.3.0';
 
 	/**
 	 * Init the package.
@@ -85,10 +85,11 @@ class Package {
 		$compatibilities = apply_filters(
 			'storeabill_compatibilities',
 			array(
-				'wpml'          => '\Vendidero\StoreaBill\Compatibility\WPML',
-				'subscriptions' => '\Vendidero\StoreaBill\Compatibility\Subscriptions',
-				'bookings'      => '\Vendidero\StoreaBill\Compatibility\Bookings',
-				'bundles'       => '\Vendidero\StoreaBill\Compatibility\Bundles',
+				'wpml'           => '\Vendidero\StoreaBill\Compatibility\WPML',
+				'subscriptions'  => '\Vendidero\StoreaBill\Compatibility\Subscriptions',
+				'bookings'       => '\Vendidero\StoreaBill\Compatibility\Bookings',
+				'bundles'        => '\Vendidero\StoreaBill\Compatibility\Bundles',
+				'translatepress' => '\Vendidero\StoreaBill\Compatibility\TranslatePress',
 			)
 		);
 
@@ -159,6 +160,33 @@ class Package {
 
 		// Delete async exporter files that have not been downloaded via REST
 		add_action( 'delete_expired_transients', array( __CLASS__, 'cleanup_expired_exporter_files' ), 100 );
+
+		add_filter( 'pdf_memory_limit', array( __CLASS__, 'raise_pdf_render_memory_limit' ), 30 );
+	}
+
+	/**
+	 * Increases the maximum amount of memory limit to be used while rendering PDF files.
+	 * In case WP_MAX_MEMORY_LIMIT is greater than 512M, do not adjust the limit.
+	 *
+	 * @return string
+	 */
+	public static function raise_pdf_render_memory_limit( $limit ) {
+		if ( ! function_exists( 'wp_convert_hr_to_bytes' ) ) {
+			return $limit;
+		}
+
+		$wp_max_limit     = WP_MAX_MEMORY_LIMIT;
+		$wp_max_limit_int = wp_convert_hr_to_bytes( $wp_max_limit );
+
+		if ( -1 !== $wp_max_limit_int ) {
+			$wp_max_limit_int_mb = $wp_max_limit_int / MB_IN_BYTES;
+
+			if ( $wp_max_limit_int_mb < 512 ) {
+				$limit = '512M';
+			}
+		}
+
+		return $limit;
 	}
 
 	public static function cleanup_expired_exporter_files() {
@@ -446,10 +474,11 @@ class Package {
 		include_once SAB_ABSPATH . 'includes/sab-document-template-functions.php';
 
 		/**
-		 * Reset asset data to prevent missing assets
-		 * while rendering multiple documents per request.
+		 * Reset asset data to prevent missing assets while rendering multiple documents per request.
+		 * Unset registered assets as inline styles would otherwise be added once per request.
 		 */
-		sab_document_styles()->done = array();
+		sab_document_styles()->done       = array();
+		sab_document_styles()->registered = array();
 		sab_document_styles()->reset();
 
 		do_action( 'storeabill_after_setup_document', $document );

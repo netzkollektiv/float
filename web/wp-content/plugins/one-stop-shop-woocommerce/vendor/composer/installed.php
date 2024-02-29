@@ -1,7 +1,7 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => '1.3.7',
-        'version' => '1.3.7.0',
+        'pretty_version' => '1.6.1',
+        'version' => '1.6.1.0',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,12 +11,12 @@
     ),
     'versions' => array(
         'automattic/jetpack-autoloader' => array(
-            'pretty_version' => 'v2.11.16',
-            'version' => '2.11.16.0',
+            'pretty_version' => 'v2.12.0',
+            'version' => '2.12.0.0',
             'type' => 'composer-plugin',
             'install_path' => __DIR__ . '/../automattic/jetpack-autoloader',
             'aliases' => array(),
-            'reference' => '43bc969fd90ce3d92e7b75fbf384a5fd03963dad',
+            'reference' => '632b69cfc73ed5505f2b03165e7f68d414d0da12',
             'dev_requirement' => false,
         ),
         'composer/installers' => array(
@@ -41,8 +41,8 @@
             ),
         ),
         'vendidero/one-stop-shop-woocommerce' => array(
-            'pretty_version' => '1.3.7',
-            'version' => '1.3.7.0',
+            'pretty_version' => '1.6.1',
+            'version' => '1.6.1.0',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -50,12 +50,12 @@
             'dev_requirement' => false,
         ),
         'vendidero/woocommerce-eu-tax-helper' => array(
-            'pretty_version' => '1.0.6',
-            'version' => '1.0.6.0',
+            'pretty_version' => '2.0.2',
+            'version' => '2.0.2.0',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../libs/woocommerce-eu-tax-helper',
             'aliases' => array(),
-            'reference' => '81a5e335f60e427bb6003e5754e7b3e19e60056c',
+            'reference' => '1713f523297c1bfa1c2027a8481478e0561704ac',
             'dev_requirement' => false,
         ),
     ),

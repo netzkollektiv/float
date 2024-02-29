@@ -2,6 +2,8 @@
 
 namespace Vendidero\OneStopShop;
 
+use Vendidero\EUTaxHelper\Helper;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -11,19 +13,27 @@ class Install {
 
 	public static function install() {
 		$current_version = get_option( 'one_stop_shop_woocommerce', null );
+		$is_update       = null !== $current_version && version_compare( $current_version, Package::get_version(), '<' );
+
 		update_option( 'one_stop_shop_woocommerce', Package::get_version() );
 
-		if ( ! Package::is_integration() ) {
-			if ( ! Package::has_dependencies() ) {
+		if ( ! Package::has_dependencies() ) {
+			if ( is_admin() ) {
 				ob_start();
 				Package::dependency_notice();
 				$notice = ob_get_clean();
 
 				wp_die( wp_kses_post( $notice ) );
+			} else {
+				return;
 			}
-
-			self::add_options();
 		}
+
+		if ( $is_update ) {
+			Helper::apply_tax_rate_changesets();
+		}
+
+		self::add_options();
 	}
 
 	private static function add_options() {

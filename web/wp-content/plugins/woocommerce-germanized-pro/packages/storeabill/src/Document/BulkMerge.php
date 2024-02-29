@@ -33,7 +33,7 @@ class BulkMerge extends BulkActionHandler {
 
 		if ( ! empty( $current ) ) {
 			foreach ( $current as $document_id ) {
-				CacheHelper::prevent_caching();
+				CacheHelper::prevent_caching( 'bulk' );
 
 				if ( $document = sab_get_document( $document_id ) ) {
 					if ( $document->has_file() ) {

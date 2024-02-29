@@ -18,7 +18,7 @@ class AccountingHelper {
 	protected static $current_email_instance = false;
 
 	public static function init() {
-		$document_types = array( 'packing_slip', 'post_document', 'invoice', 'invoice_cancellation' );
+		$document_types = array( 'packing_slip', 'post_document', 'invoice', 'invoice_cancellation', 'commercial_invoice' );
 
 		foreach ( $document_types as $document_type ) {
 			add_action( "storeabill_{$document_type}_default_template_after_company_address_header", array( __CLASS__, 'add_vat_id' ), 10 );
@@ -143,6 +143,19 @@ class AccountingHelper {
 		 * sevDesk small business taxType
 		 */
 		add_filter( 'storeabill_external_sync_sevdesk_tax_type', array( __CLASS__, 'adjust_sevdesk_tax_type' ), 10, 2 );
+
+		if ( is_admin() ) {
+			Ajax::init();
+		}
+	}
+
+	/**
+	 * This is being checked on load - do not call the main plugin here.
+	 *
+	 * @return bool
+	 */
+	public static function is_enabled() {
+		return 'yes' === get_option( 'woocommerce_gzdp_invoice_enable' );
 	}
 
 	/**
@@ -547,7 +560,7 @@ class AccountingHelper {
 				$country  = $order->get_taxable_country();
 				$postcode = $order->get_taxable_postcode();
 
-				if ( ! $order->is_reverse_charge() && ( Countries::get_base_country() !== $country && Countries::is_eu_vat_country( $country, $postcode ) ) ) {
+				if ( ! $order->is_vat_exempt() && ( Countries::get_base_country() !== $country && Countries::is_eu_vat_country( $country, $postcode ) ) ) {
 					$is_oss = true;
 				}
 			}
@@ -683,6 +696,10 @@ class AccountingHelper {
 	 * @param Order $order
 	 */
 	public static function order_date_of_service( $date_of_service, $order ) {
+		if ( ! function_exists( 'wc_gzd_get_shipment_order' ) ) {
+			return $date_of_service;
+		}
+
 		if ( $shipment_order = wc_gzd_get_shipment_order( $order->get_order() ) ) {
 			$date_shipped = $shipment_order->get_date_shipped();
 

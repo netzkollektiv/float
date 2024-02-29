@@ -17,15 +17,37 @@ class WC_GZDP_Unit_Price_Helper {
 
 	private function __construct() {
 		// Unit auto calculation
-		add_action( 'woocommerce_before_product_object_save', array( $this, 'before_product_save' ), 10 );
+		add_action( 'woocommerce_before_product_object_save', array( $this, 'before_product_save' ), 9 );
 		add_filter( 'woocommerce_gzd_product_saveable_data', array( $this, 'calculate_unit_price' ), 10, 2 );
 
 		add_action( 'woocommerce_bulk_edit_variations', array( $this, 'bulk_save_variations_unit_price' ), 0, 4 );
 		add_action( 'woocommerce_product_quick_edit_save', array( $this, 'quick_edit_save_unit_price' ), 0, 1 );
 		add_action( 'woocommerce_product_bulk_edit_save', array( $this, 'bulk_edit_save_unit_price' ), 0, 1 );
+		add_action( 'wp_insert_post', array( $this, 'maybe_save_unit_price' ), 10 );
 
 		// Hook into the product saving (WC > 3.0) and manipulate price after saving
 		add_filter( 'woocommerce_gzd_save_display_unit_price_data', array( $this, 'save_display_price' ), 10, 2 );
+	}
+
+	/**
+	 * Detect inserts/updates which are not triggered via WC_Product::save(), e.g. by import plugins such
+	 * as WP All Import.
+	 *
+	 * @param $post_id
+	 *
+	 * @return void
+	 */
+	public function maybe_save_unit_price( $post_id ) {
+		if ( ! did_action( 'woocommerce_before_product_object_save' ) ) {
+			if ( $product = wc_get_product( $post_id ) ) {
+				$gzd_product = wc_gzd_get_product( $product );
+
+				if ( $gzd_product->get_unit_price_auto() ) {
+					$gzd_product->recalculate_unit_price();
+					$gzd_product->save();
+				}
+			}
+		}
 	}
 
 	public function before_product_save( $product ) {

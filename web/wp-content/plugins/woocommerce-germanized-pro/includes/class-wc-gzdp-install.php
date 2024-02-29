@@ -38,7 +38,6 @@ if ( ! class_exists( 'WC_GZDP_Install' ) ) :
 
 		public static function setup_redirect() {
 			if ( get_option( '_wc_gzdp_setup_wizard_redirect' ) ) {
-
 				// Bail if activating from network, or bulk, or within an iFrame, or AJAX (e.g. plugins screen)
 				if ( is_network_admin() || isset( $_GET['activate-multi'] ) || defined( 'IFRAME_REQUEST' ) || ( defined( 'DOING_AJAX' ) && DOING_AJAX ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 					return;
@@ -90,6 +89,7 @@ if ( ! class_exists( 'WC_GZDP_Install' ) ) :
 			$capability_types = array(
 				'packing_slip',
 				'post_document',
+				'commercial_invoice',
 			);
 
 			foreach ( $capability_types as $capability_type ) {
@@ -154,6 +154,21 @@ if ( ! class_exists( 'WC_GZDP_Install' ) ) :
 
 				if ( $checkbox = $manager->get_checkbox( 'virtual_vat_location' ) ) {
 					$checkbox->update_option( 'is_enabled', 'no' );
+				}
+			}
+
+			if ( function_exists( 'as_unschedule_all_actions' ) ) {
+				$hooks = array(
+					'woocommerce_gzdp_check_generator_versions',
+					'vd_helper_daily',
+					'storeabill_order_auto_sync_callback',
+					'storeabill_document_render_callback',
+					'storeabill_refresh_template_shortcodes',
+					'storeabill_external_sync_callback',
+				);
+
+				foreach ( $hooks as $hook ) {
+					as_unschedule_all_actions( $hook );
 				}
 			}
 		}
@@ -566,6 +581,34 @@ if ( ! class_exists( 'WC_GZDP_Install' ) ) :
 				self::upgrade_3_5_2();
 			} elseif ( version_compare( $current_db_version, '3.5.4', '<' ) ) {
 				self::upgrade_3_5_4();
+			} elseif ( version_compare( $current_db_version, '3.9.0', '<' ) ) {
+				self::upgrade_3_9_0();
+			}
+		}
+
+		private static function upgrade_3_9_0() {
+			$packing_settings = array(
+				'woocommerce_gzdp_enable_auto_shipment_packing',
+				'woocommerce_gzdp_shipment_packing_group_by_shipping_class',
+				'woocommerce_gzdp_shipment_packing_inner_buffer_type',
+				'woocommerce_gzdp_shipment_packing_inner_fixed_buffer',
+				'woocommerce_gzdp_shipment_packing_inner_percentage_buffer',
+			);
+
+			foreach ( $packing_settings as $option_name ) {
+				$gzd_base_option_name = str_replace( 'woocommerce_gzdp_shipment_', 'woocommerce_gzd_shipments_', $option_name );
+
+				if ( 'woocommerce_gzdp_enable_auto_shipment_packing' === $option_name ) {
+					$gzd_base_option_name = 'woocommerce_gzd_shipments_enable_auto_packing';
+				}
+
+				if ( $option_value = get_option( $option_name ) ) {
+					update_option( $gzd_base_option_name, $option_value );
+				}
+			}
+
+			if ( is_callable( array( '\Vendidero\Germanized\Shipments\Install', 'migrate_to_configuration_sets' ) ) ) {
+				\Vendidero\Germanized\Shipments\Install::migrate_to_configuration_sets( array( 'dpd', 'gls' ) );
 			}
 		}
 

@@ -141,7 +141,7 @@ abstract class BulkActionHandler {
 			$page
 		);
 
-		return html_entity_decode( wp_nonce_url( $page, $this->get_done_nonce_action() ) );
+		return html_entity_decode( wp_nonce_url( $page, $this->get_done_nonce_action(), 'sab_bulk_action_nonce' ) );
 	}
 
 	public function get_done_nonce_action() {

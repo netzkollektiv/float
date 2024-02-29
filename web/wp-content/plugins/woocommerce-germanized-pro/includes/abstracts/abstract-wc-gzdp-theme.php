@@ -6,6 +6,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 abstract class WC_GZDP_Theme {
 
+	protected $theme = '';
+
+	protected $title = '';
+
 	public $name = '';
 
 	public function __construct( $template ) {
@@ -79,22 +83,23 @@ abstract class WC_GZDP_Theme {
 	public function custom_hooks() {}
 
 	public function load_styles() {
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
-		$css    = WC_germanized_pro()->plugin_path() . '/themes/assets/css/wc-gzdp-' . $this->name . $suffix . '.css';
+		$gzdp = WC_germanized_pro();
+		$css  = WC_germanized_pro()->plugin_path( 'assets/css/wc-gzdp-theme-' . $this->name . '.scss' );
 
 		if ( file_exists( $css ) ) {
-			wp_register_style( 'wc-gzdp-' . $this->name, WC_germanized_pro()->plugin_url() . '/themes/assets/css/wc-gzdp-' . $this->name . $suffix . '.css', array(), WC_GERMANIZED_PRO_VERSION );
-			wp_enqueue_style( 'wc-gzdp-' . $this->name );
+			wp_register_style( 'wc-gzdp-theme-' . $this->name, $gzdp->get_assets_build_url( 'static/wc-gzdp-theme-' . $this->name . '.css' ), array(), WC_GERMANIZED_PRO_VERSION );
+			wp_enqueue_style( 'wc-gzdp-theme-' . $this->name );
 		}
 	}
 
 	public function load_scripts() {
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
-		$css    = WC_germanized_pro()->plugin_path() . '/themes/assets/js/wc-gzdp-' . $this->name . $suffix . '.js';
+		$gzdp   = WC_germanized_pro();
+		$assets = WC_GZDP_Assets::instance();
+		$js     = $gzdp->plugin_path( 'assets/js/static/wc-gzdp-theme-' . $this->name . '.js' );
 
-		if ( file_exists( $css ) ) {
-			wp_register_script( 'wc-gzdp-' . $this->name, WC_germanized_pro()->plugin_url() . '/themes/assets/js/wc-gzdp-' . $this->name . $suffix . '.js', array(), WC_GERMANIZED_PRO_VERSION, true );
-			wp_enqueue_script( 'wc-gzdp-' . $this->name );
+		if ( file_exists( $js ) ) {
+			$assets->register_script( 'wc-gzdp-theme-' . $this->name, 'static/wc-gzdp-theme-' . $this->name . '.js' );
+			wp_enqueue_script( 'wc-gzdp-theme-' . $this->name );
 		}
 	}
 }

@@ -141,7 +141,7 @@ class DefaultTemplate extends Template {
 				'name'      => 'default',
 				'selectors' => array(
 					'pdf'  => 'body',
-					'html' => '.block-editor .editor-styles-wrapper',
+					'html' => '.editor-styles-wrapper',
 				),
 			),
 		);

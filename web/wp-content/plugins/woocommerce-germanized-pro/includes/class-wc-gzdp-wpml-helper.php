@@ -35,9 +35,21 @@ class WC_GZDP_WPML_Helper {
 		add_filter( 'storeabill_wpml_render_language', array( $this, 'switch_legal_page_render_language' ), 10, 2 );
 		add_filter( 'woocommerce_gzd_wpml_admin_relevant_string_options', array( $this, 'register_admin_string_options' ), 10, 1 );
 		add_filter( 'woocommerce_gzd_wpml_admin_order_items_translatable_actions', array( $this, 'translatable_actions' ) );
+		add_filter( 'woocommerce_gzd_wpml_email_ids', array( $this, 'register_emails' ) );
 
 		// Multistep step name refresh after init
 		$this->refresh_step_names();
+	}
+
+	public function register_emails( $emails ) {
+		$emails = array_merge(
+			$emails,
+			array(
+				'WC_GZDP_Email_Customer_Order_Confirmation' => 'customer_order_confirmation',
+			)
+		);
+
+		return $emails;
 	}
 
 	public function translatable_actions( $actions ) {
