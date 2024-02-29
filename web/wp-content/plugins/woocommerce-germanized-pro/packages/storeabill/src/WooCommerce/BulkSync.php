@@ -3,15 +3,16 @@
 namespace Vendidero\StoreaBill\WooCommerce;
 
 use Vendidero\StoreaBill\Document\BulkActionHandler;
+use Vendidero\StoreaBill\Utilities\CacheHelper;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Shipment Order
  *
- * @class 		WC_GZD_Shipment_Order
- * @version		1.0.0
- * @author 		Vendidero
+ * @class       WC_GZD_Shipment_Order
+ * @version     1.0.0
+ * @author      Vendidero
  */
 class BulkSync extends BulkActionHandler {
 
@@ -24,7 +25,7 @@ class BulkSync extends BulkActionHandler {
 	}
 
 	public function get_admin_url() {
-		return admin_url( 'edit.php?post_type=shop_order' );
+		return Helper::is_hpos_enabled() ? admin_url( 'admin.php?page=wc-orders' ) : admin_url( 'edit.php?post_type=shop_order' );
 	}
 
 	public function handle() {
@@ -32,16 +33,17 @@ class BulkSync extends BulkActionHandler {
 
 		if ( ! empty( $current ) ) {
 			foreach ( $current as $order_id ) {
+				CacheHelper::prevent_caching();
 
 				if ( $order = Helper::get_order( $order_id ) ) {
-					$result = $order->sync_order( true );
+					$result = $order->sync_order( true, array( 'created_via' => 'bulk_action' ) );
 
 					if ( ! is_wp_error( $result ) ) {
 						$result = $order->finalize();
 					}
 
 					if ( is_wp_error( $result ) ) {
-						foreach( $result->get_error_messages() as $error ) {
+						foreach ( $result->get_error_messages() as $error ) {
 							/* translators: 1: order id 2: error message */
 							$this->add_notice( sprintf( _x( '%1$s error: %2$s', 'storeabill-core', 'woocommerce-germanized-pro' ), $order->get_id(), $error ), 'error' );
 						}

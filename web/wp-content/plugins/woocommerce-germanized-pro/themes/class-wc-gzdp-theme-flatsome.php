@@ -1,7 +1,8 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 class WC_GZDP_Theme_Flatsome extends WC_GZDP_Theme {
 
@@ -28,7 +29,7 @@ class WC_GZDP_Theme_Flatsome extends WC_GZDP_Theme {
 		);
 	}
 
-    public function custom_hooks() {
+	public function custom_hooks() {
 
 		if ( ! function_exists( 'wc_gzd_get_shopmark' ) ) {
 			return;
@@ -43,22 +44,22 @@ class WC_GZDP_Theme_Flatsome extends WC_GZDP_Theme {
 			}
 		}
 
-	    if ( $shopmark = wc_gzd_get_shopmark( 'single_product', 'legal' ) ) {
-		    if ( $shopmark->is_enabled() ) {
-			    add_action( 'woocommerce_single_product_lightbox_summary', 'woocommerce_gzd_template_single_legal_info', 11 );
-		    }
-	    }
+		if ( $shopmark = wc_gzd_get_shopmark( 'single_product', 'legal' ) ) {
+			if ( $shopmark->is_enabled() ) {
+				add_action( 'woocommerce_single_product_lightbox_summary', 'woocommerce_gzd_template_single_legal_info', 11 );
+			}
+		}
 
-	    if ( $shopmark = wc_gzd_get_shopmark( 'single_product', 'delivery_time' ) ) {
-		    if ( $shopmark->is_enabled() ) {
-			    add_action( 'woocommerce_single_product_lightbox_summary', 'woocommerce_gzd_template_single_delivery_time_info', 25 );
-		    }
-	    }
+		if ( $shopmark = wc_gzd_get_shopmark( 'single_product', 'delivery_time' ) ) {
+			if ( $shopmark->is_enabled() ) {
+				add_action( 'woocommerce_single_product_lightbox_summary', 'woocommerce_gzd_template_single_delivery_time_info', 25 );
+			}
+		}
 
 		$this->footer_init();
 
-		remove_action ( 'wp_footer', 'woocommerce_gzd_template_footer_vat_info', wc_gzd_get_hook_priority( 'footer_vat_info' ) );
-		remove_action ( 'wp_footer', 'woocommerce_gzd_template_footer_sale_info', wc_gzd_get_hook_priority( 'footer_sale_info' ) );
+		remove_action( 'wp_footer', 'woocommerce_gzd_template_footer_vat_info', wc_gzd_get_hook_priority( 'footer_vat_info' ) );
+		remove_action( 'wp_footer', 'woocommerce_gzd_template_footer_sale_info', wc_gzd_get_hook_priority( 'footer_sale_info' ) );
 
 		// Product widget small - support for custom flatsome widgets
 		add_filter( 'wc_get_template_part', array( $this, 'check_product_small_template' ), 10, 3 );
@@ -68,7 +69,7 @@ class WC_GZDP_Theme_Flatsome extends WC_GZDP_Theme {
 	}
 
 	public function check_product_small_template( $template, $slug, $name ) {
-		if ( "{$slug}-{$name}.php" === "content-product-small.php" ) {
+		if ( "{$slug}-{$name}.php" === 'content-product-small.php' ) {
 			add_filter( 'woocommerce_get_price_html', array( $this, 'price_html' ), 100, 2 );
 		}
 
@@ -101,7 +102,7 @@ class WC_GZDP_Theme_Flatsome extends WC_GZDP_Theme {
 
 			if ( wp_script_is( 'wc-gzd-add-to-cart-variation' ) ) {
 				wp_enqueue_script( 'wc-gzdp-flatsome-quick-view' );
-            }
+			}
 		}
 	}
 
@@ -113,10 +114,10 @@ class WC_GZDP_Theme_Flatsome extends WC_GZDP_Theme {
 	public function footer_init() {
 		if ( has_action( 'wp_footer', 'woocommerce_gzd_template_footer_vat_info' ) ) {
 			add_action( 'flatsome_absolute_footer_primary', 'woocommerce_gzd_template_footer_vat_info', 20 );
-        }
+		}
 
 		if ( has_action( 'wp_footer', 'woocommerce_gzd_template_footer_sale_info' ) ) {
 			add_action( 'flatsome_absolute_footer_primary', 'woocommerce_gzd_template_footer_sale_info', 20 );
-        }
+		}
 	}
 }

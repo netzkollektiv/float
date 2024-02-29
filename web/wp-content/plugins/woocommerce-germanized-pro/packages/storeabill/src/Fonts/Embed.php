@@ -49,9 +49,12 @@ final class Embed {
 		foreach ( $fonts as $display_type => $font_data ) {
 
 			if ( ! is_a( $font_data, '\Vendidero\StoreaBill\Fonts\Font' ) ) {
-				$font_data = wp_parse_args( $font_data, array(
-					'name' => ''
-				) );
+				$font_data = wp_parse_args(
+					$font_data,
+					array(
+						'name' => '',
+					)
+				);
 
 				if ( ! $global_font = Fonts::get_font( $font_data['name'] ) ) {
 					continue;
@@ -96,16 +99,16 @@ final class Embed {
 		preg_match_all( '/(?ims)([a-z0-9\s\.\:#_\-@,]+)\{([^\}]*)\}/', $font_data, $arr );
 		$result = array();
 
-		foreach ( $arr[0] as $i => $css ){
+		foreach ( $arr[0] as $i => $css ) {
 			$url       = '';
-			$rules     = explode(';', trim( $arr[2][ $i ] ) );
+			$rules     = explode( ';', trim( $arr[2][ $i ] ) );
 			$rules_arr = array();
 			$variant   = false;
 
-			foreach ( $rules as $strRule ) {
+			foreach ( $rules as $str_rule ) {
 
-				if ( ! empty( $strRule ) ) {
-					$rule     = explode( ":", $strRule );
+				if ( ! empty( $str_rule ) ) {
+					$rule     = explode( ':', $str_rule );
 					$rule_key = sab_clean( trim( $rule[0] ) );
 					$rule_val = sab_clean( trim( $rule[1] ) );
 
@@ -114,10 +117,10 @@ final class Embed {
 					} elseif ( 'font-style' === $rule_key ) {
 						$rule_key = 'style';
 					} elseif ( 'src' === $rule_key ) {
-						preg_match('/(\'.*?\')/', $strRule, $variant_string );
+						preg_match( '/(\'.*?\')/', $str_rule, $variant_string );
 
 						if ( ! empty( $variant_string ) ) {
-							$variant_string = str_replace( "'", "", trim( $variant_string[0] ) );
+							$variant_string = str_replace( "'", '', trim( $variant_string[0] ) );
 							$maps           = array(
 								'Bold Italic' => 'bold_italic',
 								'Regular'     => 'regular',
@@ -125,7 +128,7 @@ final class Embed {
 								'Bold'        => 'bold',
 							);
 
-							foreach( $maps as $map_key => $map_variant ) {
+							foreach ( $maps as $map_key => $map_variant ) {
 
 								if ( substr( $variant_string, strlen( $map_key ) * -1 ) === $map_key ) {
 									$variant = $map_variant;
@@ -134,7 +137,7 @@ final class Embed {
 							}
 						}
 
-						preg_match_all('#\bhttps?://[^,\s()<>]+(?:\([\w\d]+\)|([^,[:punct:]\s]|/))#', $strRule, $matches );
+						preg_match_all( '#\bhttps?://[^,\s()<>]+(?:\([\w\d]+\)|([^,[:punct:]\s]|/))#', $str_rule, $matches );
 						$matches = array_shift( $matches );
 
 						if ( ! empty( $matches ) && ( 0 === strpos( $matches[0], 'https://fonts.gstatic.com' ) ) ) {
@@ -175,15 +178,15 @@ final class Embed {
 
 			// Remove blank lines and extra spaces.
 			$css = str_replace(
-				[ ': ', ';  ', '; ', '  ' ],
-				[ ':', ';', ';', ' ' ],
+				array( ': ', ';  ', '; ', '  ' ),
+				array( ':', ';', ';', ' ' ),
 				preg_replace( "/\r|\n/", '', $css )
 			);
 
 			// Remove protocol to fix http/https issues.
 			$css = str_replace(
-				[ 'http://', 'https://' ],
-				[ '//', '//' ],
+				array( 'http://', 'https://' ),
+				array( '//', '//' ),
 				$css
 			);
 
@@ -192,10 +195,15 @@ final class Embed {
 			$result[] = $rules_arr;
 		}
 
-		usort($result, function( $a, $b ) {
-			if ( $a['weight'] == $b['weight'] ) return 0;
-			return ( $a['weight'] < $b['weight'] ) ? -1 : 1;
-		} );
+		usort(
+			$result,
+			function( $a, $b ) {
+				if ( $a['weight'] === $b['weight'] ) {
+					return 0;
+				}
+				return ( $a['weight'] < $b['weight'] ) ? -1 : 1;
+			}
+		);
 
 		return $result;
 	}
@@ -206,9 +214,9 @@ final class Embed {
 	 * @return array|mixed
 	 */
 	protected function get_google_font_data( $font ) {
-		$type         = $this->type === 'html' ? 'woff' : 'ttf';
-		$variants     = join( ',', array_values( $font->get_variant_mappings() ) );
-		$family       = str_replace( ' ', '+', trim( $font->get_family() ) );
+		$type     = 'html' === $this->type ? 'woff' : 'ttf';
+		$variants = join( ',', array_values( $font->get_variant_mappings() ) );
+		$family   = str_replace( ' ', '+', trim( $font->get_family() ) );
 
 		$subset       = apply_filters( 'storeabill_googlefonts_font_subset', 'cyrillic,cyrillic-ext,devanagari,greek,greek-ext,khmer,latin,latin-ext,vietnamese,hebrew,arabic,bengali,gujarati,tamil,telugu,thai' );
 		$url          = "https://fonts.googleapis.com/css?family={$family}:{$variants}&subset={$subset}";
@@ -230,15 +238,18 @@ final class Embed {
 		} else {
 			$updated = false;
 
-			foreach( $result as $key => $font ) {
-				$font = wp_parse_args( $font, array(
-					'local_url' => '',
-					'url'       => '',
-				) );
+			foreach ( $result as $key => $font ) {
+				$font = wp_parse_args(
+					$font,
+					array(
+						'local_url' => '',
+						'url'       => '',
+					)
+				);
 
 				$local_path = self::get_font_path( $font );
 
-				if ( empty( $font['local_url'] ) || ! @file_exists( $local_path ) ) {
+				if ( empty( $font['local_url'] ) || ! @file_exists( $local_path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 					$ext                         = pathinfo( $font['url'], PATHINFO_EXTENSION );
 					$result[ $key ]['local_url'] = Helper::download_font_file( $font['url'], $ext );
 
@@ -261,7 +272,6 @@ final class Embed {
 	}
 
 	protected function get_result_data() {
-
 		if ( ! is_null( $this->result_data ) ) {
 			return $this->result_data;
 		}
@@ -269,7 +279,6 @@ final class Embed {
 		$global_css = '';
 
 		foreach ( $this->fonts_to_embed as $font_name => $font ) {
-
 			if ( $font->is_google_font() ) {
 				$data = $this->get_google_font_data( $font );
 			} else {
@@ -280,11 +289,11 @@ final class Embed {
 				$this->font_results[ $font_name ] = array(
 					'name'   => $font->get_name(),
 					'family' => $font->get_family(),
-					'files'  => $this->map_font_to_variants( $data, $font )
+					'files'  => $this->map_font_to_variants( $data, $font ),
 				);
 			}
 
-			foreach( $data as $font_data ) {
+			foreach ( $data as $font_data ) {
 				$global_css .= $font_data['css'];
 			}
 		}
@@ -294,7 +303,7 @@ final class Embed {
 			'display_types' => array(),
 		);
 
-		foreach( $this->fonts as $display_type => $font ) {
+		foreach ( $this->fonts as $display_type => $font ) {
 			$this->result_data['display_types'][ $display_type ] = $this->generate_css( $font->get_family(), $display_type );
 		}
 
@@ -313,10 +322,9 @@ final class Embed {
 	 * @return array
 	 */
 	protected function get_font_data( $font ) {
-		$font_data  = array();
+		$font_data = array();
 
-		foreach( $font->get_files( $this->type ) as $variant => $file_name ) {
-
+		foreach ( $font->get_files( $this->type ) as $variant => $file_name ) {
 			if ( 'regular' !== $variant && ! $font->has_variant_mapping( $variant ) ) {
 				continue;
 			}
@@ -331,7 +339,7 @@ final class Embed {
 					'variant'    => $variant,
 					'css'        => '',
 					'weight'     => ( 'bold' === $variant || 'bold_italic' === $variant ) ? 'bold' : 'normal',
-					'style'      => ( $variant === 'italic' || $variant === 'bold_italic' ) ? 'italic' : 'normal'
+					'style'      => ( 'italic' === $variant || 'bold_italic' === $variant ) ? 'italic' : 'normal',
 				);
 
 				$data['css'] = $this->generate_font_face( $data );
@@ -339,10 +347,15 @@ final class Embed {
 			}
 		}
 
-		usort($font_data, function( $a, $b ) {
-			if ( $a['weight'] == $b['weight'] ) return 0;
-			return ( $a['weight'] < $b['weight'] ) ? -1 : 1;
-		} );
+		usort(
+			$font_data,
+			function( $a, $b ) {
+				if ( $a['weight'] === $b['weight'] ) {
+					return 0;
+				}
+				return ( $a['weight'] < $b['weight'] ) ? -1 : 1;
+			}
+		);
 
 		return $font_data;
 	}
@@ -364,14 +377,14 @@ final class Embed {
 
 		$explicit_name = ( $explicit_name === $font_data['family'] ) ? ( $font_data['family'] . '-Regular' ) : $explicit_name;
 
-		return '@font-face{ font-display:auto; font-family: "' . $font_data['family'] . '"; font-style:' . $font_data['style'] . '; font-weight:' . $font_data['weight'] . '; src:local("' . $local_name . '"), local("' . $explicit_name . '"), url(' . $font_data['local_url'] . ') format("' . $extension. '");}';
+		return '@font-face{ font-display:auto; font-family: "' . $font_data['family'] . '"; font-style:' . $font_data['style'] . '; font-weight:' . $font_data['weight'] . '; src:local("' . $local_name . '"), local("' . $explicit_name . '"), url(' . $font_data['local_url'] . ') format("' . $extension . '");}';
 	}
 
 	protected function get_variant_identifier( $data ) {
 		$variant_string = isset( $data['weight'] ) ? $data['weight'] : $data['style'];
 
 		if ( is_numeric( $variant_string ) ) {
-			$variant_string .= $data['style'] === 'italic' ? 'italic' : '';
+			$variant_string .= 'italic' === $data['style'] ? 'italic' : '';
 		} else {
 			if ( isset( $data['variant'] ) && strpos( $variant_string, $data['variant'] ) === false ) {
 				$variant_string .= $data['variant'];
@@ -380,9 +393,9 @@ final class Embed {
 
 		if ( 'normalregular' === $variant_string ) {
 			$variant_string = 'regular';
-		} elseif( 'normalitalic' === $variant_string ) {
+		} elseif ( 'normalitalic' === $variant_string ) {
 			$variant_string = 'italic';
-		} elseif( 'boldbold_italic' === $variant_string ) {
+		} elseif ( 'boldbold_italic' === $variant_string ) {
 			$variant_string = 'bold_italic';
 		}
 
@@ -394,8 +407,8 @@ final class Embed {
 	}
 
 	protected function get_matching_variant( $variant, $font_data ) {
-		foreach( $font_data as $data ) {
-			switch( $variant ) {
+		foreach ( $font_data as $data ) {
+			switch ( $variant ) {
 				case 'regular':
 				case 'bold':
 					if ( 'normal' === $data['style'] ) {
@@ -423,13 +436,13 @@ final class Embed {
 	protected function map_font_to_variants( $font_data, $font ) {
 		$font_variants = array();
 
-		foreach( array_keys( sab_get_font_variant_types() ) as $variant ) {
+		foreach ( array_keys( sab_get_font_variant_types() ) as $variant ) {
 			$font_variants[ $variant ] = '';
 
 			if ( $font->has_variant_mapping( $variant ) ) {
 				$variant_mapping = $font->get_variant_mapping( $variant );
 
-				foreach( $font_data as $data ) {
+				foreach ( $font_data as $data ) {
 					$variant_string = $this->get_variant_identifier( $data );
 
 					if ( $variant_mapping === $variant_string ) {
@@ -443,38 +456,48 @@ final class Embed {
 		$font_data_asc  = $font_data;
 		$font_data_desc = $font_data;
 
-		usort( $font_data_asc, function ( $data_1, $data_2 ) {
-			if ( is_numeric( $data_1['weight'] ) ) {
-				if ( $data_1['weight'] == $data_2['weight'] ) return 0;
-				return $data_1['weight'] < $data_2['weight'] ? -1 : 1;
-			} else {
-				$order = array( 'regular', 'bold' );
+		usort(
+			$font_data_asc,
+			function ( $data_1, $data_2 ) {
+				if ( is_numeric( $data_1['weight'] ) ) {
+					if ( $data_1['weight'] === $data_2['weight'] ) {
+						return 0;
+					}
+					return $data_1['weight'] < $data_2['weight'] ? -1 : 1;
+				} else {
+					$order = array( 'regular', 'bold' );
 
-				$pos_a = array_search( $data_1['weight'], $order );
-				$pos_b = array_search( $data_2['weight'], $order );
+					$pos_a = array_search( $data_1['weight'], $order, true );
+					$pos_b = array_search( $data_2['weight'], $order, true );
 
-				return $pos_a - $pos_b;
+					return $pos_a - $pos_b;
+				}
 			}
-		} );
+		);
 
-		usort( $font_data_desc, function ( $data_1, $data_2 ) {
-			if ( is_numeric( $data_1['weight'] ) ) {
-				if ( $data_1['weight'] == $data_2['weight'] ) return 0;
-				return $data_1['weight'] > $data_2['weight'] ? -1 : 1;
-			} else {
-				$order = array( 'bold', 'regular' );
+		usort(
+			$font_data_desc,
+			function ( $data_1, $data_2 ) {
+				if ( is_numeric( $data_1['weight'] ) ) {
+					if ( $data_1['weight'] === $data_2['weight'] ) {
+						return 0;
+					}
+					return $data_1['weight'] > $data_2['weight'] ? -1 : 1;
+				} else {
+					$order = array( 'bold', 'regular' );
 
-				$pos_a = array_search( $data_1['weight'], $order );
-				$pos_b = array_search( $data_2['weight'], $order );
+					$pos_a = array_search( $data_1['weight'], $order, true );
+					$pos_b = array_search( $data_2['weight'], $order, true );
 
-				return $pos_a - $pos_b;
+					return $pos_a - $pos_b;
+				}
 			}
-		} );
+		);
 
 		/**
 		 * Fallback to manually checking matching variants based on weight and font style.
 		 */
-		foreach( $font_variants as $variant => $url ) {
+		foreach ( $font_variants as $variant => $url ) {
 			if ( empty( $url ) ) {
 				if ( 'regular' === $variant ) {
 					$font_variants[ $variant ] = $this->get_matching_variant( $variant, $font_data_asc );
@@ -482,7 +505,7 @@ final class Embed {
 					$font_variants[ $variant ] = $this->get_matching_variant( $variant, $font_data_asc );
 				} elseif ( 'bold' === $variant ) {
 					$font_variants[ $variant ] = $this->get_matching_variant( $variant, $font_data_desc );
-				} elseif( 'bold_italic' === $variant ) {
+				} elseif ( 'bold_italic' === $variant ) {
 					$font_variants[ $variant ] = $this->get_matching_variant( $variant, $font_data_desc );
 				}
 			}
@@ -504,7 +527,7 @@ final class Embed {
 		if ( ! empty( $display_type ) ) {
 			$css = array_key_exists( $display_type, $result['display_types'][ $display_type ] ) ? $result['display_types'][ $display_type ] : '';
 		} else {
-			$css = implode(  "\n ", $result['display_types'] );
+			$css = implode( "\n ", $result['display_types'] );
 		}
 
 		return $css;
@@ -557,9 +580,9 @@ final class Embed {
 
 		if ( 'bold' === $font_type ) {
 			$selectors .= ' strong';
-		} elseif( 'italic' === $font_type ) {
+		} elseif ( 'italic' === $font_type ) {
 			$selectors .= ' em';
-		} elseif( 'bold_italic' === $font_type ) {
+		} elseif ( 'bold_italic' === $font_type ) {
 			$selectors .= ' strong em, ' . $selectors . ' em strong';
 		}
 
@@ -573,8 +596,8 @@ final class Embed {
 		/**
 		 * Remove italic (i) additions from numeric font types e.g. 600i
 		 */
-		if ( preg_match('/\\d/', $font_weight ) > 0 ) {
-			$font_weight = preg_replace("/[^0-9]/", "", $font_weight );
+		if ( preg_match( '/\\d/', $font_weight ) > 0 ) {
+			$font_weight = preg_replace( '/[^0-9]/', '', $font_weight );
 		}
 
 		if ( 'pdf' === $this->type ) {
@@ -596,7 +619,7 @@ final class Embed {
 		$selectors   = $display_type_data['selectors'][ $this->type ];
 		$font_family = 'pdf' === $this->type ? Fonts::clean_font_family( $font_family ) : $font_family;
 
-		$styles    = array(
+		$styles = array(
 			'font-family' => "'" . $font_family . "'",
 		);
 

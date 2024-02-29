@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -160,7 +160,7 @@ class Protection
 	public function rc4($key, $text)
 	{
 		if ($this->lastRc4Key != $key) {
-			$k = str_repeat($key, 256 / strlen($key) + 1);
+			$k = str_repeat($key, round(256 / strlen($key)) + 1);
 			$rc4 = range(0, 255);
 			$j = 0;
 			for ($i = 0; $i < 256; $i++) {

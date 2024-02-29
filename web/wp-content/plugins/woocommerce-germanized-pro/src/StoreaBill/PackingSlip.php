@@ -31,9 +31,13 @@ class PackingSlip extends Document {
 	}
 
 	public function get_item_types() {
-		return apply_filters( $this->get_hook_prefix() . 'item_types', array(
-			'product'
-		), $this );
+		return apply_filters(
+			$this->get_hook_prefix() . 'item_types',
+			array(
+				'product',
+			),
+			$this
+		);
 	}
 
 	/**
@@ -43,7 +47,7 @@ class PackingSlip extends Document {
 		if ( is_null( $this->shipment ) ) {
 			try {
 				$this->shipment = new Shipment( $this->get_shipment_id() );
-			} catch( \Exception $e ) {
+			} catch ( \Exception $e ) {
 				$this->shipment = false;
 			}
 		}

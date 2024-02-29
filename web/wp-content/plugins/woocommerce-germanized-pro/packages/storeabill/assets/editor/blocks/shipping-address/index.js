@@ -5,6 +5,7 @@ import { address } from '@storeabill/icons';
 
 import edit from './edit';
 import save from './save';
+import saveV1 from './save-v1';
 
 const settings = {
     title: _x( 'Shipping Address', 'storeabill-core', 'storeabill' ),
@@ -42,10 +43,52 @@ const settings = {
             "type": "boolean",
             "default": false,
         },
+        "heading": {
+            "type": 'string',
+            "source": 'html',
+            "selector": 'p.address-heading',
+            "default": ''
+        },
     },
     edit,
     save,
     deprecated: [
+        {
+            supports: {
+                html: false,
+            },
+            attributes: {
+                "align": {
+                    "type": "string",
+                    "default": "left",
+                },
+                "textColor": {
+                    "type": "string"
+                },
+                "customTextColor": {
+                    "type": "string"
+                },
+                "fontSize": {
+                    "type": "string"
+                },
+                "customFontSize": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": 'string',
+                    "source": 'html',
+                    "selector": 'p.address-content',
+                    "default": getDefaultPlaceholderContent( '{content}' )
+                },
+                "hideIfEqualsBilling": {
+                    "type": "boolean",
+                    "default": false,
+                }
+            },
+            save( attributes ) {
+                return saveV1( attributes );
+            }
+        },
         {
             supports: {
                 html: false,
@@ -88,7 +131,7 @@ const settings = {
                 };
             },
             save( attributes ) {
-                return save( attributes );
+                return saveV1( attributes );
             }
         },
     ]

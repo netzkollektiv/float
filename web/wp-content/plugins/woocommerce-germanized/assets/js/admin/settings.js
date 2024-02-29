@@ -28,7 +28,8 @@ window.germanized = window.germanized || {};
                 .on( 'click', 'a.woocommerce-gzd-input-toggle-trigger', this.onInputToogleClick )
                 .on( 'change', '.wc-gzd-setting-tabs input.woocommerce-gzd-tab-status-checkbox', this.onChangeTabStatus )
                 .on( 'change gzd_show_or_hide_fields', '.wc-gzd-admin-settings :input', this.onChangeInput )
-                .on( 'change', '.wc-gzd-setting-tab-enabled :input', this.preventWarning );
+                .on( 'change', '.wc-gzd-setting-tab-enabled :input', this.preventWarning )
+                .on( 'click', 'a.wc-gzd-install-extension-btn', this.onInstallExtension )
 
             $( document.body )
                 .on( 'woocommerce_gzd_setting_field_visible', this.onShowField )
@@ -60,6 +61,51 @@ window.germanized = window.germanized || {};
                 'fadeOut': 50,
                 'delay': 200
             });
+        },
+
+        onInstallExtension: function() {
+            var self  = germanized.settings,
+                $this = $( this );
+
+            var data = {
+                action: 'woocommerce_gzd_install_extension',
+                security: self.params.install_extension_nonce,
+                extension: $this.data( 'extension' )
+            };
+
+            $this.addClass( 'wc-gzd-is-loading' );
+            $this.append( '<span class="spinner is-active"></span>' );
+
+            $.ajax( {
+                url: self.params.ajax_url,
+                data: data,
+                dataType: 'json',
+                type: 'POST',
+                success: function( response ) {
+                    $this.find( '.spinner' ).remove();
+                    $this.removeClass( 'wc-gzd-is-loading' );
+
+                    if ( response.success ) {
+                        if ( $this.is("[href]") && '#' !== $this.attr( 'href' ) ) {
+                            window.location.href = $this.attr( 'href' );
+                        }
+                    } else if ( response.hasOwnProperty( 'message' ) ) {
+                        var $wrapper = $( '#wpbody-content' ).find( '.wrap' );
+
+                        if ( $( '.wc-gzd-setting-tabs' ).length > 0 ) {
+                            $wrapper = $( '.wc-gzd-setting-tabs' );
+                        }
+
+                        $wrapper.before( '<div class="error inline" id="message"><p>' + response.message + '</p></div>' );
+
+                        $( 'html, body' ).animate({
+                            scrollTop: ( $( '#message' ).offset().top - 32 )
+                        }, 1000 );
+                    }
+                }
+            } );
+
+            return false;
         },
 
         onChangeTabStatus: function() {
@@ -127,7 +173,8 @@ window.germanized = window.germanized || {};
         },
 
         onChangeInput: function() {
-            var $field = $( this ).parents( 'tr' );
+            var self = germanized.settings,
+                $field = $( this ).parents( 'tr' );
 
             $field.find( ':input:not(.select2-focusser, .select2-input)' ).each( function() {
                 var $input   = $( this ),
@@ -153,7 +200,14 @@ window.germanized = window.germanized || {};
 
                 var $fields = $( '.wc-gzd-admin-settings' ).find( ':input[data-show_if_' + name +  ']' );
 
-                if ( $input.is( ':checkbox' ) ) {
+                if ( $input.is( ':radio' ) ) {
+                    /**
+                     * Do not trigger logic for non-selected radios
+                     */
+                    if ( ! $input.is( ':checked' ) ) {
+                        return;
+                    }
+                } else if ( $input.is( ':checkbox' ) ) {
                     val = $input.is( ':checked' ) ? 'yes' : 'no';
 
                     // Make sure that hidden fields are considered unchecked
@@ -177,9 +231,8 @@ window.germanized = window.germanized || {};
                         if ( data.hasOwnProperty( dataName ) ) {
                             if ( dataName.substring( 0, 8 ) === 'show_if_' ) {
                                 var cleanName       = dataName.replace( 'show_if_', '' );
-                                var $dependendField = $( '.wc-gzd-admin-settings' ).find( ':input#' + cleanName );
+                                var $dependendField = self.getInputByIdOrName( cleanName );
                                 var index           = $dependendField.index( ':input' );
-
                                 deps[ index ] = cleanName;
                             }
                         }
@@ -190,18 +243,16 @@ window.germanized = window.germanized || {};
                     if ( deps.length > 1 ) {
                         if ( ! isFieldVisible ) {
                             var nameToUse = deps.slice(-1)[0];
+                            var $theInput = self.getInputByIdOrName( nameToUse );
 
                             if ( name !== nameToUse ) {
                                 skipField = true;
 
-                                if ( $( ':input#' + nameToUse ).parents( 'tr' ).is( ':visible' ) ) {
-                                    $( '.wc-gzd-admin-settings' ).find( ':input#' + nameToUse ).trigger( 'gzd_show_or_hide_fields' );
+                                if ( $theInput.parents( 'tr' ).is( ':visible' ) ) {
+                                    $theInput.trigger( 'gzd_show_or_hide_fields' );
                                 }
                             } else {
-                                if ( ! $( ':input#' + nameToUse ).parents( 'tr' ).is( ':visible' ) ) {
-                                    console.log(nameToUse);
-                                    console.log($field);
-
+                                if ( ! $theInput.parents( 'tr' ).is( ':visible' ) ) {
                                     $field.addClass( 'wc-gzd-setting-invisible' );
                                     $( document.body ).trigger( 'woocommerce_gzd_setting_field_invisible', [ $field, currentName, currentVal ] );
 
@@ -218,7 +269,6 @@ window.germanized = window.germanized || {};
                     $field.removeClass( 'wc-gzd-setting-visible wc-gzd-setting-invisible' );
 
                     if ( ( 'undefined' !== typeof dataValue ) && dataValue.length > 0 ) {
-
                         // Check value
                         if ( val === dataValue ) {
                             $field.addClass( 'wc-gzd-setting-visible' );
@@ -261,7 +311,25 @@ window.germanized = window.germanized || {};
             });
         },
 
+        /**
+         * Finds the input field by ID or name (some inputs, e.g. radio buttons may not have an id).
+         *
+         * @param cleanName
+         * @returns {*|jQuery}
+         */
+        getInputByIdOrName: function( cleanName ) {
+            var $field = $( '.wc-gzd-admin-settings' ).find( ':input#' + cleanName );
+
+            if ( $field.length <= 0 ) {
+                $field = $( '.wc-gzd-admin-settings' ).find( ':input[name="' + cleanName + '"]' );
+            }
+
+            return $field;
+        },
+
         onEnhancedSelectInit: function() {
+            var self = germanized.settings;
+
             // Tag select
             $( ':input.wc-gzd-enhanced-tags' ).filter( ':not(.enhanced)' ).each( function () {
                 var select2_args = {
@@ -272,6 +340,71 @@ window.germanized = window.germanized || {};
                 };
 
                 $( this ).selectWoo( select2_args ).addClass( 'enhanced' );
+            });
+
+            function display_result( self, select2_args ) {
+                $( self ).selectWoo( select2_args ).addClass( 'enhanced' );
+
+                if ( $( self ).prop( 'multiple' ) ) {
+                    $( self ).on( 'change', function(){
+                        var $children = $( self ).children();
+                        $children.sort(function(a, b){
+                            var atext = a.text.toLowerCase();
+                            var btext = b.text.toLowerCase();
+
+                            if ( atext > btext ) {
+                                return 1;
+                            }
+                            if ( atext < btext ) {
+                                return -1;
+                            }
+                            return 0;
+                        });
+                        $( self ).html( $children );
+                    });
+                }
+            }
+
+            $( ':input.gzd-select-term' ).filter( ':not(.enhanced)' ).each( function() {
+                var select2_args = {
+                    allowClear:  $( this ).data( 'allow_clear' ) ? true : false,
+                    placeholder: $( this ).data( 'placeholder' ),
+                    minimumInputLength: $( this ).data( 'minimum_input_length' ) ? $( this ).data( 'minimum_input_length' ) : '3',
+                    escapeMarkup: function( m ) {
+                        return m;
+                    },
+                    ajax: {
+                        url:         self.params.ajax_url,
+                        dataType:    'json',
+                        delay:       250,
+                        data:        function( params ) {
+                            return {
+                                term         : params.term,
+                                action       : $( this ).data( 'action' ) || 'woocommerce_json_search_taxonomy_terms',
+                                security     : self.params.search_term_nonce,
+                                exclude      : $( this ).data( 'exclude' ),
+                                taxonomy     : $( this ).data( 'taxonomy' ),
+                                limit        : $( this ).data( 'limit' ),
+                            };
+                        },
+                        processResults: function( data ) {
+                            var terms = [];
+                            if ( data && ! data.error ) {
+                                $.each( data, function( index, term ) {
+                                    terms.push( { id: term.term_id, text: term.name } );
+                                } );
+                            }
+                            return {
+                                results: terms
+                            };
+                        },
+                        cache: true
+                    }
+                };
+
+                display_result( this, select2_args );
+
+                //$( this ).selectWoo( select2_args ).addClass( 'enhanced' );
             });
         },
       

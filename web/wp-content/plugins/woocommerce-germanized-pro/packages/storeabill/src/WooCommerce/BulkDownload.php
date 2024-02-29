@@ -10,9 +10,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Shipment Order
  *
- * @class 		WC_GZD_Shipment_Order
- * @version		1.0.0
- * @author 		Vendidero
+ * @class       WC_GZD_Shipment_Order
+ * @version     1.0.0
+ * @author      Vendidero
  */
 class BulkDownload extends BulkMerge {
 
@@ -25,7 +25,7 @@ class BulkDownload extends BulkMerge {
 	}
 
 	public function get_admin_url() {
-		return admin_url( 'edit.php?post_type=shop_order' );
+		return Helper::is_hpos_enabled() ? admin_url( 'admin.php?page=wc-orders' ) : admin_url( 'edit.php?post_type=shop_order' );
 	}
 
 	public function can_download() {
@@ -46,7 +46,7 @@ class BulkDownload extends BulkMerge {
 		if ( ! empty( $current ) ) {
 			foreach ( $current as $order_id ) {
 				if ( $order = Helper::get_order( $order_id ) ) {
-					foreach( $order->get_finalized_documents() as $document ) {
+					foreach ( $order->get_finalized_documents() as $document ) {
 						if ( $document->has_file() ) {
 							$this->add_file( $document->get_relative_path() );
 						}

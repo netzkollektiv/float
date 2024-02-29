@@ -23,12 +23,44 @@ function sab_string_to_datetime( $time_string ) {
 	return wc_string_to_datetime( $time_string );
 }
 
+function sab_string_to_timestamp( $time_string, $from_timestamp = null ) {
+	return wc_string_to_timestamp( $time_string, $from_timestamp );
+}
+
 function sab_format_decimal( $number, $dp = false, $trim_zeros = false ) {
 	return wc_format_decimal( $number, $dp, $trim_zeros );
 }
 
+function sab_round_tax_total( $value, $precision = null ) {
+	return wc_round_tax_total( $value, $precision );
+}
+
+function sab_get_price_decimal_separator() {
+	return wc_get_price_decimal_separator();
+}
+
+function sab_get_price_format() {
+	return get_woocommerce_price_format();
+}
+
+function sab_get_price_thousand_separator() {
+	return wc_get_price_thousand_separator();
+}
+
+function sab_get_currency_symbol( $currency = '' ) {
+	if ( '' === $currency ) {
+		$currency = sab_get_default_currency();
+	}
+
+	return get_woocommerce_currency_symbol( $currency );
+}
+
 function sab_get_price_decimals() {
 	return wc_get_price_decimals();
+}
+
+function sab_get_rounding_precision() {
+	return wc_get_rounding_precision();
 }
 
 function sab_hex_lighter( $color, $factor = 30 ) {
@@ -76,12 +108,31 @@ function sab_generate_block_classes( $attributes, $html_classes = '' ) {
 		'fontSize'        => 'has-font-size has-{value}-font-size',
 		'className'       => '{value}',
 		'align'           => 'has-text-align-{value}',
-		'hasDenseLayout'  => 'has-dense-layout'
+		'hasDenseLayout'  => 'has-dense-layout',
 	);
 
 	$classes = array( 'sab-block' );
 
-	foreach( $attributes as $attribute => $value ) {
+	if ( isset( $attributes['style'], $attributes['style']['border'] ) ) {
+		$border_types = array(
+			'top',
+			'right',
+			'bottom',
+			'left',
+		);
+
+		foreach ( $border_types as $border_type ) {
+			if ( isset( $attributes['style']['border'][ $border_type ] ) ) {
+				$classes[] = 'has-border-' . $border_type;
+
+				if ( ! in_array( 'has-border', $classes, true ) ) {
+					$classes[] = 'has-border';
+				}
+			}
+		}
+	}
+
+	foreach ( $attributes as $attribute => $value ) {
 		/**
 		 * Make sure to support customFontSize or customBorderColor by replacing custom prefix.
 		 */
@@ -102,7 +153,7 @@ function sab_generate_block_classes( $attributes, $html_classes = '' ) {
 		}
 	}
 
-	foreach( $attributes as $attribute => $value ) {
+	foreach ( $attributes as $attribute => $value ) {
 		if ( array_key_exists( $attribute, $wrapper_mappings ) ) {
 			$mapping = $wrapper_mappings[ $attribute ];
 
@@ -111,14 +162,14 @@ function sab_generate_block_classes( $attributes, $html_classes = '' ) {
 					$value = array( $value );
 				}
 
-				foreach( $value as $val ) {
+				foreach ( $value as $val ) {
 					$classes = array_merge( $classes, explode( ' ', str_replace( '{value}', $val, $mapping ) ) );
 				}
 			} else {
 				$inner_maps = explode( ' ', $mapping );
 
-				if ( sizeof( $inner_maps ) > 1 ) {
-					$classes[]  = 'without-' . $inner_maps[0];
+				if ( count( $inner_maps ) > 1 ) {
+					$classes[] = 'without-' . $inner_maps[0];
 				}
 			}
 		}
@@ -158,8 +209,8 @@ function sab_get_color_from_name( $color_name ) {
 	if ( $hex_color = sanitize_hex_color( $color_name ) ) {
 		$color = $hex_color;
 	} else {
-		$colors           = sab_get_color_names();
-		$color            = '';
+		$colors = sab_get_color_names();
+		$color  = '';
 
 		if ( array_key_exists( $color_name, $colors ) ) {
 			$color = $colors[ $color_name ];
@@ -170,42 +221,55 @@ function sab_get_color_from_name( $color_name ) {
 }
 
 function sab_generate_block_styles( $attributes, $attribute_mappings = array(), $as_html = false ) {
-
 	$style_mappings = array(
 		'customTextColor'       => 'color',
 		'customBorderColor'     => 'border-color',
 		'customBackgroundColor' => 'background-color',
 		'borderColor'           => array(
-			'attribute'         => 'border-color',
-			'replacement'       => '{value}',
-			'callback'          => 'sab_get_color_from_name',
+			'attribute'   => 'border-color',
+			'replacement' => '{value}',
+			'callback'    => 'sab_get_color_from_name',
 		),
 		'textColor'             => array(
-			'attribute'         => 'color',
-			'replacement'       => '{value}',
-			'callback'          => 'sab_get_color_from_name',
+			'attribute'   => 'color',
+			'replacement' => '{value}',
+			'callback'    => 'sab_get_color_from_name',
 		),
 		'backgroundColor'       => array(
-			'attribute'         => 'background-color',
-			'replacement'       => '{value}',
-			'callback'          => 'sab_get_color_from_name',
+			'attribute'   => 'background-color',
+			'replacement' => '{value}',
+			'callback'    => 'sab_get_color_from_name',
 		),
 		'customFontSize'        => array(
-			'attribute'         => 'font-size',
-			'replacement'       => '{value}px',
-			'callback'          => 'sab_get_document_font_size',
+			'attribute'   => 'font-size',
+			'replacement' => '{value}px',
+			'callback'    => 'sab_get_document_font_size',
 		),
 		'fontSize'              => array(
-			'attribute'         => 'font-size',
-			'replacement'       => '{value}px',
-			'callback'          => 'sab_get_document_font_size',
+			'attribute'   => 'font-size',
+			'replacement' => '{value}px',
+			'callback'    => 'sab_get_document_font_size',
 		),
 	);
 
+	/**
+	 * Some custom attributes, e.g. custom font sizes are stored
+	 * in a separate style attribute. Transform those attributes
+	 * to normal, standalone attributes instead to allow matching.
+	 */
+	if ( ! empty( $attributes['style'] ) ) {
+		foreach ( $attributes['style'] as $inner_styles ) {
+			foreach ( $inner_styles as $style_name => $value ) {
+				if ( ! in_array( $style_name, array_values( $attribute_mappings ), true ) ) {
+					$attributes[ $style_name ] = $value;
+				}
+			}
+		}
+	}
+
 	$styles = array();
 
-	foreach( $attributes as $attribute => $value ) {
-
+	foreach ( $attributes as $attribute => $value ) {
 		if ( '' === $value ) {
 			continue;
 		}
@@ -230,11 +294,14 @@ function sab_generate_block_styles( $attributes, $attribute_mappings = array(), 
 			}
 
 			if ( is_array( $mapping ) ) {
-				$mapping = wp_parse_args( $mapping, array(
-					'attribute'   => '',
-					'replacement' => '{value}',
-					'callback'    => null,
-				) );
+				$mapping = wp_parse_args(
+					$mapping,
+					array(
+						'attribute'   => '',
+						'replacement' => '{value}',
+						'callback'    => null,
+					)
+				);
 
 				if ( $mapping['callback'] ) {
 					$value = call_user_func_array( $mapping['callback'], array( $value ) );
@@ -257,7 +324,7 @@ function sab_generate_block_styles( $attributes, $attribute_mappings = array(), 
 function sab_print_html_classes( $classes, $echo = true ) {
 	if ( is_array( $classes ) ) {
 		$classes = array_unique( $classes );
-		$classes = implode( " ", $classes );
+		$classes = implode( ' ', $classes );
 	}
 
 	if ( $echo ) {
@@ -270,16 +337,16 @@ function sab_print_html_classes( $classes, $echo = true ) {
 function sab_print_styles( $styles, $echo = true ) {
 	$style_output = '';
 
-	foreach( $styles as $tag => $style ) {
+	foreach ( $styles as $tag => $style ) {
 		if ( '' === $style ) {
 			continue;
 		}
 
-		$style_output .= esc_attr( $tag ) . ':' . $style . ';';
+		$style_output .= esc_attr( $tag ) . ':' . wp_kses_post( $style ) . ';';
 	}
 
 	if ( $echo ) {
-		echo $style_output;
+		echo $style_output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	} else {
 		return $style_output;
 	}
@@ -290,14 +357,14 @@ function sab_get_font_variant_types() {
 		'regular'     => _x( 'Regular', 'storeabill-core', 'woocommerce-germanized-pro' ),
 		'bold'        => _x( 'Bold', 'storeabill-core', 'woocommerce-germanized-pro' ),
 		'italic'      => _x( 'Italic', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'bold_italic' => _x( 'Bold Italic', 'storeabill-core', 'woocommerce-germanized-pro' )
+		'bold_italic' => _x( 'Bold Italic', 'storeabill-core', 'woocommerce-germanized-pro' ),
 	);
 }
 
 function sab_filter_html_classes( $classes, $filter = '' ) {
 	$filtered_classes = array();
 
-	foreach( $classes as $classname ) {
+	foreach ( $classes as $classname ) {
 		if ( strpos( $classname, $filter ) !== false ) {
 			$filtered_classes[] = $classname;
 		}
@@ -309,7 +376,7 @@ function sab_filter_html_classes( $classes, $filter = '' ) {
 function sab_get_html_classes( $html ) {
 	$classes = array();
 
-	preg_match('/class="(.*?)"/s', $html, $matches );
+	preg_match( '/class="(.*?)"/s', $html, $matches );
 
 	if ( isset( $matches[1] ) ) {
 		$classes = explode( ' ', trim( $matches[1] ) );
@@ -325,11 +392,11 @@ function sab_get_html_loop_classes( $prefix, $total, $current ) {
 
 	if ( $total === $current ) {
 		$classes[] = $prefix . '-last';
-	} elseif( $current === 1 ) {
+	} elseif ( 1 === $current ) {
 		$classes[] = $prefix . '-first';
 	}
 
-	if ( $current % 2 === 0 ) {
+	if ( 0 === $current % 2 ) {
 		$classes[] = $prefix . '-even';
 	} else {
 		$classes[] = $prefix . '-odd';
@@ -339,8 +406,8 @@ function sab_get_html_loop_classes( $prefix, $total, $current ) {
 }
 
 function sab_get_html_part( $tag, $html ) {
-	$tag     = preg_quote( $tag );
-	$pattern = "'<!--\s*sab:" . $tag . "\s*-->(.*?)<!--\s*/sab:" . $tag . "\s*-->'si";
+	$tag     = preg_quote( $tag ); // phpcs:ignore WordPress.PHP.PregQuoteDelimiter.Missing
+	$pattern = "'<!--\s*sab:" . $tag . '\s*-->(.*?)<!--\s*/sab:' . $tag . "\s*-->'si";
 
 	if ( preg_match( $pattern, $html, $matches ) ) {
 		return trim( $matches[1] );
@@ -376,7 +443,7 @@ function sab_display_item_attributes( $item, $args = array() ) {
 	);
 
 	foreach ( $item->get_attributes() as $attribute ) {
-		$strings[] = $args['label_before'] . $attribute->get_formatted_label() . $args['label_after'] . $attribute->get_formatted_value( $args['autop'] );
+		$strings[] = $args['label_before'] . wp_kses_post( $attribute->get_formatted_label() ) . $args['label_after'] . wp_kses_post( $attribute->get_formatted_value( $args['autop'] ) );
 	}
 
 	if ( $strings ) {
@@ -386,16 +453,19 @@ function sab_display_item_attributes( $item, $args = array() ) {
 	$html = apply_filters( 'storeabill_display_item_attributes', $html, $item, $args );
 
 	if ( $args['echo'] ) {
-		echo $html; // WPCS: XSS ok.
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	} else {
 		return $html;
 	}
 }
 
 function sab_format_tax_rate_percentage( $number, $args = array() ) {
-	$args = wp_parse_args( $args, array(
-		'html' => false,
-	) );
+	$args = wp_parse_args(
+		$args,
+		array(
+			'html' => false,
+		)
+	);
 
 	$text = sab_format_percentage( $number, $args );
 
@@ -413,18 +483,31 @@ function sab_format_tax_rate_percentage( $number, $args = array() ) {
  * @return string
  */
 function sab_trim_zeros( $number ) {
-	return wc_trim_zeros( $number );
+	return ! empty( $number ) ? rtrim( strval( $number ), '0' ) : strval( $number );
+}
+
+function sab_format_country_name( $country_code ) {
+	$countries = WC()->countries ? WC()->countries->get_countries() : array();
+
+	if ( isset( $countries[ $country_code ] ) ) {
+		$country_code = $countries[ $country_code ];
+	}
+
+	return $country_code;
 }
 
 function sab_format_percentage( $number, $args = array() ) {
-	$args = wp_parse_args( $args, array(
-		'decimal_separator'  => wc_get_price_decimal_separator(),
-		'thousand_separator' => wc_get_price_thousand_separator(),
-		'decimals'           => 2,
-		'percentage_sign'    => '%',
-		'trim_zeros'         => apply_filters( 'storeabill_trim_percentage_zeros', true ),
-		'html'               => false,
-	) );
+	$args = wp_parse_args(
+		$args,
+		array(
+			'decimal_separator'  => sab_get_price_decimal_separator(),
+			'thousand_separator' => sab_get_price_thousand_separator(),
+			'decimals'           => 2,
+			'percentage_sign'    => '%',
+			'trim_zeros'         => apply_filters( 'storeabill_trim_percentage_zeros', true ),
+			'html'               => false,
+		)
+	);
 
 	$number = sab_format_decimal( trim( str_replace( '%', '', $number ) ), '', true );
 	$text   = '';
@@ -454,7 +537,7 @@ function sab_query_to_shortcode( $query ) {
 	$shortcode_str  = $shortcode_data['shortcode'];
 	$shortcode      = '';
 
-	foreach( $shortcode_data['args'] as $attribute => $value ) {
+	foreach ( $shortcode_data['args'] as $attribute => $value ) {
 		$shortcode_str .= ' ' . esc_attr( $attribute ) . '="' . esc_attr( $value ) . '"';
 	}
 
@@ -466,7 +549,7 @@ function sab_query_to_shortcode( $query ) {
 }
 
 function sab_get_shortcode_query_data( $query ) {
-	$url            = parse_url( $query );
+	$url            = wp_parse_url( $query );
 	$shortcode_data = array(
 		'shortcode' => isset( $url['path'] ) ? $url['path'] : '',
 		'args'      => array(),
@@ -475,7 +558,7 @@ function sab_get_shortcode_query_data( $query ) {
 	parse_str( ( isset( $url['query'] ) ? $url['query'] : '' ), $query_result );
 
 	if ( ! empty( $query_result ) ) {
-		foreach( $query_result as $attribute => $value ) {
+		foreach ( $query_result as $attribute => $value ) {
 			$shortcode_data['args'][ $attribute ] = $value;
 		}
 	}
@@ -485,7 +568,7 @@ function sab_get_shortcode_query_data( $query ) {
 
 function sab_remove_placeholder_tax_rate( $str ) {
 	$str = strip_shortcodes( sab_blocks_convert_shortcodes( $str ) );
-	$str = preg_replace('#<span[^>]*(?:/>|>(?:\s|&nbsp;)*</span>)#im', '', $str );
+	$str = preg_replace( '#<span[^>]*(?:/>|>(?:\s|&nbsp;)*</span>)#im', '', $str );
 	$str = trim( str_replace( array( '%s', '%', '{rate}', '{formatted_rate}' ), '', $str ) );
 
 	return $str;
@@ -536,4 +619,44 @@ function sab_string_to_bool( $string ) {
  */
 function sab_bool_to_string( $bool ) {
 	return wc_bool_to_string( $bool );
+}
+
+/**
+ * Format a price with currency locale settings.
+ *
+ * @param  string $value Price to localize.
+ * @return string
+ */
+function sab_format_localized_price( $value ) {
+	return wc_format_localized_price( $value );
+}
+
+/**
+ * Format a decimal with the decimal separator.
+ *
+ * @param  string $value Decimal to localize.
+ * @return string
+ */
+function sab_format_localized_decimal( $value ) {
+	return wc_format_localized_decimal( $value );
+}
+
+function sab_print_decimal( $value, $decimal_args = array() ) {
+	$decimal_args = wp_parse_args(
+		$decimal_args,
+		array(
+			'decimal_separator'  => sab_get_price_decimal_separator(),
+			'thousand_separator' => sab_get_price_thousand_separator(),
+			'decimals'           => sab_get_price_decimals(),
+		)
+	);
+
+	$decimal     = (float) $value;
+	$return_data = apply_filters( 'storeabill_print_decimal_format', number_format( $decimal, $decimal_args['decimals'], $decimal_args['decimal_separator'], $decimal_args['thousand_separator'] ), $decimal, $decimal_args, $value );
+
+	if ( apply_filters( 'storeabill_print_decimal_format_trim_zeros', false ) && $decimal_args['decimals'] > 0 ) {
+		$return_data = sab_trim_zeros( $return_data );
+	}
+
+	return strval( $return_data );
 }

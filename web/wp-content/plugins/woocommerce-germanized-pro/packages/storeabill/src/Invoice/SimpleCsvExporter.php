@@ -33,7 +33,7 @@ class SimpleCsvExporter extends CsvExporter {
 					$default_statuses = $this->get_default_filter_setting( 'payment_status', array() );
 
 					foreach ( sab_get_invoice_payment_statuses( 'view' ) as $payment_status => $title ) {
-						echo '<option value="' . esc_attr( $payment_status ) . '" ' . selected( $payment_status, in_array( $payment_status, $default_statuses ) ? $payment_status : '', false ) . '>' . esc_html( $title ) . '</option>';
+						echo '<option value="' . esc_attr( $payment_status ) . '" ' . selected( $payment_status, in_array( $payment_status, $default_statuses, true ) ? $payment_status : '', false ) . '>' . esc_html( $title ) . '</option>';
 					}
 					?>
 				</select>

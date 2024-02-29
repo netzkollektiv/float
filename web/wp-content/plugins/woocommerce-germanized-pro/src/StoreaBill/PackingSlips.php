@@ -21,14 +21,14 @@ class PackingSlips {
 		add_action( 'storeabill_woo_gzd_shipment_item_synced', array( __CLASS__, 'sync_shipment_item_product' ), 10, 2 );
 
 		add_filter( 'storeabill_packing_slip_editor_templates', array( __CLASS__, 'register_template' ) );
-		add_filter( 'storeabill_packing_slip_shortcode_handlers', array( __CLASS__, 'register_shortcode_handler' ), 10 );
+		add_filter( 'storeabill_packing_slip_shortcode_handler_classname', array( __CLASS__, 'register_shortcode_handler' ), 10 );
 
 		if ( self::is_enabled() ) {
 			add_filter( 'storeabill_rest_api_get_rest_namespaces', array( __CLASS__, 'register_rest_controllers' ) );
 			add_filter( 'storeabill_default_template_path', array( __CLASS__, 'register_default_template_path' ), 10, 2 );
 
 			add_action( 'init', array( __CLASS__, 'setup_automation' ), 50 );
-			add_action( "storeabill_packing_slip_rendered", array( __CLASS__, 'maybe_send_mail' ), 10 );
+			add_action( 'storeabill_packing_slip_rendered', array( __CLASS__, 'maybe_send_mail' ), 10 );
 
 			/**
 			 * Sync Packing Slips
@@ -47,6 +47,11 @@ class PackingSlips {
 				add_action( 'woocommerce_gzdp_after_sync_packing_slip', array( __CLASS__, 'maybe_restore_order_language' ), 10, 2 );
 				add_action( 'woocommerce_gzdp_synced_packing_slip', array( __CLASS__, 'sync_packing_slip_language' ), 10, 2 );
 			}
+
+			/**
+			 * Add latest invoices to default Woo invoice mail if existent.
+			 */
+			add_filter( 'woocommerce_email_attachments', array( __CLASS__, 'attach_to_mail' ), 10, 4 );
 		}
 
 		if ( is_admin() ) {
@@ -67,6 +72,54 @@ class PackingSlips {
 				Ajax::init();
 			}
 		}
+	}
+
+	/**
+	 * In case a finalized invoice exists, attach the (latest) invoice file
+	 * to the default Woo customer invoice mail.
+	 *
+	 * @param $attachments
+	 * @param $email_id
+	 * @param $object
+	 * @param $email
+	 *
+	 * @return mixed
+	 */
+	public static function attach_to_mail( $attachments, $email_id, $object, $email = false ) {
+		$email_ids = array();
+
+		if ( 'yes' === get_option( 'woocommerce_gzdp_packing_slip_auto' ) ) {
+			$email_ids = array_filter( (array) get_option( 'woocommerce_gzdp_packing_slip_attach_to_emails', array() ) );
+
+			/**
+			 * Support partial shipments
+			 */
+			if ( in_array( 'customer_shipment', $email_ids, true ) ) {
+				$email_ids[] = 'customer_partial_shipment';
+			}
+		}
+
+		if ( apply_filters( 'woocommerce_gzdp_packing_slip_email_attach', ( in_array( $email_id, $email_ids, true ) ), $email_id, $object, $email ) ) {
+			if ( is_a( $email, 'WC_GZD_Email_Customer_Shipment' ) ) {
+				if ( is_a( $email->shipment, '\Vendidero\Germanized\Shipments\Shipment' ) ) {
+					if ( $packing_slip = wc_gzdp_get_packing_slip_by_shipment( $email->shipment ) ) {
+						if ( $packing_slip->has_file() ) {
+							$attachments[] = $packing_slip->get_path();
+						}
+					}
+				}
+			} elseif ( is_a( $object, 'WC_Order' ) ) {
+				foreach ( self::get_shipments_by_order( $object ) as $shipment ) {
+					if ( $packing_slip = wc_gzdp_get_packing_slip_by_shipment( $shipment ) ) {
+						if ( $packing_slip->has_file() ) {
+							$attachments[] = $packing_slip->get_path();
+						}
+					}
+				}
+			}
+		}
+
+		return $attachments;
 	}
 
 	/**
@@ -156,7 +209,7 @@ class PackingSlips {
 	}
 
 	public static function download_packing_slips() {
-		if ( isset( $_GET['action'] ) && 'wc-gzdp-download-packing-slip-export' === $_GET['action'] && wp_verify_nonce( $_REQUEST['_wpnonce'], 'wc-gzdp-download-packing-slips' ) ) {
+		if ( isset( $_GET['action'], $_REQUEST['_wpnonce'] ) && 'wc-gzdp-download-packing-slip-export' === $_GET['action'] && wp_verify_nonce( wp_unslash( $_REQUEST['_wpnonce'] ), 'wc-gzdp-download-packing-slips' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			if ( current_user_can( 'read_packing_slip' ) ) {
 				$handler = new \WC_GZDP_Admin_Packing_Slip_Bulk_Handler();
 
@@ -176,19 +229,20 @@ class PackingSlips {
 
 	public static function register_number_placeholder( $placeholder, $document_type ) {
 		if ( 'packing_slip' === $document_type ) {
-			$placeholder = array_merge( $placeholder, array(
-				'{shipment_number}' => __( 'Shipment number (e.g. 123)', 'woocommerce-germanized-pro' ),
-				'{order_number}'    => __( 'Order number (e.g. 1234)', 'woocommerce-germanized-pro' ),
-			) );
+			$placeholder = array_merge(
+				$placeholder,
+				array(
+					'{shipment_number}' => __( 'Shipment number (e.g. 123)', 'woocommerce-germanized-pro' ),
+					'{order_number}'    => __( 'Order number (e.g. 1234)', 'woocommerce-germanized-pro' ),
+				)
+			);
 		}
 
 		return $placeholder;
 	}
 
-	public static function register_shortcode_handler( $handler ) {
-		$handler[] = '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Shortcodes';
-
-		return $handler;
+	public static function register_shortcode_handler() {
+		return '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Shortcodes';
 	}
 
 	/**
@@ -240,6 +294,10 @@ class PackingSlips {
 			return;
 		}
 
+		if ( ! apply_filters( 'woocommerce_gzdp_automatically_create_packing_slip', true, $shipment_id ) ) {
+			return;
+		}
+
 		/**
 		 * Cancel outstanding events and queue new.
 		 */
@@ -287,7 +345,7 @@ class PackingSlips {
 		$statuses = self::get_auto_statuses();
 
 		if ( 'yes' === get_option( 'woocommerce_gzdp_packing_slip_auto' ) && ! empty( $statuses ) ) {
-			foreach( $statuses as $status ) {
+			foreach ( $statuses as $status ) {
 				add_action( 'woocommerce_gzd_shipment_status_' . $status, array( __CLASS__, 'queue_auto_sync_packing_slip' ), 10, 1 );
 			}
 		}
@@ -413,7 +471,7 @@ class PackingSlips {
 	public static function get_shipment( $shipment ) {
 		try {
 			$syncable_shipment = new Shipment( $shipment );
-		} catch( \Exception $e ) {
+		} catch ( \Exception $e ) {
 			$syncable_shipment = false;
 		}
 
@@ -421,10 +479,13 @@ class PackingSlips {
 	}
 
 	public static function register_data_store( $stores ) {
-		return array_merge( $stores, array(
-			'packing_slip'          => '\Vendidero\Germanized\Pro\StoreaBill\DataStores\PackingSlip',
-			'shipment_product_item' => '\Vendidero\Germanized\Pro\StoreaBill\DataStores\ProductItem'
-		) );
+		return array_merge(
+			$stores,
+			array(
+				'packing_slip'          => '\Vendidero\Germanized\Pro\StoreaBill\DataStores\PackingSlip',
+				'shipment_product_item' => '\Vendidero\Germanized\Pro\StoreaBill\DataStores\ProductItem',
+			)
+		);
 	}
 
 	public static function register_document_items( $classname, $item_type, $item_id ) {
@@ -436,44 +497,51 @@ class PackingSlips {
 	}
 
 	public static function register_document_type() {
-		sab_register_document_type( 'packing_slip', array(
-			'group'                     => 'shipments',
-			'api_endpoint'              => 'packing_slips',
-			'labels'                    => array(
-				'singular' => __( 'Packing Slip', 'woocommerce-germanized-pro' ),
-				'plural'   => __( 'Packing Slips', 'woocommerce-germanized-pro' ),
-			),
-			'class_name'                => '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip',
-			'admin_email_class_name'    => '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Email',
-			'preview_class_name'        => '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Preview',
-			'default_line_item_types'   => array( 'product' ),
-			'default_status'            => 'closed',
-			'available_line_item_types' => array( 'product' ),
-			'supports'                  => array( 'items' ),
-			'barcode_code_types'        => array(
-				'document?data=order_number' => __( 'Order number', 'woocommerce-germanized-pro' ),
-			),
-			'shortcodes'                => array(
-				'document' => array(
-					array(
-						'shortcode' => 'document?data=order_number',
-						'title'     => __( 'Order number', 'woocommerce-germanized-pro' ),
-					),
-					array(
-						'shortcode' => 'document?data=shipment_number',
-						'title'     => __( 'Shipment number', 'woocommerce-germanized-pro' ),
-					),
-					array(
-						'shortcode' => 'return_reasons?format=plain',
-						'title'     => __( 'Return reasons', 'woocommerce-germanized-pro' ),
+		sab_register_document_type(
+			'packing_slip',
+			array(
+				'group'                     => 'shipments',
+				'api_endpoint'              => 'packing_slips',
+				'labels'                    => array(
+					'singular' => __( 'Packing Slip', 'woocommerce-germanized-pro' ),
+					'plural'   => __( 'Packing Slips', 'woocommerce-germanized-pro' ),
+				),
+				'class_name'                => '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip',
+				'admin_email_class_name'    => '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Email',
+				'preview_class_name'        => '\Vendidero\Germanized\Pro\StoreaBill\PackingSlip\Preview',
+				'default_line_item_types'   => array( 'product' ),
+				'default_status'            => 'closed',
+				'available_line_item_types' => array( 'product' ),
+				'supports'                  => array( 'items' ),
+				'barcode_code_types'        => array(
+					'document?data=order_number' => __( 'Order number', 'woocommerce-germanized-pro' ),
+				),
+				'shortcodes'                => array(
+					'document' => array(
+						array(
+							'shortcode' => 'document?data=order_number',
+							'title'     => __( 'Order number', 'woocommerce-germanized-pro' ),
+						),
+						array(
+							'shortcode' => 'document?data=shipment_number',
+							'title'     => __( 'Shipment number', 'woocommerce-germanized-pro' ),
+						),
+						array(
+							'shortcode' => 'return_reasons?format=plain',
+							'title'     => __( 'Return reasons', 'woocommerce-germanized-pro' ),
+						),
 					),
 				),
-			),
-			'additional_blocks'         => array(
-				'storeabill/item-price',
-				'storeabill/item-line-total',
-			),
-		) );
+				'additional_blocks'         => array(
+					'storeabill/item-price',
+					'storeabill/item-line-total',
+				),
+			)
+		);
+	}
+
+	protected static function get_shipments_by_order( $order ) {
+		return function_exists( 'wc_gzd_get_shipments_by_order' ) ? wc_gzd_get_shipments_by_order( $order ) : array();
 	}
 
 	/**
@@ -481,14 +549,14 @@ class PackingSlips {
 	 * @param \WC_Order $order
 	 */
 	public static function order_download_actions( $actions, $order ) {
-		$shipments = wc_gzd_get_shipments_by_order( $order );
+		$shipments = self::get_shipments_by_order( $order );
 
-		foreach( $shipments as $shipment ) {
+		foreach ( $shipments as $shipment ) {
 			if ( $packing_slip = wc_gzdp_get_packing_slip_by_shipment( $shipment ) ) {
-				$actions["download-packing-slip-{$packing_slip->get_id()}"] = array(
-					'url'       => $packing_slip->get_download_url(),
-					'name'      => sprintf( _x( 'Download %s', 'woocommerce-germanized-pro' ), $packing_slip->get_title() ),
-					'action'    => 'download'
+				$actions[ "download-packing-slip-{$packing_slip->get_id()}" ] = array(
+					'url'    => $packing_slip->get_download_url(),
+					'name'   => sprintf( __( 'Download %s', 'woocommerce-germanized-pro' ), $packing_slip->get_title() ),
+					'action' => 'download',
 				);
 			}
 		}
@@ -508,7 +576,7 @@ class PackingSlips {
 				'url'    => $packing_slip->get_download_url(),
 				'name'   => sprintf( _x( 'Download %s', 'invoices', 'woocommerce-germanized-pro' ), $packing_slip->get_title() ),
 				'action' => 'download-packing-slip download',
-				'target' => '_blank'
+				'target' => '_blank',
 			);
 		} else {
 			$actions['generate_packing_slip'] = array(
@@ -543,49 +611,101 @@ class PackingSlips {
 	}
 
 	protected static function get_packing_slips_settings() {
-		$settings = array(
-			array( 'title' => '', 'type' => 'title', 'id' => 'packing_slip_settings' ),
+		$mailer          = WC()->mailer();
+		$email_templates = $mailer->get_emails();
+		$email_select    = array();
 
+		foreach ( $email_templates as $email ) {
+			$customer = false;
+
+			if ( is_callable( array( $email, 'is_customer_email' ) ) ) {
+				$customer = $email->is_customer_email();
+			}
+
+			$email_select[ $email->id ] = empty( $email->title ) ? ucfirst( $email->id ) : ucfirst( $email->title ) . ' (' . ( $customer ? __( 'Customer', 'woocommerce-germanized-pro' ) : __( 'Admin', 'woocommerce-germanized-pro' ) ) . ')';
+		}
+
+		$email_select = array_intersect_key(
+			$email_select,
+			apply_filters(
+				'woocommerce_gzdp_packing_slip_email_ids_allowed',
+				array(
+					'customer_completed_order' => '',
+					'customer_shipment'        => '',
+				)
+			)
+		);
+
+		$settings = array(
 			array(
-				'title' 	     => __( 'Automation', 'woocommerce-germanized-pro' ),
-				'desc' 		     => __( 'Automatically create packing slips to shipments.', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'woocommerce_gzdp_packing_slip_auto',
-				'default'	     => 'yes',
-				'type' 		     => 'sab_toggle',
+				'title' => '',
+				'type'  => 'title',
+				'id'    => 'packing_slip_settings',
 			),
 
 			array(
-				'title' 	     => __( 'Shipment status(es)', 'woocommerce-germanized-pro' ),
-				'desc' 		     => '<div class="sab-additional-desc">' . sprintf( __( 'Select one or more shipment statuses. A packing slip is generated as soon as a shipment reaches one of the statuses selected.', 'woocommerce-germanized-pro' ) ) . '</div>',
-				'id' 		     => 'woocommerce_gzdp_packing_slip_auto_statuses',
-				'default'	     => array( 'gzd-processing', 'gzd-shipped' ),
-				'type'           => 'multiselect',
-				'class'          => 'sab-enhanced-select',
-				'options'        => wc_gzd_get_shipment_statuses(),
+				'title'   => __( 'Automation', 'woocommerce-germanized-pro' ),
+				'desc'    => __( 'Automatically create packing slips to shipments.', 'woocommerce-germanized-pro' ),
+				'id'      => 'woocommerce_gzdp_packing_slip_auto',
+				'default' => 'yes',
+				'type'    => 'sab_toggle',
+			),
+
+			array(
+				'title'             => __( 'Shipment status(es)', 'woocommerce-germanized-pro' ),
+				'desc'              => '<div class="sab-additional-desc">' . sprintf( __( 'Select one or more shipment statuses. A packing slip is generated as soon as a shipment reaches one of the statuses selected.', 'woocommerce-germanized-pro' ) ) . '</div>',
+				'id'                => 'woocommerce_gzdp_packing_slip_auto_statuses',
+				'default'           => array( 'gzd-processing', 'gzd-shipped' ),
+				'type'              => 'multiselect',
+				'class'             => 'sab-enhanced-select',
+				'options'           => function_exists( 'wc_gzd_get_shipment_statuses' ) ? wc_gzd_get_shipment_statuses() : array(),
 				'custom_attributes' => array(
-					'data-show_if_woocommerce_gzdp_packing_slip_auto' => ''
+					'data-show_if_woocommerce_gzdp_packing_slip_auto' => '',
 				),
 			),
 
 			array(
-				'title' 	     => __( 'Send to admin', 'woocommerce-germanized-pro' ),
-				'desc' 		     => sprintf( __( 'Send the packing slip via <a href="%s">email</a> after rendering.', 'woocommerce-germanized-pro' ), admin_url( 'admin.php?page=wc-settings&tab=email&section=storeabill_vendiderogermanizedprostoreabillpackingslipemail' ) ),
-				'id'             => 'woocommerce_gzdp_send_packing_slip_to_admin',
-				'default'	     => 'no',
-				'type' 		     => 'sab_toggle',
+				'title'             => __( 'Attach to email(s)', 'woocommerce-germanized-pro' ),
+				'id'                => 'woocommerce_gzdp_packing_slip_attach_to_emails',
+				'default'           => array( '' ),
+				'type'              => 'multiselect',
+				'class'             => 'sab-enhanced-select',
+				'options'           => $email_select,
+				'custom_attributes' => array(
+					'data-show_if_woocommerce_gzdp_packing_slip_auto' => '',
+				),
 			),
 
-			array( 'type' => 'sectionend', 'id' => 'packing_slip_settings' ),
+			array(
+				'title'   => __( 'Send to admin', 'woocommerce-germanized-pro' ),
+				'desc'    => sprintf( __( 'Send the packing slip via <a href="%s">email</a> after rendering.', 'woocommerce-germanized-pro' ), esc_url( admin_url( 'admin.php?page=wc-settings&tab=email&section=storeabill_vendiderogermanizedprostoreabillpackingslipemail' ) ) ),
+				'id'      => 'woocommerce_gzdp_send_packing_slip_to_admin',
+				'default' => 'no',
+				'type'    => 'sab_toggle',
+			),
 
-			array( 'title' => _x( 'Layout', 'woocommerce-germanized-pro' ), 'desc' => sprintf( _x( 'Manage your %1$s templates by using the visual editor <a href="%2$s" class="button button-secondary">Learn more</a>', 'woocommerce-germanized-pro' ), sab_get_document_type_label( 'packing_slip' ), AccountingHelper::template_help_link() ), 'type' => 'title', 'id' => 'packing_slip_layout_settings' ),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'packing_slip_settings',
+			),
+
+			array(
+				'title' => __( 'Layout', 'woocommerce-germanized-pro' ),
+				'desc'  => sprintf( __( 'Manage your %1$s templates by using the visual editor <a href="%2$s" class="button button-secondary">Learn more</a>', 'woocommerce-germanized-pro' ), sab_get_document_type_label( 'packing_slip' ), esc_url( AccountingHelper::template_help_link() ) ),
+				'type'  => 'title',
+				'id'    => 'packing_slip_layout_settings',
+			),
 
 			array(
 				'type'          => 'sab_document_templates',
 				'document_type' => 'packing_slip',
-				'title'         => __( 'Manage template', 'woocommerce-germanized-pro' )
+				'title'         => __( 'Manage template', 'woocommerce-germanized-pro' ),
 			),
 
-			array( 'type' => 'sectionend', 'id' => 'packing_slip_layout_settings' ),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'packing_slip_layout_settings',
+			),
 		);
 
 		$settings = array_merge( $settings, Settings::get_numbering_options( 'packing_slip' ) );

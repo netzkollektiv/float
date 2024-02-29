@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -205,7 +205,8 @@ class PdfReader
             return;
         }
 
-        $readPages = function ($kids, $count) use (&$readPages, $readAll) {
+        $expectedPageCount = $this->getPageCount();
+        $readPages = function ($kids, $count) use (&$readPages, $readAll, $expectedPageCount) {
             $kids = PdfArray::ensure($kids);
             $isLeaf = ($count->value === \count($kids->value));
 
@@ -224,6 +225,11 @@ class PdfReader
                     $readPages(PdfDictionary::get($object->value, 'Kids'), PdfDictionary::get($object->value, 'Count'));
                 } else {
                     $this->pages[] = $object;
+                }
+
+                // stop if all pages are read - faulty documents exists with additional entries with invalid data.
+                if (count($this->pages) === $expectedPageCount) {
+                    break;
                 }
             }
         };

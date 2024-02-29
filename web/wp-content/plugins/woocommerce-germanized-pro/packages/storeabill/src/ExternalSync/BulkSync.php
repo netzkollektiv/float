@@ -80,10 +80,15 @@ class BulkSync extends BulkActionHandler {
 						continue;
 					}
 
+					/**
+					 * Cancel outstanding events.
+					 */
+					Helper::cancel_deferred_sync( $object, $handler );
+
 					$result = $handler->sync( $object );
 
 					if ( is_wp_error( $result ) ) {
-						foreach( $result->get_error_messages() as $error ) {
+						foreach ( $result->get_error_messages() as $error ) {
 							$this->add_notice( sprintf( _x( 'Error while syncing %1$s: %2$s', 'storeabill-core', 'woocommerce-germanized-pro' ), $object->get_formatted_identifier(), $error ), 'error' );
 						}
 					}

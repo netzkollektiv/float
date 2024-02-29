@@ -17,8 +17,8 @@ class ProductItem extends Item implements Summable, Priceable {
 
 	protected $extra_data = array(
 		'sku'   => '',
-		'price' => 0,
-		'total' => 0,
+		'price' => 0.0,
+		'total' => 0.0,
 	);
 
 	protected $data_store_name = 'shipment_product_item';
@@ -48,24 +48,39 @@ class ProductItem extends Item implements Summable, Priceable {
 		$this->set_prop( 'sku', $sku );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_price( $context = 'view' ) {
-		return $this->get_prop( 'price', $context );
+		return (float) $this->get_prop( 'price', $context );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_price_subtotal( $context = '' ) {
-		return $this->get_price( $context );
+		return (float) $this->get_price( $context );
 	}
 
 	public function set_price( $price ) {
-		$this->set_prop( 'price', sab_format_decimal( $price ) );
+		$this->set_prop( 'price', (float) $price );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_total( $context = 'view' ) {
-		return $this->get_prop( 'total', $context );
+		return (float) $this->get_prop( 'total', $context );
 	}
 
 	public function set_total( $total ) {
-		$this->set_prop( 'total', sab_format_decimal( $total ) );
+		$this->set_prop( 'total', (float) $total );
 	}
 
 	public function calculate_totals() {
@@ -74,6 +89,11 @@ class ProductItem extends Item implements Summable, Priceable {
 		}
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_subtotal( $context = '' ) {
 		return $this->get_total( $context );
 	}
@@ -103,13 +123,13 @@ class ProductItem extends Item implements Summable, Priceable {
 			if ( $reference = $this->get_reference() ) {
 				try {
 					$this->product = new Product( $reference->get_product() );
-				} catch( \Exception $e ) {
+				} catch ( \Exception $e ) {
 					$this->product = false;
 				}
 			} else {
 				$this->product = false;
 			}
- 		}
+		}
 
 		return $this->product;
 	}

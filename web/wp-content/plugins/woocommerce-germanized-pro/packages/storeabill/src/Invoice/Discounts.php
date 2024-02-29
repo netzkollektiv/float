@@ -43,7 +43,7 @@ class Discounts extends \WC_Discounts {
 		$this->object    = $object;
 		$tmp_items       = array();
 
-		foreach( $item_types as $item_type ) {
+		foreach ( $item_types as $item_type ) {
 			$tmp_items[ $item_type ] = array();
 		}
 
@@ -57,12 +57,12 @@ class Discounts extends \WC_Discounts {
 			$item->object   = $invoice_item;
 			$item->product  = false;
 			$item->quantity = $invoice_item->get_quantity();
-			$item->price    = wc_add_number_precision_deep( $invoice_item->get_line_total() );
+			$item->price    = sab_add_number_precision_deep( $invoice_item->get_line_total() );
 
 			$tmp_items[ $invoice_item->get_item_type() ][ $invoice_item->get_key() ] = $item;
 		}
 
-		foreach( $tmp_items as $item_type => $items ) {
+		foreach ( $tmp_items as $item_type => $items ) {
 			if ( ! empty( $items ) ) {
 				uasort( $tmp_items[ $item_type ], array( $this, 'sort_by_price' ) );
 
@@ -86,27 +86,37 @@ class Discounts extends \WC_Discounts {
 	}
 
 	public function apply_discount( $amount, $type = 'fixed', $args = array() ) {
-		$args = wp_parse_args( $args, array(
-			'is_voucher' => false,
-			'item_types' => array( 'product' )
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'is_voucher' => false,
+				'item_types' => array( 'product' ),
+			)
+		);
 
 		$this->set_items_from_invoice( $this->object, $args['item_types'] );
 		$this->is_voucher = $args['is_voucher'];
 
-		if ( ( $this->object->has_voucher() ) && ! $this->is_voucher() || ( $this->is_voucher() && $this->object->has_discount() && ! $this->object->has_voucher() ) ) {
-			return new \WP_Error( 'mixed_types', _x( 'Vouchers and normal discounts may not be mixed', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+		if ( $this->object->stores_vouchers_as_discount() ) {
+			if ( ( $this->object->has_voucher() ) && ! $this->is_voucher() || ( $this->is_voucher() && $this->object->has_discount() && ! $this->object->has_voucher() ) ) {
+				return new \WP_Error( 'mixed_types', _x( 'Vouchers and normal discounts may not be mixed', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+			}
 		}
 
 		$coupon_type = 'fixed' === $type ? 'fixed_cart' : 'percent';
 		$coupon      = new \WC_Coupon();
 
-		$coupon->read_manual_coupon( '', array(
-			'amount'        => sab_format_decimal( $amount ),
-			'discount_type' => $coupon_type,
-		) );
+		$coupon->read_manual_coupon(
+			'',
+			array(
+				'amount'        => sab_format_decimal( $amount ),
+				'discount_type' => $coupon_type,
+			)
+		);
 
-		return parent::apply_coupon( $coupon, false );
+		$result = parent::apply_coupon( $coupon, false );
+
+		return $result;
 	}
 
 	/**

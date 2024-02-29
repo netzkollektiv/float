@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\StoreaBill\WooCommerce;
+
 use Vendidero\StoreaBill\Interfaces\SyncableReferenceItem;
 use Vendidero\StoreaBill\Invoice\FeeItem;
 use WC_Order_Item;

@@ -44,12 +44,15 @@ function sab_get_journal( $journal_data ) {
 }
 
 function sab_create_journal( $document_type, $args = array() ) {
-	$args = wp_parse_args( $args, array(
-		'reset_interval'  => '',
-		'number_format'   => '{number}',
-		'number_min_size' => 0,
-		'last_number'     => 0,
-	) );
+	$args = wp_parse_args(
+		$args,
+		array(
+			'reset_interval'  => '',
+			'number_format'   => '{number}',
+			'number_min_size' => 0,
+			'last_number'     => 0,
+		)
+	);
 
 	if ( ! $document_type_object = sab_get_document_type( $document_type ) ) {
 		return false;

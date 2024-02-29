@@ -7,9 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Adds Germanized Term Generator settings.
  *
- * @class 		WC_GZDP_Settings_Tab_Terms_Generator
- * @version		3.0.0
- * @author 		Vendidero
+ * @class       WC_GZDP_Settings_Tab_Terms_Generator
+ * @version     3.0.0
+ * @author      Vendidero
  */
 abstract class WC_GZDP_Settings_Tab_Generator extends WC_GZD_Settings_Tab {
 
@@ -32,7 +32,7 @@ abstract class WC_GZDP_Settings_Tab_Generator extends WC_GZD_Settings_Tab {
 		global $current_section;
 		$generator = WC_GZDP_Admin_Generator::instance();
 
-		if ( isset( $_POST['generator_page_id'] ) && $generator->get_html( $this->get_generator_id() ) ) {
+		if ( isset( $_POST['generator_page_id'] ) && $generator->get_html( $this->get_generator_id() ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$generator->save_to_page();
 		} else {
 			$settings = $generator->get_settings( $this->get_generator_id() );

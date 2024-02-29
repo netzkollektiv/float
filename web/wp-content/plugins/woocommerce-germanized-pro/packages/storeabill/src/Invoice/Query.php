@@ -24,9 +24,12 @@ class Query extends \Vendidero\StoreaBill\Document\Query {
 	protected function get_default_query_vars() {
 		$args = parent::get_default_query_vars();
 
-		$args = array_replace_recursive( $args, array(
-			'payment_status' => array(),
-		) );
+		$args = array_replace_recursive(
+			$args,
+			array(
+				'payment_status' => array(),
+			)
+		);
 
 		return $args;
 	}

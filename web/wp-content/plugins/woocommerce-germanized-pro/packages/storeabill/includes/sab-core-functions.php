@@ -3,6 +3,7 @@
 use Vendidero\StoreaBill\Exceptions\DocumentRenderException;
 use Vendidero\StoreaBill\Interfaces\PDF;
 use Vendidero\StoreaBill\Package;
+use Vendidero\StoreaBill\Utilities\Numbers;
 
 /**
  * StoreaBill Core Functions
@@ -74,9 +75,13 @@ function sab_locate_template( $template_name, $template_path = '', $default_path
 
 	// Look within passed path within the theme - this is priority.
 	$template = locate_template(
-		array(
-			trailingslashit( $template_path ) . $template_name,
-			$template_name,
+		apply_filters(
+			'storeabill_locate_theme_template_locations',
+			array(
+				trailingslashit( $template_path ) . $template_name,
+				$template_name,
+			),
+			$template_name
 		)
 	);
 
@@ -171,13 +176,19 @@ function sab_get_template_html( $template_name, $args = array(), $template_path 
  * @throws DocumentRenderException
  */
 function sab_get_pdf_renderer( $renderer = '', $args = array() ) {
-	$renderers = apply_filters( 'storeabill_pdf_renderers', array(
-		'mpdf' => '\Vendidero\StoreaBill\PDF\MpdfRenderer'
-	) );
+	$renderers = apply_filters(
+		'storeabill_pdf_renderers',
+		array(
+			'mpdf' => '\Vendidero\StoreaBill\PDF\MpdfRenderer',
+		)
+	);
 
-	$args = wp_parse_args( $args, array(
-		'template' => false,
-	) );
+	$args = wp_parse_args(
+		$args,
+		array(
+			'template' => false,
+		)
+	);
 
 	if ( ! is_a( $args['template'], '\Vendidero\StoreaBill\Document\DefaultTemplate' ) ) {
 		throw new DocumentRenderException( _x( 'Missing document template.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
@@ -194,7 +205,7 @@ function sab_get_pdf_renderer( $renderer = '', $args = array() ) {
 	$class = $renderers[ $renderer ];
 
 	return new $class( $args );
- }
+}
 
 /**
  * @param string $merger
@@ -202,9 +213,12 @@ function sab_get_pdf_renderer( $renderer = '', $args = array() ) {
  * @return \Vendidero\StoreaBill\Interfaces\PDFMerge
  */
 function sab_get_pdf_merger( $merger = '' ) {
-	$mergers = apply_filters( 'storeabill_pdf_renderers', array(
-		'mpdf' => '\Vendidero\StoreaBill\PDF\MpdfMerger'
-	) );
+	$mergers = apply_filters(
+		'storeabill_pdf_renderers',
+		array(
+			'mpdf' => '\Vendidero\StoreaBill\PDF\MpdfMerger',
+		)
+	);
 
 	if ( empty( $merger ) ) {
 		$merger = apply_filters( 'storeabill_default_pdf_merger', 'mpdf' );
@@ -234,7 +248,7 @@ function sab_maybe_define_constant( $name, $value ) {
 
 function sab_add_block_class( $html, $new_classes ) {
 	if ( is_array( $new_classes ) ) {
-		$new_classes = implode( " ", $new_classes );
+		$new_classes = implode( ' ', $new_classes );
 	}
 
 	$has_class = true;
@@ -242,10 +256,10 @@ function sab_add_block_class( $html, $new_classes ) {
 
 	$tags = array(
 		'p',
-		'div'
+		'div',
 	);
 
-	foreach( $tags as $tag ) {
+	foreach ( $tags as $tag ) {
 		if ( substr( trim( $html ), 0, strlen( $tag ) + 2 ) === '<' . $tag . '>' ) {
 			$str       = preg_replace( "/<$tag([> ])/", '<' . $tag . ' class="' . $new_classes . '"$1', $html, 1 );
 			$has_class = false;
@@ -253,36 +267,55 @@ function sab_add_block_class( $html, $new_classes ) {
 	}
 
 	if ( $has_class && preg_match( '/class="(.*?)"/s', $html ) ) {
-		$str = preg_replace('/class="(.*?)"/s', 'class="\1 ' . $new_classes . '"', $html, 1 );
+		$str = preg_replace( '/class="(.*?)"/s', 'class="\1 ' . $new_classes . '"', $html, 1 );
 	}
 
 	return $str;
 }
 
-function _sab_parse_blocks_recursively( $block ) {
+/**
+ * Replace global CSS variables as mPDF does not support them.
+ *
+ * @param $html
+ *
+ * @return string
+ */
+function sab_replace_block_styles( $html ) {
+	foreach ( sab_get_color_names() as $color_name => $value ) {
+		$html = str_replace( 'var(--wp--preset--color--' . $color_name . ')', $value, $html );
+	}
 
+	return $html;
+}
+
+function _sab_parse_blocks_recursively( $block ) {
 	if ( empty( $block['innerContent'] ) ) {
 		return $block;
 	}
 
-	// Add global class
-	$block['innerContent'][0] = sab_add_block_class( $block['innerContent'][0], 'sab-block' );
+	// Add global classes, e.g. to improve border-style support
+	$classes = sab_generate_block_classes( isset( $block['attrs'] ) ? $block['attrs'] : array() );
+
+	$block['innerContent'][0] = sab_add_block_class( $block['innerContent'][0], $classes );
+	$block['innerContent'][0] = sab_replace_block_styles( $block['innerContent'][0] );
 
 	if ( 'core/columns' === $block['blockName'] ) {
-
 		// Count columns
-		$column_count             = sizeof( $block['innerBlocks'] );
-		$count                    = 0;
-		$total_width_remaining    = 100;
-		$has_explicit_width       = false;
-		$blocks_auto_width        = 0;
+		$column_count          = count( $block['innerBlocks'] );
+		$count                 = 0;
+		$total_width_remaining = 100;
+		$has_explicit_width    = false;
+		$blocks_auto_width     = 0;
 
-		foreach( $block['innerBlocks'] as $inner_key => $inner_block ) {
+		foreach ( $block['innerBlocks'] as $inner_key => $inner_block ) {
 			++$count;
 
-			$attrs = wp_parse_args( $inner_block['attrs'], array(
-				'width' => 0
-			) );
+			$attrs = wp_parse_args(
+				$inner_block['attrs'],
+				array(
+					'width' => 0,
+				)
+			);
 
 			/**
 			 * Since WP 5.6 specific units might be attached
@@ -290,7 +323,7 @@ function _sab_parse_blocks_recursively( $block ) {
 			$attrs['width'] = sab_strip_unit_from_number( $attrs['width'] );
 
 			if ( is_numeric( $attrs['width'] ) && $attrs['width'] > 0 ) {
-				$has_explicit_width = true;
+				$has_explicit_width     = true;
 				$total_width_remaining -= $attrs['width'];
 			} else {
 				$blocks_auto_width++;
@@ -306,7 +339,6 @@ function _sab_parse_blocks_recursively( $block ) {
 			if ( strpos( $block['innerBlocks'][ $inner_key ]['innerContent'][0], '></div>' ) !== false ) {
 				$block['innerBlocks'][ $inner_key ]['innerContent'][0] = str_replace( '></div>', '>&nbsp;</div>', $block['innerBlocks'][ $inner_key ]['innerContent'][0] );
 			}
-
 		}
 
 		/**
@@ -314,16 +346,18 @@ function _sab_parse_blocks_recursively( $block ) {
 		 * calculate remaining widths to support floats within PDFs.
 		 */
 		if ( $has_explicit_width && $column_count > 1 ) {
-
 			$total_width_remaining   = 100;
 			$total_columns_remaining = $column_count;
 			$column_padding          = apply_filters( 'storeabill_document_column_block_padding', 5, $block );
 			$padding                 = ( ( $column_count - 1 ) * $column_padding ) / $column_count;
 
-			foreach( $block['innerBlocks'] as $inner_key => $inner_block ) {
-				$attrs = wp_parse_args( $inner_block['attrs'], array(
-					'width' => 0
-				) );
+			foreach ( $block['innerBlocks'] as $inner_key => $inner_block ) {
+				$attrs = wp_parse_args(
+					$inner_block['attrs'],
+					array(
+						'width' => 0,
+					)
+				);
 
 				/**
 				 * Since WP 5.6 specific units might be attached
@@ -344,7 +378,7 @@ function _sab_parse_blocks_recursively( $block ) {
 				}
 
 				if ( ( $total_width_remaining - $width ) < 0 ) {
-					$width = $total_width_remaining;
+					$width                 = $total_width_remaining;
 					$total_width_remaining = 0;
 				} else {
 					$total_width_remaining = $total_width_remaining - $width;
@@ -353,14 +387,24 @@ function _sab_parse_blocks_recursively( $block ) {
 				$total_columns_remaining--;
 
 				$width -= $padding;
-				$width = floor($width * 10 ) / 10;
+				$width  = floor( $width * 10 ) / 10;
 
 				if ( ! empty( $width ) ) {
 					$html  = $block['innerBlocks'][ $inner_key ]['innerContent'][0];
 					$style = 'width: ' . $width . '%';
 
 					if ( strpos( $html, 'style=' ) !== false ) {
-						$html = preg_replace('/(<[^>]+) style=".*?"/i', '$1 style="' . esc_attr( $style ) . '"', $html );
+						preg_match_all( '/style="(.*?)"/i', $html, $matches );
+
+						/**
+						 * Some column blocks may have inline styles containing custom background colors.
+						 * Prepend those inline styles and do not dismiss them.
+						 */
+						if ( ! empty( $matches ) && count( $matches ) > 1 ) {
+							$style = $matches[1][0] . ';' . $style;
+						}
+
+						$html = preg_replace( '/(<[^>]+) style=".*?"/i', '$1 style="' . esc_attr( $style ) . '"', $html );
 					} else {
 						$html = str_replace( '>', ' style="' . esc_attr( $style ) . '">', $html );
 					}
@@ -377,26 +421,24 @@ function _sab_parse_blocks_recursively( $block ) {
 		$block['innerContent'][1] = sab_add_block_class( $block['innerContent'][1], 'wp-block-columns-' . $column_count );
 
 		array_push( $block['innerContent'], '</div>' );
-
 		array_push( $block['innerContent'], '<div class="clearfix"></div>' );
 
-	} elseif( 'core/table' === $block['blockName'] ) {
-
+	} elseif ( 'core/table' === $block['blockName'] ) {
 		if ( $dom = sab_load_html_dom( $block['innerHTML'] ) ) {
-			$figure  = $dom->getElementsByTagName( 'figure' )[0];
-			$tbody   = $figure->getElementsByTagName( 'tbody' );
+			$figure = $dom->getElementsByTagName( 'figure' )[0];
+			$tbody  = $figure->getElementsByTagName( 'tbody' );
 
 			$changed = false;
 
-			if ( ! empty( $tbody ) ) {
+			if ( $tbody && count( $tbody ) > 0 ) {
 				$count = 0;
 				$tbody = $tbody[0];
 				$trs   = $tbody->getElementsByTagName( 'tr' );
 
 				if ( ! empty( $trs ) ) {
-					$total = sizeof( $trs );
+					$total = count( $trs );
 
-					foreach( $trs as $tr ) {
+					foreach ( $trs as $tr ) {
 						$classes = sab_get_html_loop_classes( 'sab-table-row', $total, ++$count );
 						$classes = array_filter( array_merge( (array) $tr->getAttribute( 'class' ), $classes ) );
 
@@ -422,11 +464,10 @@ function _sab_parse_blocks_recursively( $block ) {
 		 * Replace spacer height with padding-top for better PDF compatibility (e.g. within footers).
 		 */
 		$block['innerContent'][0] = preg_replace( '/height:(\w+)/i', 'padding-top:${1}', $block['innerContent'][0] );
-		$block['innerHTML'] = $block['innerContent'][0];
+		$block['innerHTML']       = $block['innerContent'][0];
 
-	} elseif( in_array( $block['blockName'], array( 'storeabill/logo', 'core/image' ) ) ) {
-
-		$output_type = isset( $_GET['output_type'] ) ? sab_clean( $_GET['output_type'] ) : 'pdf';
+	} elseif ( in_array( $block['blockName'], array( 'storeabill/logo', 'core/image' ), true ) ) {
+		$output_type = isset( $_GET['output_type'] ) ? sab_clean( wp_unslash( $_GET['output_type'] ) ) : 'pdf'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		/**
 		 * Do not transform URLs to paths in HTML mode.
@@ -443,7 +484,7 @@ function _sab_parse_blocks_recursively( $block ) {
 
 			if ( $dom ) {
 				$xpath = new DOMXPath( $dom );
-				$src   = $xpath->evaluate("string(//img/@src)");
+				$src   = $xpath->evaluate( 'string(//img/@src)' );
 			} else {
 				preg_match( '/src="([^"]*)"/i', $block_content, $matches );
 
@@ -456,21 +497,21 @@ function _sab_parse_blocks_recursively( $block ) {
 				$path = sab_get_asset_path_by_url( $src );
 			}
 
-			if ( ! empty( $path ) && @file_exists( $path ) ) {
+			if ( ! empty( $path ) && @file_exists( $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 				$block_content = str_replace( $src, $path, $block_content );
 			}
 
 			$block['innerContent'][0] = $block_content;
-			$block['innerHTML'] = $block_content;
+			$block['innerHTML']       = $block_content;
 		}
-	} elseif( strpos( $block['blockName'], 'storeabill/' ) !== false ) {
+	} elseif ( strpos( $block['blockName'], 'storeabill/' ) !== false ) {
 		if ( $sab_block = \Vendidero\StoreaBill\Editor\Helper::get_block( $block['blockName'] ) ) {
 			$block = $sab_block->parse_block( $block );
 		}
 	}
 
 	if ( isset( $block['innerBlocks'] ) && ! empty( $block['innerBlocks'] ) ) {
-		foreach( $block['innerBlocks'] as $key => $inner_block ) {
+		foreach ( $block['innerBlocks'] as $key => $inner_block ) {
 			$block['innerBlocks'][ $key ] = _sab_parse_blocks_recursively( $inner_block );
 		}
 	}
@@ -524,7 +565,7 @@ function _sab_filter_render_shortcodes_end() {
 	global $shortcode_tags, $sab_original_shortcode_tags;
 
 	if ( is_array( $sab_original_shortcode_tags ) ) {
-		$shortcode_tags = $sab_original_shortcode_tags;
+		$shortcode_tags = $sab_original_shortcode_tags; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 	}
 }
 
@@ -547,7 +588,7 @@ add_filter( 'render_block_data', '_sab_parse_block_filter', 150, 2 );
 add_filter( 'pre_render_block', '_sab_maybe_render_block_filter', 150, 2 );
 
 function sab_get_asset_path_by_url( $src ) {
-	$output_type = isset( $_GET['output_type'] ) ? sab_clean( $_GET['output_type'] ) : 'pdf';
+	$output_type = isset( $_GET['output_type'] ) ? sab_clean( wp_unslash( $_GET['output_type'] ) ) : 'pdf'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 	if ( 'pdf' !== $output_type ) {
 		return $src;
@@ -560,7 +601,7 @@ function sab_get_asset_path_by_url( $src ) {
 	$path                = str_replace( $site_url, '', $src );
 	$wp_content_basename = basename( WP_CONTENT_DIR );
 	$pdf_supports_path   = true;
-	$mpdf_version         = \Vendidero\StoreaBill\PDF\MpdfRenderer::get_version();
+	$mpdf_version        = \Vendidero\StoreaBill\PDF\MpdfRenderer::get_version();
 
 	if ( version_compare( $mpdf_version, '8.0', '<' ) ) {
 		$pdf_supports_path = false;
@@ -575,14 +616,14 @@ function sab_get_asset_path_by_url( $src ) {
 		$path = untrailingslashit( WP_CONTENT_DIR ) . $path;
 	}
 
-	if ( ! @file_exists( $path ) ) {
+	if ( ! @file_exists( $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $src;
 	}
 
 	return $path;
 }
 
-function sab_render_blocks( $blocks ) {
+function sab_render_blocks( $blocks, $arguments_to_inherit = array() ) {
 	/**
 	 * Remove potential theme or plugin filters which might adjust the block HTML.
 	 */
@@ -600,9 +641,11 @@ function sab_render_blocks( $blocks ) {
 	$register_blocks = \Vendidero\StoreaBill\Editor\Helper::get_blocks();
 	$output          = '';
 	$count           = 0;
-	$total           = sizeof( $blocks );
+	$total           = count( $blocks );
 
 	foreach ( $blocks as $block ) {
+		$block['attrs'] = array_replace_recursive( $arguments_to_inherit, $block['attrs'] );
+
 		$block['attrs']['renderNumber'] = ++$count;
 		$block['attrs']['renderTotal']  = $total;
 
@@ -630,13 +673,13 @@ function sab_load_html_dom( $html ) {
 	}
 
 	libxml_use_internal_errors( true );
-	$dom = new DOMDocument( '1.0', 'utf-8' );
-	$dom->preserveWhiteSpace  = true;
-	$dom->formatOutput        = false;
-	$dom->strictErrorChecking = false;
+	$dom                      = new DOMDocument( '1.0', 'utf-8' );
+	$dom->preserveWhiteSpace  = true; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+	$dom->formatOutput        = false; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+	$dom->strictErrorChecking = false; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 	// Load without HTML wrappers
-	@$dom->loadHTML( '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $html );
+	@$dom->loadHTML( '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $html ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase, WordPress.PHP.NoSilencedErrors.Discouraged
 	// Explicitly force utf-8 encoding
 	$dom->encoding = 'UTF-8';
 
@@ -664,10 +707,10 @@ function sab_blocks_convert_rgba( $content ) {
  */
 function sab_blocks_convert_shortcodes( $content ) {
 	if ( $dom = sab_load_html_dom( $content ) ) {
-		$new_selector  = 'document-shortcode';
-		$finder        = new DomXPath( $dom );
-		$nodes         = $finder->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' $new_selector ')]");
-		$nodes         = is_array( $nodes ) || is_a( $nodes, 'DOMNodeList' ) ? $nodes : array( $nodes );
+		$new_selector = 'document-shortcode';
+		$finder       = new DomXPath( $dom );
+		$nodes        = $finder->query( "//*[contains(concat(' ', normalize-space(@class), ' '), ' $new_selector ')]" );
+		$nodes        = is_array( $nodes ) || is_a( $nodes, 'DOMNodeList' ) ? $nodes : array( $nodes );
 
 		/**
 		 * Force opening and closing the editor-placeholder span.
@@ -675,46 +718,50 @@ function sab_blocks_convert_shortcodes( $content ) {
 		 * which will lead to problems while replacing the old node content with the new content.
 		 */
 		$content = str_replace( '<span class="editor-placeholder"/>', '<span class="editor-placeholder"></span>', $content );
+		/**
+		 * HTML entity decode the original content as it may contain elements like &euro; or &nbsp; (e.g. added via sab_price()) instead of € which might not be replaceable
+		 * using str_replace.
+		 */
+		$content = html_entity_decode( $content );
 
 		if ( ! empty( $nodes ) ) {
-			foreach( $nodes as $node ) {
+			foreach ( $nodes as $node ) {
 				if ( $attr = $node->getAttribute( 'data-shortcode' ) ) {
 					// Use LIBXML_NOEMPTYTAG to make sure elements are not auto-closed e.g. <span></span> -> <span />
-					$old_html          = $node->ownerDocument->saveXML( $node );
+					$old_html          = $node->ownerDocument->saveXML( $node ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 					$shortcode         = sab_query_to_shortcode( $attr );
 					$classes           = explode( ' ', $node->getAttribute( 'class' ) );
 					$spans             = $node->getElementsByTagName( 'span' );
 					$found_placeholder = false;
 
 					if ( ! empty( $spans ) ) {
-						foreach( $spans as $span ) {
+						foreach ( $spans as $span ) {
 							if ( strpos( $span->getAttribute( 'class' ), 'editor-placeholder' ) !== false ) {
 								$found_placeholder = true;
-								$sibling  = $span->nextSibling;
-								$siblings = array();
+								$sibling           = $span->nextSibling; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+								$siblings          = array();
 
-								while( $sibling ) {
+								while ( $sibling ) {
 									$siblings[] = $sibling;
-									$sibling    = $sibling->nextSibling;
+									$sibling    = $sibling->nextSibling; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 								}
 
-								foreach( $siblings as $sibling ) {
+								foreach ( $siblings as $sibling ) {
 									// Remove everything after editor-placeholder
-									$span->parentNode->removeChild( $sibling );
+									$span->parentNode->removeChild( $sibling ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 								}
 
 								$new_node = $dom->createTextNode( $shortcode );
 
 								// Insert placeholder right after editor-placeholder
 								try {
-									$span->parentNode->insertBefore( $new_node, $span->nextSibling );
-								} catch( \Exception $e ) {
-									$span->parentNode->appendChild( $new_node );
+									$span->parentNode->insertBefore( $new_node, $span->nextSibling ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+								} catch ( \Exception $e ) {
+									$span->parentNode->appendChild( $new_node ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 								}
 
 								// Remove editor node
-								$span->parentNode->removeChild( $span );
-
+								$span->parentNode->removeChild( $span ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 								break;
 							}
 						}
@@ -723,7 +770,7 @@ function sab_blocks_convert_shortcodes( $content ) {
 					// In case we didnt find the placeholder: Remove inner HTML and add shortcode instead.
 					if ( ! $found_placeholder ) {
 						$shortcode_node = $dom->createTextNode( $shortcode );
-						$children       = $node->childNodes;
+						$children       = $node->childNodes; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 						foreach ( $children as $child ) {
 							$node->removeChild( $child );
@@ -744,19 +791,17 @@ function sab_blocks_convert_shortcodes( $content ) {
 					 * This replacement is necessary as we need to explicitly store editor-placeholder with opening and closing tags
 					 * so that the RichText content does not encapsulate the content within.
 					 */
-					$old_html   = str_replace( array( '<span class="editor-placeholder"/>' ), array( '<span class="editor-placeholder"></span>' ), $old_html );
-					$node_html  = $node->ownerDocument->saveXML( $node );
-					$node_html  = str_replace( '<span class="editor-placeholder"/>', '<span class="editor-placeholder"></span>', $node_html );
+					$old_html  = str_replace( array( '<span class="editor-placeholder"/>' ), array( '<span class="editor-placeholder"></span>' ), $old_html );
+					$node_html = $node->ownerDocument->saveXML( $node ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+					$node_html = str_replace( '<span class="editor-placeholder"/>', '<span class="editor-placeholder"></span>', $node_html );
 
-					$content    = str_replace( $old_html, $node_html, $content );
-
-
+					$content = str_replace( $old_html, $node_html, $content );
 
 					/**
 					 * Replace with special char decoded as fallback
 					 */
-					$old_html   = htmlspecialchars_decode( $old_html );
-					$content    = str_replace( $old_html, $node_html, $content );
+					$old_html = htmlspecialchars_decode( $old_html );
+					$content  = str_replace( $old_html, $node_html, $content );
 
 					/**
 					 * Replace with entity decoded html as fallback
@@ -767,7 +812,7 @@ function sab_blocks_convert_shortcodes( $content ) {
 			}
 		}
 	} else {
-		preg_match_all('/data-shortcode="([^"]*)"/', $content, $matches );
+		preg_match_all( '/data-shortcode="([^"]*)"/', $content, $matches );
 
 		/**
 		 * Ugly hack to replace shortcodes with actual shortcodes for rendering.
@@ -775,9 +820,9 @@ function sab_blocks_convert_shortcodes( $content ) {
 		 * Does not respect inner tags.
 		 */
 		if ( ! empty( $matches[1] ) ) {
-			foreach( $matches[1] as $query ) {
+			foreach ( $matches[1] as $query ) {
 				$shortcode = sab_query_to_shortcode( $query );
-				$query     = preg_quote( $query );
+				$query     = preg_quote( $query ); // phpcs:ignore WordPress.PHP.PregQuoteDelimiter.Missing
 				$content   = preg_replace( "#data-shortcode=\"$query\">(.*?)<span class=\"editor-placeholder\"></span>([\s\S]*?)</span>#", '>' . $shortcode . '</span>', $content );
 			}
 		}
@@ -813,7 +858,259 @@ function sab_decode_entities_full( $string, $quotes = ENT_COMPAT, $charset = 'IS
  * Per: http://www.lazycat.org/software/html_entity_decode_full.phps
  */
 function sab_convert_entity( $matches, $destroy = true ) {
-	static $table = array( 'quot' => '&#34;','amp' => '&#38;','lt' => '&#60;','gt' => '&#62;','OElig' => '&#338;','oelig' => '&#339;','Scaron' => '&#352;','scaron' => '&#353;','Yuml' => '&#376;','circ' => '&#710;','tilde' => '&#732;','ensp' => '&#8194;','emsp' => '&#8195;','thinsp' => '&#8201;','zwnj' => '&#8204;','zwj' => '&#8205;','lrm' => '&#8206;','rlm' => '&#8207;','ndash' => '&#8211;','mdash' => '&#8212;','lsquo' => '&#8216;','rsquo' => '&#8217;','sbquo' => '&#8218;','ldquo' => '&#8220;','rdquo' => '&#8221;','bdquo' => '&#8222;','dagger' => '&#8224;','Dagger' => '&#8225;','permil' => '&#8240;','lsaquo' => '&#8249;','rsaquo' => '&#8250;','euro' => '&#8364;','fnof' => '&#402;','Alpha' => '&#913;','Beta' => '&#914;','Gamma' => '&#915;','Delta' => '&#916;','Epsilon' => '&#917;','Zeta' => '&#918;','Eta' => '&#919;','Theta' => '&#920;','Iota' => '&#921;','Kappa' => '&#922;','Lambda' => '&#923;','Mu' => '&#924;','Nu' => '&#925;','Xi' => '&#926;','Omicron' => '&#927;','Pi' => '&#928;','Rho' => '&#929;','Sigma' => '&#931;','Tau' => '&#932;','Upsilon' => '&#933;','Phi' => '&#934;','Chi' => '&#935;','Psi' => '&#936;','Omega' => '&#937;','alpha' => '&#945;','beta' => '&#946;','gamma' => '&#947;','delta' => '&#948;','epsilon' => '&#949;','zeta' => '&#950;','eta' => '&#951;','theta' => '&#952;','iota' => '&#953;','kappa' => '&#954;','lambda' => '&#955;','mu' => '&#956;','nu' => '&#957;','xi' => '&#958;','omicron' => '&#959;','pi' => '&#960;','rho' => '&#961;','sigmaf' => '&#962;','sigma' => '&#963;','tau' => '&#964;','upsilon' => '&#965;','phi' => '&#966;','chi' => '&#967;','psi' => '&#968;','omega' => '&#969;','thetasym' => '&#977;','upsih' => '&#978;','piv' => '&#982;','bull' => '&#8226;','hellip' => '&#8230;','prime' => '&#8242;','Prime' => '&#8243;','oline' => '&#8254;','frasl' => '&#8260;','weierp' => '&#8472;','image' => '&#8465;','real' => '&#8476;','trade' => '&#8482;','alefsym' => '&#8501;','larr' => '&#8592;','uarr' => '&#8593;','rarr' => '&#8594;','darr' => '&#8595;','harr' => '&#8596;','crarr' => '&#8629;','lArr' => '&#8656;','uArr' => '&#8657;','rArr' => '&#8658;','dArr' => '&#8659;','hArr' => '&#8660;','forall' => '&#8704;','part' => '&#8706;','exist' => '&#8707;','empty' => '&#8709;','nabla' => '&#8711;','isin' => '&#8712;','notin' => '&#8713;','ni' => '&#8715;','prod' => '&#8719;','sum' => '&#8721;','minus' => '&#8722;','lowast' => '&#8727;','radic' => '&#8730;','prop' => '&#8733;','infin' => '&#8734;','ang' => '&#8736;','and' => '&#8743;','or' => '&#8744;','cap' => '&#8745;','cup' => '&#8746;','int' => '&#8747;','there4' => '&#8756;','sim' => '&#8764;','cong' => '&#8773;','asymp' => '&#8776;','ne' => '&#8800;','equiv' => '&#8801;','le' => '&#8804;','ge' => '&#8805;','sub' => '&#8834;','sup' => '&#8835;','nsub' => '&#8836;','sube' => '&#8838;','supe' => '&#8839;','oplus' => '&#8853;','otimes' => '&#8855;','perp' => '&#8869;','sdot' => '&#8901;','lceil' => '&#8968;','rceil' => '&#8969;','lfloor' => '&#8970;','rfloor' => '&#8971;','lang' => '&#9001;','rang' => '&#9002;','loz' => '&#9674;','spades' => '&#9824;','clubs' => '&#9827;','hearts' => '&#9829;','diams' => '&#9830;','nbsp' => '&#160;','iexcl' => '&#161;','cent' => '&#162;','pound' => '&#163;','curren' => '&#164;','yen' => '&#165;','brvbar' => '&#166;','sect' => '&#167;','uml' => '&#168;','copy' => '&#169;','ordf' => '&#170;','laquo' => '&#171;','not' => '&#172;','shy' => '&#173;','reg' => '&#174;','macr' => '&#175;','deg' => '&#176;','plusmn' => '&#177;','sup2' => '&#178;','sup3' => '&#179;','acute' => '&#180;','micro' => '&#181;','para' => '&#182;','middot' => '&#183;','cedil' => '&#184;','sup1' => '&#185;','ordm' => '&#186;','raquo' => '&#187;','frac14' => '&#188;','frac12' => '&#189;','frac34' => '&#190;','iquest' => '&#191;','Agrave' => '&#192;','Aacute' => '&#193;','Acirc' => '&#194;','Atilde' => '&#195;','Auml' => '&#196;','Aring' => '&#197;','AElig' => '&#198;','Ccedil' => '&#199;','Egrave' => '&#200;','Eacute' => '&#201;','Ecirc' => '&#202;','Euml' => '&#203;','Igrave' => '&#204;','Iacute' => '&#205;','Icirc' => '&#206;','Iuml' => '&#207;','ETH' => '&#208;','Ntilde' => '&#209;','Ograve' => '&#210;','Oacute' => '&#211;','Ocirc' => '&#212;','Otilde' => '&#213;','Ouml' => '&#214;','times' => '&#215;','Oslash' => '&#216;','Ugrave' => '&#217;','Uacute' => '&#218;','Ucirc' => '&#219;','Uuml' => '&#220;','Yacute' => '&#221;','THORN' => '&#222;','szlig' => '&#223;','agrave' => '&#224;','aacute' => '&#225;','acirc' => '&#226;','atilde' => '&#227;','auml' => '&#228;','aring' => '&#229;','aelig' => '&#230;','ccedil' => '&#231;','egrave' => '&#232;','eacute' => '&#233;','ecirc' => '&#234;','euml' => '&#235;','igrave' => '&#236;','iacute' => '&#237;','icirc' => '&#238;','iuml' => '&#239;','eth' => '&#240;','ntilde' => '&#241;','ograve' => '&#242;','oacute' => '&#243;','ocirc' => '&#244;','otilde' => '&#245;','ouml' => '&#246;','divide' => '&#247;','oslash' => '&#248;','ugrave' => '&#249;','uacute' => '&#250;','ucirc' => '&#251;','uuml' => '&#252;','yacute' => '&#253;','thorn' => '&#254;','yuml' => '&#255;'
+	static $table = array(
+		'quot'     => '&#34;',
+		'amp'      => '&#38;',
+		'lt'       => '&#60;',
+		'gt'       => '&#62;',
+		'OElig'    => '&#338;',
+		'oelig'    => '&#339;',
+		'Scaron'   => '&#352;',
+		'scaron'   => '&#353;',
+		'Yuml'     => '&#376;',
+		'circ'     => '&#710;',
+		'tilde'    => '&#732;',
+		'ensp'     => '&#8194;',
+		'emsp'     => '&#8195;',
+		'thinsp'   => '&#8201;',
+		'zwnj'     => '&#8204;',
+		'zwj'      => '&#8205;',
+		'lrm'      => '&#8206;',
+		'rlm'      => '&#8207;',
+		'ndash'    => '&#8211;',
+		'mdash'    => '&#8212;',
+		'lsquo'    => '&#8216;',
+		'rsquo'    => '&#8217;',
+		'sbquo'    => '&#8218;',
+		'ldquo'    => '&#8220;',
+		'rdquo'    => '&#8221;',
+		'bdquo'    => '&#8222;',
+		'dagger'   => '&#8224;',
+		'Dagger'   => '&#8225;',
+		'permil'   => '&#8240;',
+		'lsaquo'   => '&#8249;',
+		'rsaquo'   => '&#8250;',
+		'euro'     => '&#8364;',
+		'fnof'     => '&#402;',
+		'Alpha'    => '&#913;',
+		'Beta'     => '&#914;',
+		'Gamma'    => '&#915;',
+		'Delta'    => '&#916;',
+		'Epsilon'  => '&#917;',
+		'Zeta'     => '&#918;',
+		'Eta'      => '&#919;',
+		'Theta'    => '&#920;',
+		'Iota'     => '&#921;',
+		'Kappa'    => '&#922;',
+		'Lambda'   => '&#923;',
+		'Mu'       => '&#924;',
+		'Nu'       => '&#925;',
+		'Xi'       => '&#926;',
+		'Omicron'  => '&#927;',
+		'Pi'       => '&#928;',
+		'Rho'      => '&#929;',
+		'Sigma'    => '&#931;',
+		'Tau'      => '&#932;',
+		'Upsilon'  => '&#933;',
+		'Phi'      => '&#934;',
+		'Chi'      => '&#935;',
+		'Psi'      => '&#936;',
+		'Omega'    => '&#937;',
+		'alpha'    => '&#945;',
+		'beta'     => '&#946;',
+		'gamma'    => '&#947;',
+		'delta'    => '&#948;',
+		'epsilon'  => '&#949;',
+		'zeta'     => '&#950;',
+		'eta'      => '&#951;',
+		'theta'    => '&#952;',
+		'iota'     => '&#953;',
+		'kappa'    => '&#954;',
+		'lambda'   => '&#955;',
+		'mu'       => '&#956;',
+		'nu'       => '&#957;',
+		'xi'       => '&#958;',
+		'omicron'  => '&#959;',
+		'pi'       => '&#960;',
+		'rho'      => '&#961;',
+		'sigmaf'   => '&#962;',
+		'sigma'    => '&#963;',
+		'tau'      => '&#964;',
+		'upsilon'  => '&#965;',
+		'phi'      => '&#966;',
+		'chi'      => '&#967;',
+		'psi'      => '&#968;',
+		'omega'    => '&#969;',
+		'thetasym' => '&#977;',
+		'upsih'    => '&#978;',
+		'piv'      => '&#982;',
+		'bull'     => '&#8226;',
+		'hellip'   => '&#8230;',
+		'prime'    => '&#8242;',
+		'Prime'    => '&#8243;',
+		'oline'    => '&#8254;',
+		'frasl'    => '&#8260;',
+		'weierp'   => '&#8472;',
+		'image'    => '&#8465;',
+		'real'     => '&#8476;',
+		'trade'    => '&#8482;',
+		'alefsym'  => '&#8501;',
+		'larr'     => '&#8592;',
+		'uarr'     => '&#8593;',
+		'rarr'     => '&#8594;',
+		'darr'     => '&#8595;',
+		'harr'     => '&#8596;',
+		'crarr'    => '&#8629;',
+		'lArr'     => '&#8656;',
+		'uArr'     => '&#8657;',
+		'rArr'     => '&#8658;',
+		'dArr'     => '&#8659;',
+		'hArr'     => '&#8660;',
+		'forall'   => '&#8704;',
+		'part'     => '&#8706;',
+		'exist'    => '&#8707;',
+		'empty'    => '&#8709;',
+		'nabla'    => '&#8711;',
+		'isin'     => '&#8712;',
+		'notin'    => '&#8713;',
+		'ni'       => '&#8715;',
+		'prod'     => '&#8719;',
+		'sum'      => '&#8721;',
+		'minus'    => '&#8722;',
+		'lowast'   => '&#8727;',
+		'radic'    => '&#8730;',
+		'prop'     => '&#8733;',
+		'infin'    => '&#8734;',
+		'ang'      => '&#8736;',
+		'and'      => '&#8743;',
+		'or'       => '&#8744;',
+		'cap'      => '&#8745;',
+		'cup'      => '&#8746;',
+		'int'      => '&#8747;',
+		'there4'   => '&#8756;',
+		'sim'      => '&#8764;',
+		'cong'     => '&#8773;',
+		'asymp'    => '&#8776;',
+		'ne'       => '&#8800;',
+		'equiv'    => '&#8801;',
+		'le'       => '&#8804;',
+		'ge'       => '&#8805;',
+		'sub'      => '&#8834;',
+		'sup'      => '&#8835;',
+		'nsub'     => '&#8836;',
+		'sube'     => '&#8838;',
+		'supe'     => '&#8839;',
+		'oplus'    => '&#8853;',
+		'otimes'   => '&#8855;',
+		'perp'     => '&#8869;',
+		'sdot'     => '&#8901;',
+		'lceil'    => '&#8968;',
+		'rceil'    => '&#8969;',
+		'lfloor'   => '&#8970;',
+		'rfloor'   => '&#8971;',
+		'lang'     => '&#9001;',
+		'rang'     => '&#9002;',
+		'loz'      => '&#9674;',
+		'spades'   => '&#9824;',
+		'clubs'    => '&#9827;',
+		'hearts'   => '&#9829;',
+		'diams'    => '&#9830;',
+		'nbsp'     => '&#160;',
+		'iexcl'    => '&#161;',
+		'cent'     => '&#162;',
+		'pound'    => '&#163;',
+		'curren'   => '&#164;',
+		'yen'      => '&#165;',
+		'brvbar'   => '&#166;',
+		'sect'     => '&#167;',
+		'uml'      => '&#168;',
+		'copy'     => '&#169;',
+		'ordf'     => '&#170;',
+		'laquo'    => '&#171;',
+		'not'      => '&#172;',
+		'shy'      => '&#173;',
+		'reg'      => '&#174;',
+		'macr'     => '&#175;',
+		'deg'      => '&#176;',
+		'plusmn'   => '&#177;',
+		'sup2'     => '&#178;',
+		'sup3'     => '&#179;',
+		'acute'    => '&#180;',
+		'micro'    => '&#181;',
+		'para'     => '&#182;',
+		'middot'   => '&#183;',
+		'cedil'    => '&#184;',
+		'sup1'     => '&#185;',
+		'ordm'     => '&#186;',
+		'raquo'    => '&#187;',
+		'frac14'   => '&#188;',
+		'frac12'   => '&#189;',
+		'frac34'   => '&#190;',
+		'iquest'   => '&#191;',
+		'Agrave'   => '&#192;',
+		'Aacute'   => '&#193;',
+		'Acirc'    => '&#194;',
+		'Atilde'   => '&#195;',
+		'Auml'     => '&#196;',
+		'Aring'    => '&#197;',
+		'AElig'    => '&#198;',
+		'Ccedil'   => '&#199;',
+		'Egrave'   => '&#200;',
+		'Eacute'   => '&#201;',
+		'Ecirc'    => '&#202;',
+		'Euml'     => '&#203;',
+		'Igrave'   => '&#204;',
+		'Iacute'   => '&#205;',
+		'Icirc'    => '&#206;',
+		'Iuml'     => '&#207;',
+		'ETH'      => '&#208;',
+		'Ntilde'   => '&#209;',
+		'Ograve'   => '&#210;',
+		'Oacute'   => '&#211;',
+		'Ocirc'    => '&#212;',
+		'Otilde'   => '&#213;',
+		'Ouml'     => '&#214;',
+		'times'    => '&#215;',
+		'Oslash'   => '&#216;',
+		'Ugrave'   => '&#217;',
+		'Uacute'   => '&#218;',
+		'Ucirc'    => '&#219;',
+		'Uuml'     => '&#220;',
+		'Yacute'   => '&#221;',
+		'THORN'    => '&#222;',
+		'szlig'    => '&#223;',
+		'agrave'   => '&#224;',
+		'aacute'   => '&#225;',
+		'acirc'    => '&#226;',
+		'atilde'   => '&#227;',
+		'auml'     => '&#228;',
+		'aring'    => '&#229;',
+		'aelig'    => '&#230;',
+		'ccedil'   => '&#231;',
+		'egrave'   => '&#232;',
+		'eacute'   => '&#233;',
+		'ecirc'    => '&#234;',
+		'euml'     => '&#235;',
+		'igrave'   => '&#236;',
+		'iacute'   => '&#237;',
+		'icirc'    => '&#238;',
+		'iuml'     => '&#239;',
+		'eth'      => '&#240;',
+		'ntilde'   => '&#241;',
+		'ograve'   => '&#242;',
+		'oacute'   => '&#243;',
+		'ocirc'    => '&#244;',
+		'otilde'   => '&#245;',
+		'ouml'     => '&#246;',
+		'divide'   => '&#247;',
+		'oslash'   => '&#248;',
+		'ugrave'   => '&#249;',
+		'uacute'   => '&#250;',
+		'ucirc'    => '&#251;',
+		'uuml'     => '&#252;',
+		'yacute'   => '&#253;',
+		'thorn'    => '&#254;',
+		'yuml'     => '&#255;',
 	);
 	if ( isset( $table[ $matches[1] ] ) ) {
 		return $table[ $matches[1] ];
@@ -822,14 +1119,20 @@ function sab_convert_entity( $matches, $destroy = true ) {
 	}
 }
 
+/**
+ * @param $before_discount
+ * @param $discount
+ *
+ * @return float
+ */
 function sab_calculate_discount_percentage( $before_discount, $discount ) {
-	$percent = 0;
+	$percent = 0.0;
 
 	if ( $before_discount > 0 && $discount > 0 ) {
-		$percent = ( ( $discount ) * 100 ) / $before_discount;
+		$percent = ( ( (float) $discount ) * 100.0 ) / (float) $before_discount;
 	}
 
-	return sab_format_decimal( $percent, wc_get_price_decimals() );
+	return Numbers::round_to_precision( $percent );
 }
 
 /**
@@ -841,27 +1144,27 @@ function sab_clean_buffers() {
 	if ( ob_get_level() ) {
 		$levels = ob_get_level();
 		for ( $i = 0; $i < $levels; $i++ ) {
-			@ob_end_clean(); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+			@ob_end_clean(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 	} else {
-		@ob_end_clean(); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+		@ob_end_clean(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 	}
 }
 
 function sab_get_absolute_file_path( $file ) {
 	// Optional wrapper(s).
-	$regExp = '%^(?<wrappers>(?:[[:print:]]{2,}://)*)';
+	$reg_exp = '%^(?<wrappers>(?:[[:print:]]{2,}://)*)';
 
 	// Optional root prefix.
-	$regExp .= '(?<root>(?:[[:alpha:]]:/|/)?)';
+	$reg_exp .= '(?<root>(?:[[:alpha:]]:/|/)?)';
 
 	// Actual path.
-	$regExp .= '(?<path>(?:[[:print:]]*))$%';
+	$reg_exp .= '(?<path>(?:[[:print:]]*))$%';
 
-	$parts       = [];
+	$parts       = array();
 	$is_absolute = false;
 
-	if ( preg_match( $regExp, $file, $parts ) ) {
+	if ( preg_match( $reg_exp, $file, $parts ) ) {
 		if ( '' !== $parts['root'] ) {
 			$is_absolute = true;
 		}
@@ -880,27 +1183,33 @@ function sab_get_absolute_file_path( $file ) {
 }
 
 function sab_get_export_types() {
-	return apply_filters( 'storeabill_export_types', array(
-		'csv'  => _x( 'CSV', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'file' => _x( 'ZIP', 'storeabill-core', 'woocommerce-germanized-pro' )
-	) );
+	return apply_filters(
+		'storeabill_export_types',
+		array(
+			'csv'  => _x( 'CSV', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'file' => _x( 'ZIP', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		)
+	);
 }
 
 function sab_get_address_salutation( $args = array() ) {
-	$args = wp_parse_args( $args, array(
-		'title'      => '',
-		'first_name' => '',
-		'last_name'  => ''
-	) );
+	$args = wp_parse_args(
+		$args,
+		array(
+			'title'      => '',
+			'first_name' => '',
+			'last_name'  => '',
+		)
+	);
 
 	$default_format = apply_filters( 'storeabill_default_address_salutation_format', '{first_name}' );
 	$format         = $default_format;
 
-	foreach( $args as $type => $value ) {
+	foreach ( $args as $type => $value ) {
 		$format = str_replace( "{{$type}}", $value, $format );
 	}
 
-	return apply_filters( 'storeabill_address_salutation', preg_replace('/\s+/', ' ', $format ), $args );
+	return apply_filters( 'storeabill_address_salutation', preg_replace( '/\s+/', ' ', $format ), $args );
 }
 
 function sab_help_tip( $tip, $allow_html = true ) {
@@ -1007,24 +1316,56 @@ function sab_restore_email_locale( $email ) {
 	do_action( 'storeabill_restore_email_locale', $email );
 }
 
-function sab_add_number_precision( $value, $round = true ) {
-	return wc_add_number_precision( $value, $round );
+function sab_add_number_precision_deep( $value, $round = true, $decimals = '' ) {
+	if ( ! is_array( $value ) ) {
+		return sab_add_number_precision( $value, $round, $decimals );
+	}
+
+	foreach ( $value as $key => $sub_value ) {
+		$value[ $key ] = sab_add_number_precision_deep( $sub_value, $round, $decimals );
+	}
+
+	return $value;
 }
 
-function sab_remove_number_precision( $value ) {
-	return wc_remove_number_precision( $value );
+function sab_add_number_precision( $value, $round = true, $decimals = '' ) {
+	$decimals = '' === $decimals ? sab_get_price_decimals() : $decimals;
+
+	if ( ! $value ) {
+		return 0.0;
+	}
+
+	$cent_precision = pow( 10, $decimals );
+	$value          = $value * $cent_precision;
+
+	return (float) $round ? Numbers::round( $value, wc_get_rounding_precision() - $decimals ) : $value;
+}
+
+function sab_remove_number_precision( $value, $decimals = '' ) {
+	$decimals = '' === $decimals ? sab_get_price_decimals() : $decimals;
+
+	if ( ! $value ) {
+		return 0.0;
+	}
+
+	$cent_precision = pow( 10, $decimals );
+
+	return (float) $value / $cent_precision;
 }
 
 function sab_get_barcode_types() {
 	/**
 	 * @see https://mpdf.github.io/what-else-can-i-do/barcodes.html
 	 */
-	return apply_filters( 'storeabill_barcode_types', array(
-		'C39'   => _x( 'Code 39', 'storeabill-barcode-type', 'woocommerce-germanized-pro' ),
-		'C93'   => _x( 'Code 93', 'storeabill-barcode-type', 'woocommerce-germanized-pro' ),
-		'C128A' => _x( 'Code 128', 'storeabill-barcode-type', 'woocommerce-germanized-pro' ),
-		'QR'    => _x( 'QR Code', 'storeabill-barcode-type', 'woocommerce-germanized-pro' )
-	) );
+	return apply_filters(
+		'storeabill_barcode_types',
+		array(
+			'C39'   => _x( 'Code 39', 'storeabill-barcode-type', 'woocommerce-germanized-pro' ),
+			'C93'   => _x( 'Code 93', 'storeabill-barcode-type', 'woocommerce-germanized-pro' ),
+			'C128A' => _x( 'Code 128', 'storeabill-barcode-type', 'woocommerce-germanized-pro' ),
+			'QR'    => _x( 'QR Code', 'storeabill-barcode-type', 'woocommerce-germanized-pro' ),
+		)
+	);
 }
 
 function sab_get_base_bank_account_data( $field = '' ) {
@@ -1039,4 +1380,52 @@ function sab_get_base_bank_account_data( $field = '' ) {
 
 function sab_get_wildcard_postcodes( $postcode, $country = '' ) {
 	return wc_get_wildcard_postcodes( $postcode, $country );
+}
+
+function sab_get_random_key( $max_length = -1 ) {
+	$key       = array( ABSPATH, time() );
+	$constants = array( 'AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY', 'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT', 'SECRET_KEY' );
+
+	foreach ( $constants as $constant ) {
+		if ( defined( $constant ) ) {
+			$key[] = constant( $constant );
+		}
+	}
+
+	shuffle( $key );
+
+	$key = md5( serialize( $key ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+
+	if ( $max_length > 0 ) {
+		$key = substr( $key, 0, $max_length );
+	}
+
+	return $key;
+}
+
+/**
+ * Given an element name, returns a class name.
+ *
+ * If the WP-related function is not defined, return empty string.
+ *
+ * @param string $element The name of the element.
+ *
+ * @return string
+ */
+function sab_wp_theme_get_element_class_name( $element ) {
+	if ( function_exists( 'wc_wp_theme_get_element_class_name' ) ) {
+		return wc_wp_theme_get_element_class_name( $element );
+	} elseif ( function_exists( 'wp_theme_get_element_class_name' ) ) {
+		return wp_theme_get_element_class_name( $element );
+	}
+
+	return '';
+}
+
+function sab_print_r( $expression, $return = false ) {
+	return wc_print_r( $expression, $return );
+}
+
+function sab_is_valid_mysql_datetime( $mysql_date ) {
+	return ( '0000-00-00 00:00:00' === $mysql_date || null === $mysql_date ) ? false : true;
 }

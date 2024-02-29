@@ -57,19 +57,19 @@ class Block {
 	}
 
 	public function has_children() {
-		return sizeof( $this->children ) > 0;
+		return count( $this->children ) > 0;
 	}
 
 	public function to_array() {
 		$data = array(
 			$this->get_type(),
-			$this->get_data()
+			$this->get_data(),
 		);
 
 		if ( $this->has_children() ) {
 			$children = array();
 
-			foreach( $this->get_children() as $child ) {
+			foreach ( $this->get_children() as $child ) {
 				$children[] = $child->to_array();
 			}
 

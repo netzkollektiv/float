@@ -22,8 +22,44 @@ class Helper {
 		add_action( 'storeabill_external_sync_callback', array( __CLASS__, 'sync_callback' ), 10, 4 );
 		add_action( 'init', array( __CLASS__, 'setup_sync_filters' ), 50 );
 
-		add_filter( "storeabill_admin_invoice_actions", array( __CLASS__, 'add_invoice_actions' ), 10, 2 );
-		add_filter( "storeabill_admin_invoice_cancellation_actions", array( __CLASS__, 'add_invoice_actions' ), 10, 2 );
+		add_filter( 'storeabill_admin_invoice_actions', array( __CLASS__, 'add_invoice_actions' ), 10, 2 );
+		add_filter( 'storeabill_admin_invoice_cancellation_actions', array( __CLASS__, 'add_invoice_actions' ), 10, 2 );
+
+		add_action( 'admin_notices', array( __CLASS__, 'auth_refresh_notice' ) );
+	}
+
+	/**
+	 * @param SyncHandler $handler
+	 *
+	 * @return void
+	 */
+	public static function auth_successful( $handler ) {
+		if ( $needs_refresh = get_option( 'storeabill_sync_handler_needs_oauth_refresh' ) ) {
+			$needs_refresh = is_array( $needs_refresh ) ? array_filter( $needs_refresh ) : array( $needs_refresh );
+			$needs_refresh = array_diff( $needs_refresh, array( $handler->get_name() ) );
+
+			if ( empty( $needs_refresh ) ) {
+				delete_option( 'storeabill_sync_handler_needs_oauth_refresh' );
+			} else {
+				update_option( 'storeabill_sync_handler_needs_oauth_refresh', $needs_refresh );
+			}
+		}
+	}
+
+	public static function auth_refresh_notice() {
+		if ( $needs_refresh = get_option( 'storeabill_sync_handler_needs_oauth_refresh' ) ) {
+			$needs_refresh = is_array( $needs_refresh ) ? array_filter( $needs_refresh ) : array( $needs_refresh );
+
+			foreach ( $needs_refresh as $handler_name ) {
+				if ( ( $handler = self::get_sync_handler( $handler_name ) ) && $handler->is_enabled() && 'oauth' === $handler->get_auth_api()->get_type() && $handler->get_auth_api()->is_connected() ) {
+					?>
+					<div class="notice notice-error error">
+						<p><?php echo wp_kses_post( sprintf( _x( 'Your %1$s connection needs a refresh, as the API scope has changed. Please <a href="%2$s">refresh your API connection</a> now.', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_html( $handler->get_title() ), esc_url( $handler->get_admin_url() ) ) ); ?></p>
+					</div>
+					<?php
+				}
+			}
+		}
 	}
 
 	/**
@@ -40,24 +76,29 @@ class Helper {
 				array(
 					'key'     => '_external_sync_handlers',
 					'value'   => $reference_id,
-					'compare' => 'LIKE'
+					'compare' => 'LIKE',
 				),
 				array(
 					'key'     => '_external_sync_handlers',
 					'value'   => $sync_handler,
-					'compare' => 'LIKE'
-				)
-			)
+					'compare' => 'LIKE',
+				),
+			),
 		);
 
-		switch( $object_type ) {
-			case "invoice":
-			case "invoice_simple":
-			case "invoice_cancellation":
-				$invoices = sab_get_invoices( array_merge( $args, array(
-					'type'  => $object_type === 'invoice' ? array( 'simple', 'cancellation' ) : str_replace( 'invoice_', '', $object_type ),
-					'limit' => 1,
-				) ) );
+		switch ( $object_type ) {
+			case 'invoice':
+			case 'invoice_simple':
+			case 'invoice_cancellation':
+				$invoices = sab_get_invoices(
+					array_merge(
+						$args,
+						array(
+							'type'  => 'invoice' === $object_type ? array( 'simple', 'cancellation' ) : str_replace( 'invoice_', '', $object_type ),
+							'limit' => 1,
+						)
+					)
+				);
 
 				if ( ! empty( $invoices ) ) {
 					$object = $invoices[0];
@@ -80,19 +121,22 @@ class Helper {
 			return $actions;
 		}
 
-		foreach( self::get_available_sync_handlers() as $handler ) {
+		foreach ( self::get_available_sync_handlers() as $handler ) {
 
 			if ( ! $handler->is_syncable( $document ) ) {
 				continue;
 			}
 
-			$url = add_query_arg( array(
-				'action'      => 'storeabill_admin_external_sync',
-				'object_id'   => $document->get_id(),
-				'object_type' => $document->get_type(),
-				'handler'     => $handler::get_name(),
-				'do_ajax'     => true,
-			), admin_url( 'admin-ajax.php' ) );
+			$url = add_query_arg(
+				array(
+					'action'      => 'storeabill_admin_external_sync',
+					'object_id'   => $document->get_id(),
+					'object_type' => $document->get_type(),
+					'handler'     => $handler::get_name(),
+					'do_ajax'     => true,
+				),
+				admin_url( 'admin-ajax.php' )
+			);
 
 			$name    = _x( 'Sync', 'storeabill-core', 'woocommerce-germanized-pro' );
 			$classes = '';
@@ -102,8 +146,8 @@ class Helper {
 				$classes .= ' inactive';
 			}
 
-			$actions["sync_{$handler::get_name()}"] = array(
-				'url'     => wp_nonce_url( $url, 'sab-external-sync' ),
+			$actions[ "sync_{$handler::get_name()}" ] = array(
+				'url'     => esc_url_raw( wp_nonce_url( $url, 'sab-external-sync' ) ),
 				'name'    => $name,
 				'action'  => 'sync',
 				'icon'    => $handler::get_icon(),
@@ -115,10 +159,10 @@ class Helper {
 	}
 
 	public static function setup_sync_filters() {
-		foreach( self::get_available_sync_handlers() as $handler ) {
+		foreach ( self::get_available_sync_handlers() as $handler ) {
 			$handler_name = $handler::get_name();
 
-			foreach( $handler::get_supported_object_types() as $object_type ) {
+			foreach ( $handler::get_supported_object_types() as $object_type ) {
 				if ( $handler->enable_auto_sync( $object_type ) ) {
 
 					$sync_callback = function( $object_id, $object = false ) use ( $handler_name, $object_type ) {
@@ -155,9 +199,9 @@ class Helper {
 						}
 					};
 
-					switch( $object_type ) {
-						case "invoice":
-						case "invoice_cancellation":
+					switch ( $object_type ) {
+						case 'invoice':
+						case 'invoice_cancellation':
 							/**
 							 * Use the general rendered hook here. This hook is executed after a document has been rendered successfully.
 							 * Rendering will be triggered on finalizing the document that's why no additional finalize hook is necessary here.
@@ -169,7 +213,7 @@ class Helper {
 							add_action( "storeabill_{$object_type}_payment_status_complete", $sync_callback, 10, 2 );
 							add_action( "storeabill_{$object_type}_payment_status_pending", $sync_callback, 10, 2 );
 							break;
-						case "customer":
+						case 'customer':
 							add_action( 'personal_options_update', $sync_user_callback, 100 );
 							add_action( 'edit_user_profile_update', $sync_user_callback, 100 );
 							break;
@@ -194,16 +238,17 @@ class Helper {
 
 			$handlers = apply_filters( 'storeabill_external_sync_handlers', array() );
 
-			foreach( $handlers as $handler ) {
+			foreach ( $handlers as $handler ) {
 
 				if ( class_exists( $handler ) ) {
 					try {
-						$class = new \ReflectionClass($handler );
+						$class = new \ReflectionClass( $handler );
 
 						if ( $class->implementsInterface( '\Vendidero\StoreaBill\Interfaces\ExternalSync' ) ) {
 							self::$handler[ $handler::get_name() ] = new $handler();
 						}
-					} catch( \Exception $e ) {}
+					} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+					}
 				}
 			}
 		}
@@ -217,7 +262,7 @@ class Helper {
 	public static function get_available_sync_handlers() {
 		$available = array();
 
-		foreach( self::get_sync_handlers() as $helper ) {
+		foreach ( self::get_sync_handlers() as $helper ) {
 			if ( $helper->is_enabled() ) {
 				$available[ $helper::get_name() ] = $helper;
 			}
@@ -261,19 +306,19 @@ class Helper {
 			$result = self::sync( $object, $handler );
 
 			if ( is_wp_error( $result ) ) {
-				foreach( $result->get_error_messages() as $message ) {
+				foreach ( $result->get_error_messages() as $message ) {
 					Package::log( sprintf( 'Error while syncing %1$d of type %2$s with %3$s: %4$s', $object_id, $object_type, $handler, $message ), 'info', 'sync' );
 				}
 			}
 		}
 	}
 
-	protected static function cancel_deferred_sync( $object, $handler ) {
+	public static function cancel_deferred_sync( $object, $handler ) {
 		$args = array(
 			'object_id'      => $object->get_id(),
 			'object_type'    => $object->get_type(),
 			'handler'        => is_a( $handler, '\Vendidero\StoreaBill\Interfaces\ExternalSync' ) ? $handler::get_name() : $handler,
-			'reference_type' => ''
+			'reference_type' => '',
 		);
 
 		if ( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Reference' ) ) {
@@ -297,7 +342,7 @@ class Helper {
 			'object_id'      => $object->get_id(),
 			'object_type'    => $object->get_type(),
 			'handler'        => is_a( $handler, '\Vendidero\StoreaBill\Interfaces\ExternalSync' ) ? $handler::get_name() : $handler,
-			'reference_type' => ''
+			'reference_type' => '',
 		);
 
 		if ( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Reference' ) ) {
@@ -359,7 +404,7 @@ class Helper {
 			}
 
 			return true;
-		} catch( SyncException $e ) {
+		} catch ( SyncException $e ) {
 			/* translators: 1: external sync handler title 2: error message */
 			$errors->add( $e->getErrorCode(), sprintf( _x( 'An error occurred while syncing with %1$s: %2$s', 'storeabill-core', 'woocommerce-germanized-pro' ), $handler::get_title(), $e->getMessage() ) );
 		}

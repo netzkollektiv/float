@@ -1,0 +1,7 @@
+/**
+ * Custom WC Germanized CSS for TwentyTwentyThree
+ */
+.woocommerce-page .woocommerce-checkout #order_review .shop_table td, .woocommerce-page .woocommerce-checkout #order_review .shop_table th {
+  padding-left: 1rem; }
+
+/*# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndjLWd6ZHAtdHdlbnR5dHdlbnR5dGhyZWUuY3NzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOztFQUVFO0FBQ0Y7RUFDRSxrQkFBa0IsRUFBRSIsImZpbGUiOiJ3Yy1nemRwLXR3ZW50eXR3ZW50eXRocmVlLmNzcyIsInNvdXJjZXNDb250ZW50IjpbIi8qKlxuICogQ3VzdG9tIFdDIEdlcm1hbml6ZWQgQ1NTIGZvciBUd2VudHlUd2VudHlUaHJlZVxuICovXG4ud29vY29tbWVyY2UtcGFnZSAud29vY29tbWVyY2UtY2hlY2tvdXQgI29yZGVyX3JldmlldyAuc2hvcF90YWJsZSB0ZCwgLndvb2NvbW1lcmNlLXBhZ2UgLndvb2NvbW1lcmNlLWNoZWNrb3V0ICNvcmRlcl9yZXZpZXcgLnNob3BfdGFibGUgdGgge1xuICBwYWRkaW5nLWxlZnQ6IDFyZW07IH1cbiJdfQ== */

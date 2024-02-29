@@ -15,15 +15,16 @@ defined( 'ABSPATH' ) || exit;
 abstract class Template extends Data {
 
 	protected $data = array(
-		'date_created'       => null,
-		'date_modified'      => null,
-		'pdf_template_id'    => 0,
-		'parent_id'          => 0,
-		'status'             => '',
-		'title'              => '',
-		'content'            => '',
-		'template_name'      => '',
-		'margins'            => array(),
+		'date_created'    => null,
+		'date_modified'   => null,
+		'pdf_template_id' => 0,
+		'parent_id'       => 0,
+		'status'          => '',
+		'title'           => '',
+		'content'         => '',
+		'template_name'   => '',
+		'margins'         => array(),
+		'version'         => '1.0.0',
 	);
 
 	protected $blocks = null;
@@ -126,7 +127,7 @@ abstract class Template extends Data {
 			'top'    => '1',
 			'left'   => '1',
 			'bottom' => '1',
-			'right'  => '1'
+			'right'  => '1',
 		);
 	}
 
@@ -158,8 +159,16 @@ abstract class Template extends Data {
 		return $this->get_prop( 'content', $context );
 	}
 
+	public function get_version( $context = 'view' ) {
+		return $this->get_prop( 'version', $context );
+	}
+
 	public function set_content( $value ) {
 		$this->set_prop( 'content', $value );
+	}
+
+	public function set_version( $value ) {
+		$this->set_prop( 'version', $value );
 	}
 
 	protected function get_blocks() {
@@ -169,13 +178,13 @@ abstract class Template extends Data {
 			$this->content_blocks = array();
 			$this->footer_blocks  = array();
 
-			foreach( $this->blocks as $block ) {
+			foreach ( $this->blocks as $block ) {
 
 				if ( 'storeabill/header' === $block['blockName'] ) {
 					$this->header_blocks = $block['innerBlocks'];
-				} elseif( 'storeabill/footer' === $block['blockName'] ) {
+				} elseif ( 'storeabill/footer' === $block['blockName'] ) {
 					$this->footer_blocks = $block['innerBlocks'];
-				} elseif( ! empty( $block['blockName'] ) ) {
+				} elseif ( ! empty( $block['blockName'] ) ) {
 					$this->content_blocks[] = $block;
 				}
 			}
@@ -222,10 +231,16 @@ abstract class Template extends Data {
 		$block_attributes      = array();
 		$dynamic_block_pattern = (
 			'/<!--\s+wp:(' .
-			str_replace( '/', '\/',                 // Escape namespace, not handled by preg_quote.
-				str_replace( 'core/', '(?:core/)?', // Allow implicit core namespace, but don't capture.
-					implode( '|',                   // Join block names into capture group alternation.
-						array_map( 'preg_quote',    // Escape block name for regular expression.
+			str_replace(
+				'/',
+				'\/',                 // Escape namespace, not handled by preg_quote.
+				str_replace(
+					'core/',
+					'(?:core/)?', // Allow implicit core namespace, but don't capture.
+					implode(
+						'|',                   // Join block names into capture group alternation.
+						array_map(
+							'preg_quote',    // Escape block name for regular expression.
 							$dynamic_block_names
 						)
 					)
@@ -262,7 +277,7 @@ abstract class Template extends Data {
 	}
 
 	public function get_block( $block_name ) {
-		foreach( $this->get_blocks() as $block ) {
+		foreach ( $this->get_blocks() as $block ) {
 			if ( $block['blockName'] === $block_name ) {
 				return $block;
 			}

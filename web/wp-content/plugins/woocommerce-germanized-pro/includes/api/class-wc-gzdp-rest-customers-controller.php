@@ -27,7 +27,7 @@ class WC_GZDP_REST_Customers_Controller {
 	 */
 	public function prepare( $response, $customer, $request ) {
 
-		$response_customer_data = $response->get_data();
+		$response_customer_data                      = $response->get_data();
 		$response_customer_data['billing']['vat_id'] = $customer->billing_vat_id;
 		$response->set_data( $response_customer_data );
 
@@ -67,7 +67,7 @@ class WC_GZDP_REST_Customers_Controller {
 		$schema_properties['billing']['properties']['vat_id'] = array(
 			'description' => __( 'VAT ID', 'woocommerce-germanized-pro' ),
 			'type'        => 'string',
-			'context'     => array( 'view', 'edit' )
+			'context'     => array( 'view', 'edit' ),
 		);
 
 		return $schema_properties;

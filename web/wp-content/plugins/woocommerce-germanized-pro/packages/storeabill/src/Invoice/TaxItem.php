@@ -21,10 +21,10 @@ class TaxItem extends Item implements TaxContainable {
 		'round_tax_at_subtotal' => false,
 		'tax_type'              => '',
 		'rate'                  => array(),
-		'total_net'             => 0,
-		'subtotal_net'          => 0,
-		'total_tax'             => 0,
-		'subtotal_tax'          => 0,
+		'total_net'             => 0.0,
+		'subtotal_net'          => 0.0,
+		'total_tax'             => 0.0,
+		'subtotal_tax'          => 0.0,
 	);
 
 	protected $data_store_name = 'invoice_tax_item';
@@ -96,7 +96,7 @@ class TaxItem extends Item implements TaxContainable {
 		}
 
 		return ( $this->tax_rate ) ? $this->tax_rate : false;
- 	}
+	}
 
 	public function set_tax_rate( $rate ) {
 		$this->tax_rate = new TaxRate( $rate );
@@ -120,12 +120,22 @@ class TaxItem extends Item implements TaxContainable {
 		$this->set_prop( 'rate', (array) $rate );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_total_tax( $context = '' ) {
-		return $this->get_prop( 'total_tax', $context );
+		return (float) $this->get_prop( 'total_tax', $context );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_total_net( $context = '' ) {
-		return $this->get_prop( 'total_net', $context );
+		return (float) $this->get_prop( 'total_net', $context );
 	}
 
 	/**
@@ -134,11 +144,16 @@ class TaxItem extends Item implements TaxContainable {
 	 * @param $value float the amount to be set.
 	 */
 	public function set_total_net( $value ) {
-		$this->set_prop( 'total_net', sab_format_decimal( $value ) );
+		$this->set_prop( 'total_net', (float) sab_format_decimal( $value ) );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_subtotal_net( $context = '' ) {
-		return $this->get_prop( 'subtotal_net', $context );
+		return (float) $this->get_prop( 'subtotal_net', $context );
 	}
 
 	/**
@@ -147,7 +162,7 @@ class TaxItem extends Item implements TaxContainable {
 	 * @param $value float the amount to be set.
 	 */
 	public function set_subtotal_net( $value ) {
-		$this->set_prop( 'subtotal_net', sab_format_decimal( $value ) );
+		$this->set_prop( 'subtotal_net', (float) sab_format_decimal( $value ) );
 	}
 
 	/**
@@ -156,15 +171,22 @@ class TaxItem extends Item implements TaxContainable {
 	 * @param $value float the amount to be set.
 	 */
 	public function set_total_tax( $value ) {
+		$value = (float) sab_format_decimal( $value );
+
 		if ( ! $this->round_tax_at_subtotal() ) {
-			$value = wc_round_tax_total( $value );
+			$value = sab_round_tax_total( $value );
 		}
 
-		$this->set_prop( 'total_tax', sab_format_decimal( $value ) );
+		$this->set_prop( 'total_tax', $value );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_subtotal_tax( $context = '' ) {
-		return $this->get_prop( 'subtotal_tax', $context );
+		return (float) $this->get_prop( 'subtotal_tax', $context );
 	}
 
 	/**
@@ -173,10 +195,12 @@ class TaxItem extends Item implements TaxContainable {
 	 * @param $value float the amount to be set.
 	 */
 	public function set_subtotal_tax( $value ) {
+		$value = (float) sab_format_decimal( $value );
+
 		if ( ! $this->round_tax_at_subtotal() ) {
-			$value = wc_round_tax_total( $value );
+			$value = sab_round_tax_total( $value );
 		}
 
-		$this->set_prop( 'subtotal_tax', sab_format_decimal( $value ) );
+		$this->set_prop( 'subtotal_tax', $value );
 	}
 }

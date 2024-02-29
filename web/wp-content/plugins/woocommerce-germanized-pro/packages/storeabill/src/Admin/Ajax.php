@@ -27,7 +27,6 @@ class Ajax {
 	 * Hook in methods - uses WordPress ajax handlers (admin-ajax).
 	 */
 	public static function add_ajax_events() {
-
 		$ajax_events = array(
 			'delete_document',
 			'cancel_invoice',
@@ -44,7 +43,7 @@ class Ajax {
 			'update_default_document_template',
 			'create_document_template',
 			'preview_formatted_document_number',
-			'json_search_external_customers'
+			'json_search_external_customers',
 		);
 
 		foreach ( $ajax_events as $ajax_event ) {
@@ -55,18 +54,18 @@ class Ajax {
 
 	public static function suppress_errors() {
 		if ( ! WP_DEBUG || ( WP_DEBUG && ! WP_DEBUG_DISPLAY ) ) {
-			@ini_set( 'display_errors', 0 ); // Turn off display_errors during AJAX events to prevent malformed JSON.
+			@ini_set( 'display_errors', 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.display_errors_Blacklisted
 		}
 
 		$GLOBALS['wpdb']->hide_errors();
 	}
 
 	protected static function is_ajax_request() {
-		return ( ! isset( $_GET['_wpnonce'] ) || isset( $_GET['do_ajax'] ) );
+		return ( ! isset( $_GET['_wpnonce'] ) || isset( $_GET['do_ajax'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	}
 
 	protected static function get_request_data( $key, $default = null ) {
-		return ( isset( $_REQUEST[ $key ] ) ? self::clean_data( $_REQUEST[ $key ] ) : $default );
+		return ( isset( $_REQUEST[ $key ] ) ? self::clean_data( $_REQUEST[ $key ] ) : $default ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	}
 
 	protected static function clean_data( $data ) {
@@ -98,18 +97,21 @@ class Ajax {
 		} else {
 			self::add_notices( $error, 'error' );
 
-			wp_safe_redirect( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=sab-accounting' ) );
+			wp_safe_redirect( esc_url_raw( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=sab-accounting' ) ) );
 			exit;
 		}
 	}
 
 	protected static function add_notices( $data, $type = 'success' ) {
-		$data = wp_parse_args( $data, array(
-			'messages' => array(),
-		) );
+		$data = wp_parse_args(
+			$data,
+			array(
+				'messages' => array(),
+			)
+		);
 
 		if ( ! empty( $data['messages'] ) ) {
-			foreach( $data['messages'] as $message ) {
+			foreach ( $data['messages'] as $message ) {
 				Notices::add( $message, $type, self::get_screen_id() );
 			}
 		}
@@ -122,7 +124,7 @@ class Ajax {
 		} else {
 			self::add_notices( $data );
 
-			wp_safe_redirect( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=sab-accounting' ) );
+			wp_safe_redirect( esc_url_raw( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=sab-accounting' ) ) );
 			exit;
 		}
 	}
@@ -186,8 +188,8 @@ class Ajax {
 			wp_die( -1 );
 		}
 
-		$document_type  = sab_clean( self::get_request_data( 'document_type' ) );
-		$template_name  = sab_clean( self::get_request_data( 'template', '' ) );
+		$document_type = sab_clean( self::get_request_data( 'document_type' ) );
+		$template_name = sab_clean( self::get_request_data( 'template', '' ) );
 
 		$response_error = array(
 			'messages' => array( _x( 'Error while creating the template.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
@@ -197,11 +199,14 @@ class Ajax {
 			self::error( $response_error );
 		}
 
-		self::template_success( array(
-			'messages'        => array( sprintf( _x( 'New template added successfully. <a href="%s">Edit template</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), $template->get_edit_url() ) ),
-			'new_template_id' => $template->get_id(),
-			'edit_url'        => $template->get_edit_url()
-		), $template->get_document_type() );
+		self::template_success(
+			array(
+				'messages'        => array( sprintf( _x( 'New template added successfully. <a href="%s">Edit template</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_url( $template->get_edit_url() ) ) ),
+				'new_template_id' => $template->get_id(),
+				'edit_url'        => $template->get_edit_url(),
+			),
+			$template->get_document_type()
+		);
 	}
 
 	public static function update_default_document_template() {
@@ -227,9 +232,12 @@ class Ajax {
 
 		update_option( 'storeabill_' . $document_type . '_default_template', $template->get_id() );
 
-		self::template_success( array(
-			'messages' => array( _x( 'Default template updated successfully', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
-		), $template->get_document_type() );
+		self::template_success(
+			array(
+				'messages' => array( _x( 'Default template updated successfully', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+			),
+			$template->get_document_type()
+		);
 	}
 
 	public static function create_document_template_first_page() {
@@ -248,22 +256,25 @@ class Ajax {
 			self::error( $response_error );
 		}
 
-		$content          = $template->get_content();
-		$header_content   = \Vendidero\StoreaBill\Editor\Helper::get_block_content( 'storeabill/header', $content, true );
-		$footer_content   = \Vendidero\StoreaBill\Editor\Helper::get_block_content( 'storeabill/footer', $content, true );
+		$content        = $template->get_content();
+		$header_content = \Vendidero\StoreaBill\Editor\Helper::get_block_content( 'storeabill/header', $content, true );
+		$footer_content = \Vendidero\StoreaBill\Editor\Helper::get_block_content( 'storeabill/footer', $content, true );
 
 		$tpl = new FirstPageTemplate();
 		$tpl->set_parent_id( $template->get_id() );
 		$tpl->set_status( 'publish' );
 		$tpl->set_content(
-			"<!-- wp:storeabill/document-styles /-->" . $header_content . $footer_content
+			'<!-- wp:storeabill/document-styles /-->' . $header_content . $footer_content
 		);
 		$tpl->save();
 
-		self::template_success( array(
-			'messages'        => array( sprintf( _x( 'First page template added successfully. <a href="%s">Edit template</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), $tpl->get_edit_url() ) ),
-			'new_template_id' => $tpl->get_id(),
-		), $template->get_document_type() );
+		self::template_success(
+			array(
+				'messages'        => array( sprintf( _x( 'First page template added successfully. <a href="%s">Edit template</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_url( $tpl->get_edit_url() ) ) ),
+				'new_template_id' => $tpl->get_id(),
+			),
+			$template->get_document_type()
+		);
 	}
 
 	public static function copy_document_template() {
@@ -283,10 +294,13 @@ class Ajax {
 		}
 
 		if ( $new_template = sab_duplicate_document_template( $id ) ) {
-			self::template_success( array(
-				'messages'        => array( _x( 'Template duplicated successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
-				'new_template_id' => $new_template->get_id(),
-			), $template->get_document_type() );
+			self::template_success(
+				array(
+					'messages'        => array( _x( 'Template duplicated successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+					'new_template_id' => $new_template->get_id(),
+				),
+				$template->get_document_type()
+			);
 		} else {
 			self::template_error( $response_error, $template->get_document_type() );
 		}
@@ -311,39 +325,44 @@ class Ajax {
 		$document_type = $template->get_document_type();
 
 		if ( $template->delete( true ) ) {
-			self::template_success( array(
-				'messages' => array( _x( 'Template deleted successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
-			), $document_type );
+			self::template_success(
+				array(
+					'messages' => array( _x( 'Template deleted successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				),
+				$document_type
+			);
 		} else {
 			self::template_error( $response_error, $document_type );
 		}
- 	}
+	}
 
- 	protected static function get_template_html( $document_type ) {
-	    ob_start();
-	    Fields::render_document_templates_field( array(
-		    'document_type' => $document_type,
-	    ) );
-	    $html = ob_get_clean();
+	protected static function get_template_html( $document_type ) {
+		ob_start();
+		Fields::render_document_templates_field(
+			array(
+				'document_type' => $document_type,
+			)
+		);
+		$html = ob_get_clean();
 
-	    return $html;
-    }
+		return $html;
+	}
 
- 	protected static function template_success( $data, $document_type = 'invoice' ) {
+	protected static function template_success( $data, $document_type = 'invoice' ) {
 		$data['fragments'] = array(
 			'.sab-document-templates' => self::get_template_html( $document_type ),
 		);
 
 		self::success( $data );
-    }
+	}
 
-    protected static function template_error( $data, $document_type = 'invoice' ) {
-	    $data['fragments'] = array(
-		    '.sab-document-templates' => self::get_template_html( $document_type ),
-	    );
+	protected static function template_error( $data, $document_type = 'invoice' ) {
+		$data['fragments'] = array(
+			'.sab-document-templates' => self::get_template_html( $document_type ),
+		);
 
-	    self::error( $data );
-    }
+		self::error( $data );
+	}
 
 	public static function delete_document() {
 		if ( self::is_ajax_request() ) {
@@ -371,15 +390,19 @@ class Ajax {
 		}
 
 		if ( ! $document->is_editable() ) {
-			self::error( array(
-				'messages' => array( _x( 'This document cannot be deleted.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::error(
+				array(
+					'messages' => array( _x( 'This document cannot be deleted.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		}
 
 		if ( $document->delete( true ) ) {
-			self::success( array(
-				'messages' => array( _x( 'Document deleted successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::success(
+				array(
+					'messages' => array( _x( 'Document deleted successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		} else {
 			self::error( $response_error );
 		}
@@ -414,12 +437,14 @@ class Ajax {
 		$result = $document->send_to_customer();
 
 		if ( ! is_wp_error( $result ) ) {
-			self::success( array(
-				'messages' => array( _x( 'Document sent successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
-				'fragments'   => array(
-					'.sab-document-actions' => self::get_document_actions_html( $document, $display_type )
-				),
-			) );
+			self::success(
+				array(
+					'messages'  => array( _x( 'Document sent successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+					'fragments' => array(
+						'.sab-document-actions' => self::get_document_actions_html( $document, $display_type ),
+					),
+				)
+			);
 		} else {
 			$response_error = array( 'messages' => $result->get_error_messages() );
 
@@ -455,9 +480,11 @@ class Ajax {
 		$result = $document->render();
 
 		if ( ! is_wp_error( $result ) ) {
-			self::success( array(
-				'messages' => array( _x( 'Document refreshed successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::success(
+				array(
+					'messages' => array( _x( 'Document refreshed successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		} else {
 			$response_error = array( 'messages' => $result->get_error_messages() );
 			self::error( $response_error );
@@ -497,15 +524,22 @@ class Ajax {
 			wp_die( -1 );
 		}
 
+		/**
+		 * Cancel outstanding events.
+		 */
+		Helper::cancel_deferred_sync( $object, $handler );
+
 		$result = $handler->sync( $object );
 
 		if ( ! is_wp_error( $result ) ) {
-			self::success( array(
-				'messages'    => array( _x( 'Synced successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
-				'fragments'   => array(
-					'.sab-document-actions' => self::get_document_actions_html( $object, $display_type )
-				),
-			) );
+			self::success(
+				array(
+					'messages'  => array( _x( 'Synced successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+					'fragments' => array(
+						'.sab-document-actions' => self::get_document_actions_html( $object, $display_type ),
+					),
+				)
+			);
 		} else {
 			$response_error = array( 'messages' => $result->get_error_messages() );
 			self::error( $response_error );
@@ -546,14 +580,16 @@ class Ajax {
 			wp_send_json( $response_error );
 		}
 
-		if ( ! in_array( $status, $statuses ) ) {
+		if ( ! in_array( $status, $statuses, true ) ) {
 			wp_send_json( $response_error );
 		}
 
 		if ( $document->update_payment_status( $status ) ) {
-			self::success( array(
-				'messages' => array( _x( 'Invoice payment status updated successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::success(
+				array(
+					'messages' => array( _x( 'Invoice payment status updated successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		} else {
 			self::error( $response_error );
 		}
@@ -585,17 +621,21 @@ class Ajax {
 		}
 
 		if ( ! $document->is_cancelable() ) {
-			self::error( array(
-				'messages' => array( _x( 'This invoice cannot be cancelled.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::error(
+				array(
+					'messages' => array( _x( 'This invoice cannot be cancelled.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		}
 
 		$result = $document->cancel();
 
 		if ( ! is_wp_error( $result ) ) {
-			self::success( array(
-				'messages' => array( _x( 'Invoice cancelled successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::success(
+				array(
+					'messages' => array( _x( 'Invoice cancelled successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		} else {
 			$response_error = array( 'messages' => $result->get_error_messages() );
 			self::error( $response_error );
@@ -628,9 +668,11 @@ class Ajax {
 		}
 
 		if ( $document->is_finalized() ) {
-			self::error( array(
-				'messages' => array( _x( 'This invoice cannot be finalized.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::error(
+				array(
+					'messages' => array( _x( 'This invoice cannot be finalized.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		}
 
 		/**
@@ -643,9 +685,11 @@ class Ajax {
 		$result = $document->finalize();
 
 		if ( ! is_wp_error( $result ) ) {
-			self::success( array(
-				'messages' => array( _x( 'Invoice finalized successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) )
-			) );
+			self::success(
+				array(
+					'messages' => array( _x( 'Invoice finalized successfully.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
+				)
+			);
 		} else {
 			$response_error = array( 'messages' => $result->get_error_messages() );
 			self::error( $response_error );
@@ -670,12 +714,14 @@ class Ajax {
 
 		try {
 			$handler->handle();
-		} catch( \Exception $e ) {
-			self::error( array(
-				'messages' => array(
-					_x( 'Error while bulk processing objects', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+		} catch ( \Exception $e ) {
+			self::error(
+				array(
+					'messages' => array(
+						_x( 'Error while bulk processing objects', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 
 		if ( $handler->get_percent_complete() >= 100 ) {
@@ -739,68 +785,80 @@ class Ajax {
 		$document_type = self::get_request_data( 'document_type', 'invoice' );
 		$type          = self::get_request_data( 'type', 'csv' );
 		$step          = absint( self::get_request_data( 'step', 1 ) );
-		$filename      = self::get_request_data( 'filename','' );
+		$filename      = self::get_request_data( 'filename', '' );
 		$filters       = self::get_request_data( 'filters', array() );
 
 		if ( ! $exporter = sab_get_document_type_exporter( $document_type, $type ) ) {
-			self::error( array(
-				'messages' => array(
-					_x( 'No applicable exporter found.', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+			self::error(
+				array(
+					'messages' => array(
+						_x( 'No applicable exporter found.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 
 		check_ajax_referer( $exporter->get_nonce_action(), 'security' );
 
 		if ( ! Exporters::export_allowed( $document_type ) ) {
-			self::error( array(
-				'messages' => array(
-					_x( 'Insufficient privileges to export documents.', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+			self::error(
+				array(
+					'messages' => array(
+						_x( 'Insufficient privileges to export documents.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 
 		if ( ! empty( $filters['start_date'] ) && ! \DateTime::createFromFormat( 'Y-m-d', $filters['start_date'] ) ) {
-			self::error( array(
-				'messages' => array(
-					_x( 'Please make sure to provide a valid start date.', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+			self::error(
+				array(
+					'messages' => array(
+						_x( 'Please make sure to provide a valid start date.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 
 		if ( ! empty( $filters['end_date'] ) && ! \DateTime::createFromFormat( 'Y-m-d', $filters['end_date'] ) ) {
-			self::error( array(
-				'messages' => array(
-					_x( 'Please make sure to provide a valid end date.', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+			self::error(
+				array(
+					'messages' => array(
+						_x( 'Please make sure to provide a valid end date.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 
-		$start_date = ! empty( $filters['start_date'] ) ? wc_string_to_datetime( $filters['start_date'] ) : false;
-		$end_date   = ! empty( $filters['end_date'] ) ? wc_string_to_datetime( $filters['end_date'] ) : false;
+		$start_date = ! empty( $filters['start_date'] ) ? sab_string_to_datetime( $filters['start_date'] ) : false;
+		$end_date   = ! empty( $filters['end_date'] ) ? sab_string_to_datetime( $filters['end_date'] ) : false;
 		$today      = sab_string_to_datetime( 'now' );
 
 		if ( $start_date && $start_date > $today ) {
-			self::error( array(
-				'messages' => array(
-					_x( 'Please choose a start date from the past.', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+			self::error(
+				array(
+					'messages' => array(
+						_x( 'Please choose a start date from the past.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 
 		if ( $start_date && $end_date && $start_date > $end_date ) {
-			self::error( array(
-				'messages' => array(
-					_x( 'The end date must be after the start date.', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+			self::error(
+				array(
+					'messages' => array(
+						_x( 'The end date must be after the start date.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 
 		$exporter->set_filename( $filename );
 
 		if ( is_a( $exporter, 'Vendidero\StoreaBill\Document\CsvExporter' ) ) {
-			if ( ! empty( $_POST['columns'] ) ) { // WPCS: input var ok.
-				$exporter->set_column_names( wp_unslash( $_POST['columns'] ) ); // WPCS: input var ok, sanitization ok.
+			if ( ! empty( $_POST['columns'] ) ) {
+				$exporter->set_column_names( self::clean_data( $_POST['columns'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			}
 		}
 
@@ -823,9 +881,11 @@ class Ajax {
 		$exporter->generate_file();
 
 		if ( $exporter->has_errors() ) {
-			self::error( array(
-				'messages' => $exporter->get_errors()->get_error_messages(),
-			) );
+			self::error(
+				array(
+					'messages' => $exporter->get_errors()->get_error_messages(),
+				)
+			);
 		} else {
 			if ( $exporter->get_percent_complete() >= 100 ) {
 				$query_args = array(

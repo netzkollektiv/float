@@ -30,17 +30,17 @@ class FeeItem extends DocumentItem {
 		'_line_subtotal',
 		'_subtotal_tax',
 		'_is_taxable',
-		'_enable_split_tax'
+		'_enable_split_tax',
 	);
 
 	protected function format_update_value( $document, $prop ) {
 		$value = parent::format_update_value( $document, $prop );
 
-		switch( $prop ) {
-			case "prices_include_tax":
-			case "is_taxable":
-			case "round_tax_at_subtotal":
-			case "enable_split_tax":
+		switch ( $prop ) {
+			case 'prices_include_tax':
+			case 'is_taxable':
+			case 'round_tax_at_subtotal':
+			case 'enable_split_tax':
 				$value = sab_bool_to_string( $value );
 				break;
 		}

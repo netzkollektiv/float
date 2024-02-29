@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -42,17 +42,19 @@ class UtfString
 	{
 		// Returns the utf string corresponding to the unicode value
 		if ($num < 128) {
-			if ($lo) {
-				return chr($num);
-			}
-			return '&#' . $num . ';';
+			return $lo
+				? chr($num)
+				: '&#' . $num . ';';
 		}
+
 		if ($num < 2048) {
 			return chr(($num >> 6) + 192) . chr(($num & 63) + 128);
 		}
+
 		if ($num < 65536) {
 			return chr(($num >> 12) + 224) . chr((($num >> 6) & 63) + 128) . chr(($num & 63) + 128);
 		}
+
 		if ($num < 2097152) {
 			return chr(($num >> 18) + 240) . chr((($num >> 12) & 63) + 128) . chr((($num >> 6) & 63) + 128) . chr(($num & 63) + 128);
 		}

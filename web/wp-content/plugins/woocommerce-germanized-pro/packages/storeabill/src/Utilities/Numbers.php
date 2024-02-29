@@ -31,6 +31,27 @@ final class Numbers {
 
 		return round( $val, $precision, $mode );
 	}
+
+	/**
+	 * Rounds a float to the current price decimal precision.
+	 *
+	 * @param $val
+	 *
+	 * @return float
+	 */
+	public static function round_to_precision( $val, $precision = '' ) {
+		if ( '' === $precision ) {
+			$precision = sab_get_price_decimals();
+		}
+
+		$precision = (int) $precision;
+
+		if ( ! is_float( $val ) ) {
+			$val = floatval( $val );
+		}
+
+		return round( $val, $precision );
+	}
 }
 
 

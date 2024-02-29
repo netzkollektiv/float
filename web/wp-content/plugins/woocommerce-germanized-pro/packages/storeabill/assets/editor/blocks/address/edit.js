@@ -33,7 +33,8 @@ const AddressEdit = ( {
     const address = preview.formatted_address;
 
     const classes = classnames( 'document-address address-wrapper', className, {
-        [ `has-text-align-${ align }` ]: align
+        [ `has-text-align-${ align }` ]: align,
+        [ fontSize.class ]: fontSize.class,
     } );
 
     const {

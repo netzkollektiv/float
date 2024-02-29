@@ -123,7 +123,7 @@ abstract class Exporter implements \Vendidero\StoreaBill\Interfaces\Exporter {
 	public function export() {
 		$this->send_headers();
 		$this->send_content();
-		@unlink( $this->get_file_path() ); // phpcs:ignore WordPress.VIP.FileSystemWritesDisallow.file_ops_unlink, Generic.PHP.NoSilencedErrors.Discouraged
+		@unlink( $this->get_file_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		die();
 	}
 
@@ -138,12 +138,20 @@ abstract class Exporter implements \Vendidero\StoreaBill\Interfaces\Exporter {
 	 */
 	public function generate_file() {
 		if ( 1 === $this->get_page() ) {
-			@unlink( $this->get_file_path() ); // phpcs:ignore WordPress.VIP.FileSystemWritesDisallow.file_ops_unlink, Generic.PHP.NoSilencedErrors.Discouraged,
+			@unlink( $this->get_file_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			$this->update_default_settings();
 		}
 
 		$this->prepare_data_to_export();
 		$this->write_data();
+
+		if ( $this->get_percent_complete() >= 100 ) {
+			$this->complete();
+		}
+	}
+
+	protected function complete() {
+
 	}
 
 	/**
@@ -154,11 +162,11 @@ abstract class Exporter implements \Vendidero\StoreaBill\Interfaces\Exporter {
 	 */
 	public function get_file() {
 		$file = '';
-		if ( @file_exists( $this->get_file_path() ) ) { // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
-			$file = @file_get_contents( $this->get_file_path() ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents, WordPress.WP.AlternativeFunctions.file_system_read_file_get_contents
+		if ( @file_exists( $this->get_file_path() ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			$file = @file_get_contents( $this->get_file_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		} else {
-			@file_put_contents( $this->get_file_path(), '' ); // phpcs:ignore WordPress.VIP.FileSystemWritesDisallow.file_ops_file_put_contents, Generic.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
-			@chmod( $this->get_file_path(), 0664 ); // phpcs:ignore WordPress.VIP.FileSystemWritesDisallow.chmod_chmod, WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents, Generic.PHP.NoSilencedErrors.Discouraged
+			@file_put_contents( $this->get_file_path(), '' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
+			@chmod( $this->get_file_path(), 0664 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 		return $file;
 	}
@@ -170,11 +178,11 @@ abstract class Exporter implements \Vendidero\StoreaBill\Interfaces\Exporter {
 		);
 
 		if ( $start_date = $this->get_start_date() ) {
-			$query_args['after'] = $start_date->format( 'Y-m-d' );
+			$query_args['after'] = $this->get_gm_date( $start_date );
 		}
 
 		if ( $end_date = $this->get_end_date() ) {
-			$query_args['before'] = $end_date->format( 'Y-m-d' );
+			$query_args['before'] = $this->get_gm_date( $end_date );
 		}
 
 		$query_args = array_replace( $query_args, $this->get_additional_query_args() );

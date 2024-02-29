@@ -26,12 +26,13 @@ class Packages {
 	 *
 	 * @var array Key is the package name/directory, value is the main package class which handles init.
 	 */
-	protected static $packages = [
+	protected static $packages = array(
 		'storeabill'                 => '\\Vendidero\\StoreaBill\\Package',
 		'storeabill-lexoffice'       => '\\Vendidero\\StoreaBill\\Lexoffice\\Package',
-        'storeabill-sevdesk'         => '\\Vendidero\\StoreaBill\\sevDesk\\Package',
+		'storeabill-sevdesk'         => '\\Vendidero\\StoreaBill\\sevDesk\\Package',
 		'woocommerce-germanized-dpd' => '\\Vendidero\\Germanized\\DPD\\Package',
-	];
+		'woocommerce-germanized-gls' => '\\Vendidero\\Germanized\\GLS\\Package',
+	);
 
 	/**
 	 * Init the package loader.
@@ -53,9 +54,9 @@ class Packages {
 		/**
 		 * Do not load packages in case the main version is not loadable.
 		 */
-	    if ( ! \WC_GZDP_Dependencies::instance()->is_loadable() ) {
-	        return;
-        }
+		if ( ! \WC_GZDP_Dependencies::instance()->is_loadable() ) {
+			return;
+		}
 
 		self::load_packages();
 	}
@@ -87,7 +88,7 @@ class Packages {
 			 * Prevent calling init twice in case feature plugin is installed
 			 */
 			if ( ! has_action( 'plugins_loaded', array( $package_class, 'init' ) ) ) {
-				call_user_func( [ $package_class, 'init' ] );
+				call_user_func( array( $package_class, 'init' ) );
 			}
 		}
 	}
@@ -111,9 +112,9 @@ class Packages {
 			'admin_notices',
 			function () use ( $package ) {
 				?>
-                <div class="notice notice-error">
-                    <p>
-                        <strong>
+				<div class="notice notice-error">
+					<p>
+						<strong>
 							<?php
 							printf(
 							/* Translators: %s package name. */
@@ -121,8 +122,8 @@ class Packages {
 								'<code>' . esc_html( $package ) . '</code>'
 							);
 							?>
-                        </strong>
-                        <br>
+						</strong>
+						<br>
 						<?php
 						printf(
 						/* translators: 1: is a link to a support document. 2: closing link */
@@ -131,8 +132,8 @@ class Packages {
 							'</a>'
 						);
 						?>
-                    </p>
-                </div>
+					</p>
+				</div>
 				<?php
 			}
 		);

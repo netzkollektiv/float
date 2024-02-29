@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -308,7 +308,7 @@ class MetadataWriter implements \Vendidero\StoreaBill\Vendor\Psr\Log\LoggerAware
 			if ($file['mime']) {
 				$this->writer->write('/Subtype /' . $this->writer->escapeSlashes($file['mime']));
 			}
-			$this->writer->write('/Length '.strlen($filestream));
+			$this->writer->write('/Length ' . strlen($filestream));
 			$this->writer->write('/Filter /FlateDecode');
 			if (isset($file['path'])) {
 				$this->writer->write('/Params <</ModDate '.$this->writer->string('D:' . PdfDate::format(filemtime($file['path']))).' >>');
@@ -337,6 +337,12 @@ class MetadataWriter implements \Vendidero\StoreaBill\Vendor\Psr\Log\LoggerAware
 	{
 		$this->writer->write('/Type /Catalog');
 		$this->writer->write('/Pages 1 0 R');
+
+		if (is_string($this->mpdf->currentLang)) {
+			$this->writer->write(sprintf('/Lang (%s)', $this->mpdf->currentLang));
+		} elseif (is_string($this->mpdf->default_lang)) {
+			$this->writer->write(sprintf('/Lang (%s)', $this->mpdf->default_lang));
+		}
 
 		if ($this->mpdf->ZoomMode === 'fullpage') {
 			$this->writer->write('/OpenAction [3 0 R /Fit]');

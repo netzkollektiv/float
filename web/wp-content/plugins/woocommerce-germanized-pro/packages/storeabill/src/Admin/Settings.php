@@ -13,12 +13,12 @@ class Settings {
 	public static function get_sections() {
 		$sections = array(
 			''                      => _x( 'Invoices', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'invoice_cancellations' => _x( 'Cancellations', 'storeabill-core', 'woocommerce-germanized-pro' )
+			'invoice_cancellations' => _x( 'Cancellations', 'storeabill-core', 'woocommerce-germanized-pro' ),
 		);
 
 		if ( self::has_sync_handlers() ) {
 			$sections['sync_handlers'] = _x( 'External Services', 'storeabill-core', 'woocommerce-germanized-pro' );
- 		}
+		}
 
 		return apply_filters( 'storeabill_admin_settings_sections', $sections );
 	}
@@ -26,7 +26,7 @@ class Settings {
 	protected static function has_sync_handlers() {
 		$sync_handlers = Helper::get_sync_handlers();
 
-		return sizeof( $sync_handlers ) > 0 ? true : false;
+		return count( $sync_handlers ) > 0 ? true : false;
 	}
 
 	public static function get_settings( $section = '' ) {
@@ -35,7 +35,7 @@ class Settings {
 
 		if ( 'invoices' === $section ) {
 			$settings = self::get_invoice_settings();
-		} elseif( 'invoice_cancellations' === $section ) {
+		} elseif ( 'invoice_cancellations' === $section ) {
 			$settings = self::get_cancellation_settings();
 		}
 
@@ -50,32 +50,42 @@ class Settings {
 
 	protected static function get_cancellation_settings() {
 		$settings = array(
-			array( 'title' => '', 'type' => 'title', 'id' => 'cancellation_general_settings' ),
+			array(
+				'title' => '',
+				'type'  => 'title',
+				'id'    => 'cancellation_general_settings',
+			),
 		);
 
 		$settings = array_merge( $settings, \Vendidero\StoreaBill\WooCommerce\Admin\Settings::get_cancellation_settings() );
 
-		$settings = array_merge( $settings, array(
+		$settings = array_merge(
+			$settings,
 			array(
-				'title' 	     => _x( 'Email', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc' 		     => _x( 'Automatically send cancellations to customers by email.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_invoice_cancellation_send_to_customer',
-				'default'	     => 'yes',
-				'type' 		     => 'sab_toggle',
-			),
+				array(
+					'type' => 'sectionend',
+					'id'   => 'cancellation_general_settings',
+				),
 
-			array( 'type' => 'sectionend', 'id' => 'cancellation_general_settings' ),
+				array(
+					'title' => _x( 'Layout', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc'  => sprintf( _x( 'Manage your %1$s templates by using the visual editor <a href="%2$s" class="button button-secondary">Learn more</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( 'invoice_cancellation' ), esc_url( apply_filters( 'storeabill_invoice_cancellation_layout_help_link', '#' ) ) ),
+					'type'  => 'title',
+					'id'    => 'cancellation_layout_settings',
+				),
 
-			array( 'title' => _x( 'Layout', 'storeabill-core', 'woocommerce-germanized-pro' ), 'desc' => sprintf( _x( 'Manage your %1$s templates by using the visual editor <a href="%2$s" class="button button-secondary">Learn more</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( 'invoice_cancellation' ), apply_filters( 'storeabill_invoice_cancellation_layout_help_link', '#' ) ), 'type' => 'title', 'id' => 'cancellation_layout_settings' ),
+				array(
+					'type'          => 'sab_document_templates',
+					'document_type' => 'invoice_cancellation',
+					'title'         => _x( 'Templates', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				),
 
-			array(
-				'type'          => 'sab_document_templates',
-				'document_type' => 'invoice_cancellation',
-				'title'         => _x( 'Templates', 'storeabill-core', 'woocommerce-germanized-pro' )
-			),
-
-			array( 'type' => 'sectionend', 'id' => 'cancellation_layout_settings' ),
-		) );
+				array(
+					'type' => 'sectionend',
+					'id'   => 'cancellation_layout_settings',
+				),
+			)
+		);
 
 		$settings = array_merge( $settings, self::get_numbering_options( 'invoice_cancellation' ) );
 
@@ -84,103 +94,133 @@ class Settings {
 
 	protected static function get_invoice_settings() {
 		$settings = array(
-			array( 'title' => '', 'type' => 'title', 'id' => 'invoice_general_settings' ),
+			array(
+				'title' => '',
+				'type'  => 'title',
+				'id'    => 'invoice_general_settings',
+			),
 		);
 
 		$settings = array_merge( $settings, \Vendidero\StoreaBill\WooCommerce\Admin\Settings::get_invoice_settings() );
 
-		$settings = array_merge( $settings, array(
+		$settings = array_merge(
+			$settings,
 			array(
-				'title' 	     => _x( 'Email', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc' 		     => _x( 'Automatically send invoices to customers by email after finalizing.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_invoice_send_to_customer',
-				'default'	     => 'yes',
-				'type' 		     => 'sab_toggle',
-			),
+				array(
+					'type' => 'sectionend',
+					'id'   => 'invoice_general_settings',
+				),
 
-			array( 'type' => 'sectionend', 'id' => 'invoice_general_settings' ),
+				array(
+					'title' => _x( 'Layout', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc'  => sprintf( _x( 'Manage your %1$s templates by using the visual editor <a href="%2$s" class="button button-secondary">Learn more</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( 'invoice' ), esc_url( apply_filters( 'storeabill_invoice_layout_help_link', '#' ) ) ),
+					'type'  => 'title',
+					'id'    => 'invoice_layout_settings',
+				),
 
-			array( 'title' => _x( 'Layout', 'storeabill-core', 'woocommerce-germanized-pro' ), 'desc' => sprintf( _x( 'Manage your %1$s templates by using the visual editor <a href="%2$s" class="button button-secondary">Learn more</a>', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( 'invoice' ), apply_filters( 'storeabill_invoice_layout_help_link', '#' ) ), 'type' => 'title', 'id' => 'invoice_layout_settings' ),
+				array(
+					'type'          => 'sab_document_templates',
+					'document_type' => 'invoice',
+					'title'         => _x( 'Templates', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				),
 
-			array(
-				'type'          => 'sab_document_templates',
-				'document_type' => 'invoice',
-				'title'         => _x( 'Templates', 'storeabill-core', 'woocommerce-germanized-pro' )
-			),
-
-			array( 'type' => 'sectionend', 'id' => 'invoice_layout_settings' ),
-		) );
+				array(
+					'type' => 'sectionend',
+					'id'   => 'invoice_layout_settings',
+				),
+			)
+		);
 
 		$settings = array_merge( $settings, self::get_numbering_options( 'invoice' ) );
 
-		$settings = array_merge( $settings, array(
-			array( 'title' => _x( 'Date due', 'storeabill-core', 'woocommerce-germanized-pro' ), 'type' => 'title', 'id' => 'invoice_due_settings' ),
-
+		$settings = array_merge(
+			$settings,
 			array(
-				'title' 	     => _x( 'Due until', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc_tip' 		 => _x( 'Choose when invoices are due for payment.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_invoice_due',
-				'default'	     => 'immediately',
-				'type' 		     => 'select',
-				'class'          => 'sab-enhanced-select',
-				'options'        => array(
-					'immediately' => _x( 'Immediately after finalizing', 'storeabill-core', 'woocommerce-germanized-pro' ),
-					'days'        => _x( 'After x days', 'storeabill-core', 'woocommerce-germanized-pro' )
-				)
-			),
-
-			array(
-				'title' 	     => _x( 'Days until due', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'           => _x( 'days', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc_tip' 		 => _x( 'Choose an amount of days until which the invoice is due for payment.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_invoice_due_days',
-				'default'	     => 14,
-				'type' 		     => 'number',
-				'custom_attributes' => array(
-					'min'  => 1,
-					'step' => 1,
-					'data-show_if_storeabill_invoice_due' => 'days'
+				array(
+					'title' => _x( 'Date due', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'type'  => 'title',
+					'id'    => 'invoice_due_settings',
 				),
-			),
 
-			array( 'type' => 'sectionend', 'id' => 'invoice_date_due_settings' ),
-		) );
+				array(
+					'title'    => _x( 'Due until', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc_tip' => _x( 'Choose when invoices are due for payment.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'id'       => 'storeabill_invoice_due',
+					'default'  => 'immediately',
+					'type'     => 'select',
+					'class'    => 'sab-enhanced-select',
+					'options'  => array(
+						'immediately' => _x( 'Immediately after finalizing', 'storeabill-core', 'woocommerce-germanized-pro' ),
+						'days'        => _x( 'After x days', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				),
 
-		$settings = array_merge( $settings, array(
-			array( 'title' => _x( 'Bank account', 'storeabill-core', 'woocommerce-germanized-pro' ), 'type' => 'title', 'id' => 'invoice_bank_account_settings' ),
+				array(
+					'title'             => _x( 'Days until due', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc'              => _x( 'days', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc_tip'          => _x( 'Choose an amount of days until which the invoice is due for payment.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'id'                => 'storeabill_invoice_due_days',
+					'default'           => 14,
+					'type'              => 'number',
+					'custom_attributes' => array(
+						'min'  => 1,
+						'step' => 1,
+						'data-show_if_storeabill_invoice_due' => 'days',
+					),
+				),
 
+				array(
+					'type' => 'sectionend',
+					'id'   => 'invoice_date_due_settings',
+				),
+			)
+		);
+
+		$settings = array_merge(
+			$settings,
 			array(
-				'title' 	     => _x( 'Holder', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc_tip' 		 => _x( 'Choose an account holder', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_bank_account_holder',
-				'default'	     => self::get_default_bank_account_data( 'holder' ),
-				'type' 		     => 'text',
-			),
+				array(
+					'title' => _x( 'Bank account', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'type'  => 'title',
+					'id'    => 'invoice_bank_account_settings',
+				),
 
-			array(
-				'title' 	     => _x( 'Bank Name', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc_tip' 		 => _x( 'Choose the name of your bank', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_bank_account_bank_name',
-				'default'	     => self::get_default_bank_account_data( 'bank_name' ),
-				'type' 		     => 'text',
-			),
+				array(
+					'title'    => _x( 'Holder', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc_tip' => _x( 'Choose an account holder', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'id'       => 'storeabill_bank_account_holder',
+					'default'  => self::get_default_bank_account_data( 'holder' ),
+					'type'     => 'text',
+				),
 
-			array(
-				'title' 	     => _x( 'IBAN', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_bank_account_iban',
-				'default'	     => self::get_default_bank_account_data( 'iban' ),
-				'type' 		     => 'text',
-			),
+				array(
+					'title'    => _x( 'Bank Name', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc_tip' => _x( 'Choose the name of your bank', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'id'       => 'storeabill_bank_account_bank_name',
+					'default'  => self::get_default_bank_account_data( 'bank_name' ),
+					'type'     => 'text',
+				),
 
-			array(
-				'title' 	     => _x( 'BIC', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'id' 		     => 'storeabill_bank_account_bic',
-				'default'	     => self::get_default_bank_account_data( 'bic' ),
-				'type' 		     => 'text',
-			),
+				array(
+					'title'   => _x( 'IBAN', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'id'      => 'storeabill_bank_account_iban',
+					'default' => self::get_default_bank_account_data( 'iban' ),
+					'type'    => 'text',
+				),
 
-			array( 'type' => 'sectionend', 'id' => 'invoice_bank_account_settings' ),
-		) );
+				array(
+					'title'   => _x( 'BIC', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'id'      => 'storeabill_bank_account_bic',
+					'default' => self::get_default_bank_account_data( 'bic' ),
+					'type'    => 'text',
+				),
+
+				array(
+					'type' => 'sectionend',
+					'id'   => 'invoice_bank_account_settings',
+				),
+			)
+		);
 
 		return $settings;
 	}
@@ -197,69 +237,82 @@ class Settings {
 
 	public static function get_numbering_options( $document_type ) {
 		$settings = array(
-			array( 'title' => _x( 'Numbering', 'storeabill-core', 'woocommerce-germanized-pro' ), 'type' => 'title', 'id' => 'numbering_settings' )
+			array(
+				'title' => _x( 'Numbering', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'type'  => 'title',
+				'id'    => 'numbering_settings',
+			),
 		);
 
 		$attributes = array();
 
 		if ( 'invoice_cancellation' === $document_type ) {
-			$settings = array_merge( $settings, array(
+			$settings = array_merge(
+				$settings,
 				array(
-					'title' 	     => _x( 'Separate', 'storeabill-core', 'woocommerce-germanized-pro' ),
-					'desc' 		     => _x( 'Use separate sequential numbers for cancellations.', 'storeabill-core', 'woocommerce-germanized-pro' ) . '<div class="sab-additional-desc">' . sprintf( _x( 'By default a separate circle of sequential numbers is used for cancellations. By disabling this option the invoice number circle will be used for cancellations too.', 'storeabill-core', 'woocommerce-germanized-pro' ) ) . '</div>',
-					'id' 		     => 'storeabill_invoice_cancellation_separate_numbers',
-					'default'	     => 'yes',
-					'type' 		     => 'sab_toggle',
+					array(
+						'title'   => _x( 'Separate', 'storeabill-core', 'woocommerce-germanized-pro' ),
+						'desc'    => _x( 'Use separate sequential numbers for cancellations.', 'storeabill-core', 'woocommerce-germanized-pro' ) . '<div class="sab-additional-desc">' . sprintf( _x( 'By default a separate circle of sequential numbers is used for cancellations. By disabling this option the invoice number circle will be used for cancellations too.', 'storeabill-core', 'woocommerce-germanized-pro' ) ) . '</div>',
+						'id'      => 'storeabill_invoice_cancellation_separate_numbers',
+						'default' => 'yes',
+						'type'    => 'sab_toggle',
+					),
 				)
-			) );
+			);
 
 			$attributes = array(
-				'data-show_if_storeabill_invoice_cancellation_separate_numbers' => 'yes'
+				'data-show_if_storeabill_invoice_cancellation_separate_numbers' => 'yes',
 			);
 		}
 
-		$settings = array_merge( $settings, array(
+		$settings = array_merge(
+			$settings,
 			array(
-				'type'              => 'sab_document_journal_field',
-				'field'             => 'last_number',
-				'document_type'     => $document_type,
-				'title'             => _x( 'Last Number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'custom_attributes' => $attributes,
-			),
+				array(
+					'type'              => 'sab_document_journal_field',
+					'field'             => 'last_number',
+					'document_type'     => $document_type,
+					'title'             => _x( 'Last Number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'custom_attributes' => $attributes,
+				),
 
-			array(
-				'type'              => 'sab_document_journal_field',
-				'field'             => 'number_format',
-				'document_type'     => $document_type,
-				'title'             => _x( 'Format', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'custom_attributes' => $attributes,
-			),
+				array(
+					'type'              => 'sab_document_journal_field',
+					'field'             => 'number_format',
+					'document_type'     => $document_type,
+					'title'             => _x( 'Format', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'custom_attributes' => $attributes,
+				),
 
-			array(
-				'type'              => 'sab_document_journal_field',
-				'field'             => 'number_min_size',
-				'document_type'     => $document_type,
-				'title'             => _x( 'Minimum Size', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc_tip'          => _x( 'Use this option to fill your number with trailing zeros until reaching a minimum size.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'custom_attributes' => $attributes,
-			),
+				array(
+					'type'              => 'sab_document_journal_field',
+					'field'             => 'number_min_size',
+					'document_type'     => $document_type,
+					'title'             => _x( 'Minimum Size', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'desc_tip'          => _x( 'Use this option to fill your number with trailing zeros until reaching a minimum size.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'custom_attributes' => $attributes,
+				),
 
-			array(
-				'type'              => 'sab_document_journal_field',
-				'field'             => 'reset_interval',
-				'document_type'     => $document_type,
-				'title'             => _x( 'Reset Interval', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'custom_attributes' => $attributes,
-			),
+				array(
+					'type'              => 'sab_document_journal_field',
+					'field'             => 'reset_interval',
+					'document_type'     => $document_type,
+					'title'             => _x( 'Reset Interval', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'custom_attributes' => $attributes,
+				),
 
-			array( 'type' => 'sectionend', 'id' => 'numbering_settings' ),
-		) );
+				array(
+					'type' => 'sectionend',
+					'id'   => 'numbering_settings',
+				),
+			)
+		);
 
 		return $settings;
 	}
 
 	public static function get_description() {
-	    return '';
+		return '';
 	}
 
 	public static function get_label() {
@@ -281,7 +334,7 @@ class Settings {
 
 		if ( 'sync_handlers' === self::get_current_section( $current_section ) && ( $name = self::get_current_sync_handler_name() ) ) {
 			if ( $handler = Helper::get_sync_handler( $name ) ) {
-				$breadcrumb[ sizeof( $breadcrumb ) - 1 ]['href'] = remove_query_arg( 'sync_handler_name' );
+				$breadcrumb[ count( $breadcrumb ) - 1 ]['href'] = remove_query_arg( 'sync_handler_name' );
 
 				$label = $handler::get_title();
 
@@ -292,7 +345,7 @@ class Settings {
 				$breadcrumb[] = array(
 					'class' => 'section',
 					'href'  => '',
-					'title' => $label
+					'title' => $label,
 				);
 			}
 		}
@@ -321,8 +374,8 @@ class Settings {
 				/**
 				 * Save default PDF template
 				 */
-				if ( isset( $_POST['document_template_default'] ) ) {
-					$default_template_id = absint( $_POST['document_template_default'] );
+				if ( isset( $_POST['document_template_default'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					$default_template_id = absint( $_POST['document_template_default'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 					if ( ! empty( $default_template_id ) && ( $default_template = sab_get_document_template( $default_template_id ) ) ) {
 						update_option( 'storeabill_' . $document_type . '_default_template', $default_template_id );
@@ -333,8 +386,8 @@ class Settings {
 				 * Save journal data.
 				 */
 				if ( $journal = sab_get_journal( $document_type ) ) {
-					if ( isset( $_POST["journal_{$document_type}_number_format"] ) ) {
-						$number_format = sab_clean( $_POST["journal_{$document_type}_number_format"] );
+					if ( isset( $_POST[ "journal_{$document_type}_number_format" ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$number_format = sab_clean( wp_unslash( $_POST[ "journal_{$document_type}_number_format" ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 						/**
 						 * Force {number} placeholder to be existent
@@ -346,19 +399,19 @@ class Settings {
 						$props['number_format'] = $number_format;
 					}
 
-					if ( isset( $_POST["journal_{$document_type}_number_min_size"] ) ) {
-						$min_size = absint( sab_clean( $_POST["journal_{$document_type}_number_min_size"] ) );
+					if ( isset( $_POST[ "journal_{$document_type}_number_min_size" ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$min_size = absint( sab_clean( wp_unslash( $_POST[ "journal_{$document_type}_number_min_size" ] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 						$props['number_min_size'] = $min_size;
 					}
 
-					if ( isset( $_POST["journal_{$document_type}_reset_interval"] ) ) {
-						$interval  = sab_clean( $_POST["journal_{$document_type}_reset_interval"] );
+					if ( isset( $_POST[ "journal_{$document_type}_reset_interval" ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$interval  = sab_clean( wp_unslash( $_POST[ "journal_{$document_type}_reset_interval" ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 						$intervals = array_keys( sab_get_journal_reset_intervals() );
 
-						if ( in_array( $interval, $intervals ) ) {
+						if ( in_array( $interval, $intervals, true ) ) {
 							$props['reset_interval'] = $interval;
-						} elseif( empty( $interval ) ) {
+						} elseif ( empty( $interval ) ) {
 							$props['reset_interval'] = '';
 						}
 					}
@@ -368,8 +421,8 @@ class Settings {
 						$journal->save();
 					}
 
-					if ( isset( $_POST["journal_{$document_type}_last_number_unblock"] ) && isset( $_POST["journal_{$document_type}_last_number"] ) && 'yes' === $_POST["journal_{$document_type}_last_number_unblock"] ) {
-						$last_number = absint( sab_clean( $_POST["journal_{$document_type}_last_number"] ) );
+					if ( isset( $_POST[ "journal_{$document_type}_last_number_unblock" ] ) && isset( $_POST[ "journal_{$document_type}_last_number" ] ) && 'yes' === $_POST[ "journal_{$document_type}_last_number_unblock" ] ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+						$last_number = absint( sab_clean( wp_unslash( $_POST[ "journal_{$document_type}_last_number" ] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 						$journal->update_last_number( $last_number );
 					}
@@ -385,7 +438,7 @@ class Settings {
 	}
 
 	public static function get_current_sync_handler_name() {
-		$sync_name = isset( $_GET['sync_handler_name'] ) && ! empty( $_GET['sync_handler_name'] ) ? sab_clean( wp_unslash( $_GET['sync_handler_name'] ) ) : false;
+		$sync_name = isset( $_GET['sync_handler_name'] ) && ! empty( $_GET['sync_handler_name'] ) ? sab_clean( wp_unslash( $_GET['sync_handler_name'] ) ) : false; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		return $sync_name;
 	}

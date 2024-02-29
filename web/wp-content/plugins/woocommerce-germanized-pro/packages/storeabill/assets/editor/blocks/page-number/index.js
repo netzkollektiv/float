@@ -6,11 +6,6 @@ import { quantity } from '@storeabill/icons';
 import edit from './edit';
 import save from './save';
 
-/**
- * Internal dependencies
- */
-import './editor.scss';
-
 const settings = {
     title: _x( 'Page number', 'storeabill-core', 'storeabill' ),
     description: _x( 'Inserts the page number.', 'storeabill-core', 'storeabill' ),

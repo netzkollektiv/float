@@ -2,7 +2,7 @@
 /**
  * @license LGPL-2.1-or-later
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -48,10 +48,10 @@ class Png
 				if ($final[$i + $j * $qrSize + 1]) {
 					imagefilledrectangle(
 						$im,
-						($i - $minSize) * $s,
-						($j - $minSize) * $s,
-						($i - $minSize + 1) * $s - 1,
-						($j - $minSize + 1) * $s - 1,
+						(int) round(($i - $minSize) * $s),
+						(int) round(($j - $minSize) * $s),
+						(int) round(($i - $minSize + 1) * $s - 1),
+						(int) round(($j - $minSize + 1) * $s - 1),
 						$foregroundColor
 					);
 				}

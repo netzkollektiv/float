@@ -3,6 +3,7 @@
 namespace Vendidero\StoreaBill;
 
 use Vendidero\StoreaBill\Invoice\Invoice;
+use Vendidero\StoreaBill\Utilities\Numbers;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -52,11 +53,11 @@ class Updater {
 			LIMIT %d, %d
 		";
 
-		$results  = $wpdb->get_results( $wpdb->prepare( $query, $offset, $limit ) );
+		$results  = $wpdb->get_results( $wpdb->prepare( $query, $offset, $limit ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$invoices = array();
 
 		if ( ! empty( $results ) ) {
-			foreach( $results as $result ) {
+			foreach ( $results as $result ) {
 				if ( $invoice = sab_get_invoice( $result->document_id ) ) {
 					$invoices[] = $invoice;
 				}
@@ -74,7 +75,7 @@ class Updater {
 		$invoices = self::get_net_invoices( $offset, $limit );
 
 		if ( ! empty( $invoices ) ) {
-			foreach( $invoices as $invoice ) {
+			foreach ( $invoices as $invoice ) {
 				$created_via    = $invoice->get_created_via();
 				$invoice_type   = $invoice->get_invoice_type();
 				$legacy_version = $invoice->get_meta( '_legacy_version' );
@@ -82,7 +83,7 @@ class Updater {
 				if ( '0.0.1-legacy-incomplete' === $legacy_version || ( '0.0.1-legacy' === $legacy_version && 'cancellation' === $invoice_type ) ) {
 					$has_adjusted = false;
 
-					foreach( $invoice->get_items( array( 'product', 'shipping', 'fee' ) ) as $item ) {
+					foreach ( $invoice->get_items( array( 'product', 'shipping', 'fee' ) ) as $item ) {
 						$document_type_total_getter = 'get_' . $item->get_item_type() . '_total';
 						$document_type_total        = is_callable( array( $invoice, $document_type_total_getter ) ) ? $invoice->{$document_type_total_getter}() : 0;
 
@@ -92,8 +93,8 @@ class Updater {
 							}
 						}
 
-						$item_total          = sab_format_decimal( $item->get_line_total() + $item->get_total_tax(), '' );
-						$document_type_total = sab_format_decimal( $document_type_total, '' );
+						$item_total          = Numbers::round_to_precision( $item->get_line_total() + $item->get_total_tax() );
+						$document_type_total = Numbers::round_to_precision( $document_type_total );
 
 						/**
 						 * During legacy import of net invoices, some invoice items may wrongly
@@ -105,8 +106,8 @@ class Updater {
 							$tax_item = false;
 							$taxes    = $item->get_taxes();
 
-							if ( sizeof( $taxes ) === 1 && 'cancellation' === $invoice->get_invoice_type() ) {
-								foreach( $item->get_taxes() as $tax ) {
+							if ( count( $taxes ) === 1 && 'cancellation' === $invoice->get_invoice_type() ) {
+								foreach ( $item->get_taxes() as $tax ) {
 									$tax_item = $tax;
 								}
 							}
@@ -129,13 +130,13 @@ class Updater {
 					}
 
 					if ( $has_adjusted && 'cancellation' === $invoice->get_invoice_type() ) {
-						add_filter( "storeabill_{$invoice->get_type()}_is_editable", "__return_true", 100 );
+						add_filter( "storeabill_{$invoice->get_type()}_is_editable", '__return_true', 100 );
 						$invoice->calculate_totals( false );
 						$invoice->save();
-						remove_filter( "storeabill_{$invoice->get_type()}_is_editable", "__return_true", 100 );
+						remove_filter( "storeabill_{$invoice->get_type()}_is_editable", '__return_true', 100 );
 					}
 				} elseif ( empty( $created_via ) ) {
-					foreach( $invoice->get_items( 'tax' ) as $tax_item ) {
+					foreach ( $invoice->get_items( 'tax' ) as $tax_item ) {
 						if ( $parent_item = $invoice->get_item( $tax_item->get_parent_id() ) ) {
 							$parent_item_net          = $parent_item->get_total_net();
 							$parent_item_subtotal_net = $parent_item->get_subtotal_net();

@@ -14,6 +14,10 @@ class FilteringFactory
     {
         $addonService = new AddonService();
 
+        if(\XmlExportEngine::$is_custom_addon_export) {
+            return new FilteringCustom();
+        }
+
         if (\XmlExportEngine::$is_comment_export) {
             return new FilteringComments();
         }
@@ -95,23 +99,12 @@ class FilteringFactory
         <div class="wpallexport-collapsed wpallexport-section closed">
             <div id="wpallexport-filtering-container" class="wpallexport-content-section wpallexport-filtering-section" <?php if ($is_on_template_screen):?>style="margin-bottom: 10px;"<?php endif; ?>>
                 <div class="wpallexport-collapsed-header" style="padding-left: 25px;">
-                    <h3><?php _e('Filtering Options','wp_all_export_plugin');?></h3>
+                    <h3><?php esc_html_e('Filtering Options','wp_all_export_plugin');?></h3>
                 </div>
                 <div class="wpallexport-collapsed-content" style="padding: 0;">
                     <div class="wpallexport-collapsed-content-inner">
-                        <?php
-                        if(is_array($post['cpt'])) {
-                            $post['cpt'] = $post['cpt'][0];
-                        }
-                        if (strpos($post['cpt'], 'custom') !== 0) { ?>
-                            <?php include_once PMXE_ROOT_DIR . '/views/admin/export/blocks/filters.php'; ?>
-                        <?php } else { ?>
-                            <div class="wpallexport-free-edition-notice wpallexport-user-export-notice" style="display: block; width: auto;" >
-                                <p style="margin-top: 7px; margin-bottom: 7px;">
-                                    <?php echo 'The Gravity Forms Export Add-On doesn\'t support filtering at this time.'; ?>
-                                </p>
-                            </div>
-                        <?php } ?>
+
+                        <?php include_once PMXE_ROOT_DIR . '/views/admin/export/blocks/filters.php'; ?>
                     </div>
                 </div>
             </div>

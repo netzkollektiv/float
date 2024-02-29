@@ -8,9 +8,9 @@ class FileExporter extends Exporter {
 
 	protected $document_type = '';
 
-    protected $files = array();
+	protected $files = array();
 
-    protected $limit = 25;
+	protected $limit = 25;
 
 	/**
 	 * Filename to export to.
@@ -19,29 +19,29 @@ class FileExporter extends Exporter {
 	 */
 	protected $filename = 'sab-export.zip';
 
-    public function __construct( $document_type = '' ) {
-    	if ( empty( $document_type ) ) {
-    		$document_type = 'invoice';
-	    }
+	public function __construct( $document_type = '' ) {
+		if ( empty( $document_type ) ) {
+			$document_type = 'invoice';
+		}
 
-        $this->document_type = $document_type;
-    }
+		$this->document_type = $document_type;
+	}
 
-    public function get_title() {
-	    return sprintf( _x( 'Export %s', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( $this->get_document_type_object(), 'plural' ) );
-    }
+	public function get_title() {
+		return sprintf( _x( 'Export %s', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( $this->get_document_type_object(), 'plural' ) );
+	}
 
-    public function get_description() {
-	    return sprintf( _x( 'This tool allows you to generate and download a ZIP file containing PDF files', 'storeabill-core', 'woocommerce-germanized-pro' ) );
-    }
+	public function get_description() {
+		return sprintf( _x( 'This tool allows you to generate and download a ZIP file containing PDF files', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+	}
 
 	public function get_file_extension() {
 		return 'zip';
 	}
 
 	public function get_document_type() {
-        return $this->document_type;
-    }
+		return $this->document_type;
+	}
 
 	public function prepare_data_to_export() {
 		$result = $this->get_documents();
@@ -52,13 +52,15 @@ class FileExporter extends Exporter {
 		foreach ( $result['documents'] as $document ) {
 			if ( ! empty( $document['path'] ) && file_exists( $document['path'] ) ) {
 				$this->files[ $document['path'] ] = basename( $document['path'] );
-            }
-		}
-    }
+			}
 
-    protected function get_file_size() {
-	    return @filesize( $this->get_file_path() );
-    }
+			++ $this->total_exported;
+		}
+	}
+
+	protected function get_file_size() {
+		return @filesize( $this->get_file_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	}
 
 	public function send_headers() {
 		if ( function_exists( 'gc_enable' ) ) {
@@ -81,26 +83,26 @@ class FileExporter extends Exporter {
 		header( 'Content-Disposition: attachment; filename=' . $this->get_filename() );
 		header( 'Pragma: no-cache' );
 		header( 'Expires: 0' );
-    }
+	}
 
 	public function get_type() {
 		return 'file';
 	}
 
 	protected function send_content() {
-		@readfile( $this->get_file_path() );
+		@readfile( $this->get_file_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_readfile
 	}
 
 	public function get_file() {
-    	if ( ! class_exists( 'ZipArchive' ) ) {
-		    $this->add_error( _x( 'Please make sure to install the PHP zip package. Ask your webhoster for further information.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+		if ( ! class_exists( 'ZipArchive' ) ) {
+			$this->add_error( _x( 'Please make sure to install the PHP zip package. Ask your webhoster for further information.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 
-		    return false;
-	    }
+			return false;
+		}
 
 		$file = new \ZipArchive();
 
-		if ( @file_exists( $this->get_file_path() ) ) {
+		if ( @file_exists( $this->get_file_path() ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			$result = $file->open( $this->get_file_path() );
 		} else {
 			$result = $file->open( $this->get_file_path(), \ZipArchive::CREATE );
@@ -116,12 +118,13 @@ class FileExporter extends Exporter {
 	}
 
 	protected function write_data() {
-    	if ( $zip = $this->get_file() ) {
-    		foreach( $this->files as $file => $filename ) {
-    			$zip->addFile( $file, $filename );
-		    }
+		if ( $zip = $this->get_file() ) {
 
-		    $zip->close();
-	    }
+			foreach ( $this->files as $file => $filename ) {
+				$zip->addFile( $file, $filename );
+			}
+
+			$zip->close();
+		}
 	}
 }

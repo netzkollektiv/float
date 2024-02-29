@@ -18,7 +18,7 @@ class Cancellation extends Invoice {
 		'parent_number'           => '',
 		'refund_order_id'         => 0,
 		'refund_order_number'     => '',
-		'reason'                   => ''
+		'reason'                  => '',
 	);
 
 	public function get_invoice_type() {
@@ -116,7 +116,7 @@ class Cancellation extends Invoice {
 	 * @return string
 	 */
 	public function get_formatted_price( $price, $type = '' ) {
-		$price = ( $price > 0 || $price < 0 ) ? $price * -1 : $price;
+		$price = ( $price > 0 || $price < 0 ) ? (float) $price * -1 : (float) $price;
 
 		/**
 		 * Discounts should not be negative.

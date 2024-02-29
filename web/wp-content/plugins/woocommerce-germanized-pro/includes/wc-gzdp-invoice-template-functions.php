@@ -1,7 +1,8 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 if ( ! function_exists( 'wc_gzdp_invoice_download_button' ) ) {
 

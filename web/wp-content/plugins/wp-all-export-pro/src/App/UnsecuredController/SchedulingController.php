@@ -35,6 +35,13 @@ class SchedulingController extends BaseController
         $export = new \PMXE_Export_Record();
         $export->getById($exportId);
 
+        if(isset($export->options['enable_real_time_exports']) && $export->options['enable_real_time_exports'] ) {
+            wp_send_json(array(
+                'status'     => 403,
+                'message'    => sprintf(esc_html__('This export is configured to run as records are created and cannot be run via this method.', 'wp_all_export_plugin'), $id)
+            ));
+        }
+
         $this->disableExportsThatDontHaveAddon($export);
 
         if ($export->isEmpty()) {
@@ -72,6 +79,13 @@ class SchedulingController extends BaseController
         $export = new \PMXE_Export_Record();
         $export->getById($exportId);
 
+        if(isset($export->options['enable_real_time_exports']) && $export->options['enable_real_time_exports'] ) {
+            wp_send_json(array(
+                'status'     => 403,
+                'message'    => sprintf(esc_html__('his export is configured to run as records are created and cannot be run via this method.', 'wp_all_export_plugin'), $id)
+            ));
+        }
+
         $this->disableExportsThatDontHaveAddon($export);
 
         if ($export->isEmpty()) {
@@ -79,7 +93,7 @@ class SchedulingController extends BaseController
         }
 
         $logger = function($m) {
-            echo "<p>$m</p>\\n";
+            echo "<p>" . esc_html($m). "</p>\\n";
         };
 
         if ($export->processing == 1 and (time() - strtotime($export->registered_on)) > 120) {
@@ -155,11 +169,7 @@ class SchedulingController extends BaseController
             die(\__('The User Export Add-On Pro is required to run this export. If you already own it, you can download the add-on here: <a href="https://www.wpallimport.com/portal/downloads" target="_blank">https://www.wpallimport.com/portal/downloads</a>', \PMXE_Plugin::LANGUAGE_DOMAIN));
         }
 
-        if (
-            (((strpos($cpt[0], 'custom_') === 0)) && !class_exists('GF_Export_Add_On'))
-            ||
-            ($export->options['export_type'] == 'advanced' && $export->options['wp_query_selector'] == 'wp_user_query' && !$addons->isUserAddonActive())
-        ) {
+        if (strpos(reset($cpt), 'custom_') === 0 && !class_exists('GF_Export_Add_On')) {
             die(\__('The Gravity Forms Export Add-On Pro is required to run this export. If you already own it, you can download the add-on here: <a href="https://www.wpallimport.com/portal/downloads" target="_blank">https://www.wpallimport.com/portal/downloads</a>', \PMXE_Plugin::LANGUAGE_DOMAIN));
         }
 

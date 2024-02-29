@@ -27,102 +27,98 @@ function enforceBlockOrder( blocks ) {
         if ( 'storeabill/footer' === block.name ) {
             const {
                 moveBlockToPosition
-            } = dispatch( 'core/editor' );
+            } = dispatch( 'core/block-editor' );
 
             moveBlockToPosition( block.clientId, '', '', length );
         }
     } );
 }
-
 /**
  * Force existence of our global DocumentStyles block which
  * dynamically updates editor wrapper styles on meta updates.
+ *
+ * Seems like domReady usage does not work on load, use a workaround as described
+ * @see https://github.com/WordPress/gutenberg/issues/27607
  */
-domReady( () => {
+window.addEventListener( 'load', function () {
+    if ( ! isDocumentTemplate() ) {
+        return;
+    }
+
+    const stylesBlock = getDocumentStylesBlock();
+
+    if ( ! stylesBlock ) {
+        let insertedBlock = createBlock( 'storeabill/document-styles', {} );
+
+        dispatch( 'core/block-editor' ).insertBlock( insertedBlock, null, '', false );
+
+        // Hide the styles block
+        jQuery( 'body' ).find( '.sab-block-hider' ).remove();
+        jQuery( 'body' ).append( '<style type="text/css" class="sab-block-hider">tr#block-navigation-block-' + insertedBlock.clientId + ' { display: none !important }</style>' );
+    } else {
+        jQuery( 'body' ).find( '.sab-block-hider' ).remove();
+        jQuery( 'body' ).append( '<style type="text/css" class="sab-block-hider">tr#block-navigation-block-' + stylesBlock.clientId + ' { display: none !important }</style>' );
+    }
+
+    const { getBlocks } = select( 'core/block-editor' );
+    let initialBlocks = getBlocks();
+
+    enforceBlockOrder( initialBlocks );
+
     /**
-     * Use ugly timeout hack until wp.data is set up.
-     * @see https://github.com/WordPress/gutenberg/issues/28032
+     * Subscribe to state changes. In case the block length changes (e.g. new blocks inserted)
+     * make sure that the footer is always the last block available to prevent overlapping.
      */
-    setTimeout(() => {
-        if ( ! isDocumentTemplate() ) {
-            return;
+    const unsubscribeOrderEnforcement = subscribe( function() {
+        let currentBlocks = getBlocks();
+
+        if ( currentBlocks.length !== initialBlocks.length ) {
+            initialBlocks = currentBlocks;
+
+            enforceBlockOrder( currentBlocks );
         }
+    });
 
-        const stylesBlock = getDocumentStylesBlock();
+    /**
+     * Find all shortcodes that need refresh and call API for a new result.
+     */
+    const $shortcodes = jQuery( '.document-shortcode-needs-refresh' );
 
-        if ( ! stylesBlock ) {
-            let insertedBlock = createBlock( 'storeabill/document-styles', {} );
+    if ( $shortcodes.length > 0 ) {
+        $shortcodes.each( function() {
+            const $shortcode = jQuery( this );
+            $shortcode.hide();
 
-            dispatch( 'core/block-editor' ).insertBlock( insertedBlock, null, '', false );
+            const shortcodeQuery = $shortcode.data( 'shortcode' );
 
-            // Hide the styles block
-            jQuery( 'body' ).find( '.sab-block-hider' ).remove();
-            jQuery( 'body' ).append( '<style type="text/css" class="sab-block-hider">tr#block-navigation-block-' + insertedBlock.clientId + ' { display: none !important }</style>' );
-        } else {
-            jQuery( 'body' ).find( '.sab-block-hider' ).remove();
-            jQuery( 'body' ).append( '<style type="text/css" class="sab-block-hider">tr#block-navigation-block-' + stylesBlock.clientId + ' { display: none !important }</style>' );
-        }
+            getShortcodePreview( $shortcode.data( 'shortcode' ) ).then( ( { content, shortcode } ) => {
+                const clientId        = $shortcode.parents( '.wp-block' ).data( 'block' );
+                let   blockAttributes = select( 'core/block-editor' ).getBlockAttributes( clientId );
 
-        const { getBlocks } = select( 'core/block-editor' );
-        let initialBlocks = getBlocks();
+                if ( blockAttributes.length > 0 ) {
+                    for ( var key of Object.keys( blockAttributes ) ) {
+                        let val = blockAttributes[ key ];
 
-        enforceBlockOrder( initialBlocks );
+                        if ( ( typeof val === 'string' || val instanceof String ) && val.includes( shortcodeQuery ) ) {
+                            val = replacePreviewWithPlaceholder( val, ( ! isEmpty( content ) ? content : shortcode ), shortcodeQuery, true );
 
-        /**
-         * Subscribe to state changes. In case the block length changes (e.g. new blocks inserted)
-         * make sure that the footer is always the last block available to prevent overlapping.
-         */
-        const unsubscribeOrderEnforcement = subscribe( function() {
-            let currentBlocks = getBlocks();
+                            /**
+                             * Update the attribute to make sure further
+                             * shortcode adjustments use the updated content.
+                             */
+                            blockAttributes[ key ] = val;
 
-            if ( currentBlocks.length !== initialBlocks.length ) {
-                initialBlocks = currentBlocks;
-
-                enforceBlockOrder( currentBlocks );
-            }
-        });
-
-        /**
-         * Find all shortcodes that need refresh and call API for a new result.
-         */
-        const $shortcodes = jQuery( '.document-shortcode-needs-refresh' );
-
-        if ( $shortcodes.length > 0 ) {
-            $shortcodes.each( function() {
-                const $shortcode = jQuery( this );
-                $shortcode.hide();
-
-                const shortcodeQuery = $shortcode.data( 'shortcode' );
-
-                getShortcodePreview( $shortcode.data( 'shortcode' ) ).then( ( { content, shortcode } ) => {
-                    const clientId        = $shortcode.parents( '.wp-block' ).data( 'block' );
-                    let   blockAttributes = select( 'core/block-editor' ).getBlockAttributes( clientId );
-
-                    if ( blockAttributes.length > 0 ) {
-                        for ( var key of Object.keys( blockAttributes ) ) {
-                            let val = blockAttributes[ key ];
-
-                            if ( ( typeof val === 'string' || val instanceof String ) && val.includes( shortcodeQuery ) ) {
-                                val = replacePreviewWithPlaceholder( val, ( ! isEmpty( content ) ? content : shortcode ), shortcodeQuery, true );
-
-                                /**
-                                 * Update the attribute to make sure further
-                                 * shortcode adjustments use the updated content.
-                                 */
-                                blockAttributes[ key ] = val;
-
-                                dispatch( 'core/block-editor' ).updateBlockAttributes( clientId, {
-                                    key: val
-                                } );
-                            }
+                            dispatch( 'core/block-editor' ).updateBlockAttributes( clientId, {
+                                key: val
+                            } );
                         }
                     }
+                }
 
-                    $shortcode.show();
-                } );
+                $shortcode.show();
             } );
-        }
-    }, 0 );
+        } );
+    }
 });
 
 const excludedFromFirstPageFilter = [

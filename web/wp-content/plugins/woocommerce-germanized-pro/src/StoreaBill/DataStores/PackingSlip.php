@@ -26,6 +26,6 @@ class PackingSlip extends Document {
 		'_reference_number',
 		'_external_sync_handlers',
 		'_order_id',
-		'_order_number'
+		'_order_number',
 	);
 }

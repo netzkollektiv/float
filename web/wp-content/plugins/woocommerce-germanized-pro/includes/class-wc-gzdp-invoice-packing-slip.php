@@ -1,7 +1,8 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 class WC_GZDP_Invoice_Packing_Slip extends \Vendidero\Germanized\Pro\StoreaBill\PackingSlip {
 
@@ -75,8 +76,6 @@ class WC_GZDP_Invoice_Packing_Slip extends \Vendidero\Germanized\Pro\StoreaBill\
 
 	public function populate() {
 		wc_deprecated_function( 'WC_GZDP_Invoice_Packing_Slip::populate', '3.0.0' );
-
-		return;
 	}
 
 	public function get_option( $key, $default = false, $suppress_typing = false ) {

@@ -48,6 +48,13 @@ class CacheHelper {
 			return;
 		}
 
+		/**
+		 * Clear/disable object cache if available
+		 */
+		wp_using_ext_object_cache( false );
+		wp_cache_flush();
+		wp_cache_init();
+
 		if ( function_exists( 'w3tc_objectcache_flush' ) ) {
 			w3tc_objectcache_flush();
 		}

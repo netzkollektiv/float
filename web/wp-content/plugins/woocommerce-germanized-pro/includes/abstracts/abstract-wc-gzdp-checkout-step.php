@@ -1,27 +1,26 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 abstract class WC_GZDP_Checkout_Step {
 
 	public $title;
 	public $id;
 	public $selector;
-	public $next = null;
-	public $prev = null;
+	public $next   = null;
+	public $prev   = null;
 	public $number = 1;
 	public $active = false;
 
 	public function __construct( $id, $title, $selector = '' ) {
-
-		$this->id = $id;
-		$this->title = $title;
+		$this->id       = $id;
+		$this->title    = $title;
 		$this->selector = $selector;
 
 		add_action( 'woocommerce_gzdp_checkout_step_' . $this->get_id() . '_submit', array( $this, 'submit' ), 0 );
 		add_action( 'woocommerce_gzdp_checkout_step_' . $this->get_id() . '_refresh', array( $this, 'refresh' ), 0 );
-
 	}
 
 	public function get_title() {
@@ -57,24 +56,21 @@ abstract class WC_GZDP_Checkout_Step {
 	}
 
 	public function get_template( $tpl = '' ) {
-
 		$template = '';
 
-		switch( $tpl ) {
-
+		switch ( $tpl ) {
 			case 'submit':
 				$template = 'submit.php';
-			break;
-
+				break;
 		}
 
-		if ( ! $tpl )
+		if ( ! $tpl ) {
 			return false;
+		}
 
 		ob_start();
 		wc_get_template( 'checkout/multistep/' . $template, array( 'step' => $this ) );
 		return ob_get_clean();
-
 	}
 
 	public function get_wrapper_classes() {
@@ -82,8 +78,8 @@ abstract class WC_GZDP_Checkout_Step {
 			'step-wrapper',
 			'step-wrapper-' . $this->get_number(),
 		);
-		
-		if ( $this->get_number() == 1 ) {
+
+		if ( 1 === $this->get_number() ) {
 			array_push( $classes, 'step-wrapper-active' );
 		}
 
@@ -92,7 +88,7 @@ abstract class WC_GZDP_Checkout_Step {
 
 	public function submit() {
 		WC()->session->set( 'checkout_step', $this->id );
-		
+
 		do_action( 'woocommerce_gzdp_checkout_step_validation', $this );
 
 		$this->checkout_validation();
@@ -102,7 +98,7 @@ abstract class WC_GZDP_Checkout_Step {
 		WC()->session->set( 'checkout_step', $this->id );
 
 		do_action( 'woocommerce_gzdp_checkout_step_refresh', $this );
-		
+
 		$this->checkout_validation();
 	}
 
@@ -112,7 +108,7 @@ abstract class WC_GZDP_Checkout_Step {
 		// Temporarily remove after checkout validation
 		remove_all_actions( 'woocommerce_after_checkout_validation' );
 
-		// Process checkout and stop checkout default output 
+		// Process checkout and stop checkout default output
 		add_action( 'woocommerce_after_checkout_validation', array( $this, 'after_checkout_validation' ), 10, 2 );
 	}
 
@@ -126,10 +122,10 @@ abstract class WC_GZDP_Checkout_Step {
 		$e_messages = '';
 
 		if ( $errors && is_wp_error( $errors ) ) {
-		    $e_messages = $errors->get_error_messages();
+			$e_messages = $errors->get_error_messages();
 		}
 
-		if ( wc_notice_count( 'error' ) != 0 || ! empty( $e_messages ) ) {
+		if ( 0 !== wc_notice_count( 'error' ) || ! empty( $e_messages ) ) {
 			return;
 		}
 
@@ -137,12 +133,17 @@ abstract class WC_GZDP_Checkout_Step {
 			WC()->session->set( 'checkout_step', $this->next->get_id() );
 		}
 
-		wp_send_json (
+		/**
+		 * Explicitly set result to failure instead of unknown (in terms of WC) identifier like "step".
+		 * This change was made to ensure compatibility e.g. with the WooCommerce Payments Plugin which seems
+		 * to explicitly check the AJAX response result and does trigger the Stripe Confirmation in case the result is not failure.
+		 */
+		wp_send_json(
 			array(
 				'fragments' => WC_GZDP_Multistep_Checkout::instance()->refresh_order_fragments( array() ),
-				'result'	=> 'step',
-				'step'		=> $this->number,
-				'refresh'	=> 'true',
+				'result'    => 'failure',
+				'step'      => $this->number,
+				'refresh'   => 'true',
 				'messages'  => ' ',
 			)
 		);

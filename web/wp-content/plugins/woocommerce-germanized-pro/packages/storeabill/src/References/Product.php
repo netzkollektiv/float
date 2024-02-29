@@ -14,18 +14,21 @@ class Product {
 	 * @return mixed|void
 	 */
 	public static function get_references() {
-		$references = apply_filters( 'storeabill_product_reference_types', array(
-			'woocommerce' => '\Vendidero\StoreaBill\WooCommerce\Product'
-		) );
+		$references = apply_filters(
+			'storeabill_product_reference_types',
+			array(
+				'woocommerce' => '\Vendidero\StoreaBill\WooCommerce\Product',
+			)
+		);
 
 		return $references;
 	}
 
 	public static function get_product_types() {
 		$product_types = array(
-			'default'      => _x( 'Normal', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'virtual'      => _x( 'Virtual', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'service'      => _x( 'Service', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'default' => _x( 'Normal', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'virtual' => _x( 'Virtual', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'service' => _x( 'Service', 'storeabill-core', 'woocommerce-germanized-pro' ),
 		);
 
 		return apply_filters( 'storeabill_product_types', $product_types );
@@ -51,12 +54,14 @@ class Product {
 
 		try {
 			$obj = new $reference( $product );
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 
 		if ( ! $obj || ! is_a( $obj, '\Vendidero\StoreaBill\Interfaces\Product' ) ) {
 			try {
 				$obj = new $default_reference( $product );
-			} catch( \Exception $e ) {}
+			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			}
 		}
 
 		return $obj;

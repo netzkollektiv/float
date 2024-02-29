@@ -40,15 +40,18 @@ abstract class Table extends WP_List_Table {
 		add_filter( 'removable_query_args', array( $this, 'enable_query_removing' ) );
 		add_filter( 'default_hidden_columns', array( $this, 'set_default_hidden_columns' ), 10, 2 );
 
-		$args = wp_parse_args( $args, array(
-			'type' => '',
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'type' => '',
+			)
+		);
 
 		$this->document_type = $args['type'];
 
 		if ( ! $document_type_object = $this->get_document_type_object() ) {
-		    wp_die( _x( 'This document type does not exist.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
-        }
+			wp_die( esc_html_x( 'This document type does not exist.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+		}
 
 		parent::__construct(
 			array(
@@ -60,12 +63,12 @@ abstract class Table extends WP_List_Table {
 	}
 
 	protected function get_document_type_object() {
-	    if ( is_null( $this->document_type_object ) ) {
-	        $this->document_type_object = sab_get_document_type( $this->document_type );
-        }
+		if ( is_null( $this->document_type_object ) ) {
+			$this->document_type_object = sab_get_document_type( $this->document_type );
+		}
 
-	    return $this->document_type_object;
-    }
+		return $this->document_type_object;
+	}
 
 	public function set_default_hidden_columns( $columns, $screen ) {
 		if ( $this->screen->id === $screen->id ) {
@@ -80,14 +83,17 @@ abstract class Table extends WP_List_Table {
 	}
 
 	protected function get_hook_prefix() {
-	    return 'storeabill_admin_' . $this->document_type . '_table_';
-    }
+		return 'storeabill_admin_' . $this->document_type . '_table_';
+	}
 
 	public function enable_query_removing( $args ) {
-		$args = array_merge( $args, array(
-			'changed',
-			'bulk_action'
-		) );
+		$args = array_merge(
+			$args,
+			array(
+				'changed',
+				'bulk_action',
+			)
+		);
 
 		return $args;
 	}
@@ -115,8 +121,8 @@ abstract class Table extends WP_List_Table {
 	 * @return string
 	 */
 	public function handle_bulk_actions( $action, $ids, $redirect_to ) {
-		$ids         = array_reverse( array_map( 'absint', $ids ) );
-		$changed     = 0;
+		$ids     = array_reverse( array_map( 'absint', $ids ) );
+		$changed = 0;
 
 		if ( false !== strpos( $action, 'mark_' ) ) {
 
@@ -136,12 +142,12 @@ abstract class Table extends WP_List_Table {
 					}
 				}
 			}
-		} elseif( 'delete' === $action ) {
+		} elseif ( 'delete' === $action ) {
 			foreach ( $ids as $id ) {
 				if ( $document = $this->get_document( $id ) ) {
-					if ( $document->delete( true ) ) {
+					if ( $document->delete( false ) ) {
 						$changed++;
-                    }
+					}
 				}
 			}
 		}
@@ -153,7 +159,7 @@ abstract class Table extends WP_List_Table {
 				array(
 					'changed'     => $changed,
 					'ids'         => join( ',', $ids ),
-					'bulk_action' => $action
+					'bulk_action' => $action,
 				),
 				$redirect_to
 			);
@@ -163,20 +169,19 @@ abstract class Table extends WP_List_Table {
 	}
 
 	public function output_notices() {
-	    Notices::output( $this->screen->id );
+		Notices::output( $this->screen->id );
 	}
 
 	/**
 	 * Show confirmation message that order status changed for number of orders.
 	 */
 	public function set_bulk_notice() {
-
-		$number            = isset( $_REQUEST['changed'] ) ? absint( $_REQUEST['changed'] ) : 0; // WPCS: input var ok, CSRF ok.
-		$bulk_action       = isset( $_REQUEST['bulk_action'] ) ? sab_clean( wp_unslash( $_REQUEST['bulk_action'] ) ) : ''; // WPCS: input var ok, CSRF ok.
+		$number      = isset( $_REQUEST['changed'] ) ? absint( $_REQUEST['changed'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$bulk_action = isset( $_REQUEST['bulk_action'] ) ? sab_clean( wp_unslash( $_REQUEST['bulk_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		if ( 'delete' === $bulk_action ) {
 			$this->add_notice( sprintf( _nx( '%d document deleted.', '%d documents deleted.', $number, 'storeabill-core', 'woocommerce-germanized-pro' ), number_format_i18n( $number ) ) );
-		} elseif( strpos( $bulk_action, 'mark_' ) !== false ) {
+		} elseif ( strpos( $bulk_action, 'mark_' ) !== false ) {
 			$statuses = sab_get_document_statuses( $this->document_type );
 
 			// Check if any status changes happened.
@@ -203,12 +208,12 @@ abstract class Table extends WP_List_Table {
 	}
 
 	protected function user_can_delete( $document = false ) {
-	    return current_user_can( "delete_{$this->document_type}s" );
-    }
+		return current_user_can( "delete_{$this->document_type}s" );
+	}
 
-    protected function user_can_edit( $document = false ) {
-	    return current_user_can( "edit_{$this->document_type}", $document ? $document->get_id() : '' );
-    }
+	protected function user_can_edit( $document = false ) {
+		return current_user_can( "edit_{$this->document_type}", $document ? $document->get_id() : '' );
+	}
 
 	public function get_page_option() {
 		return 'woocommerce_page_sab_accounting_per_page';
@@ -223,11 +228,11 @@ abstract class Table extends WP_List_Table {
 	public function prepare_items() {
 		global $per_page;
 
-		$per_page        = $this->get_items_per_page( $this->get_page_option(), 10 );
-		$per_page        = apply_filters( "{$this->get_hook_prefix()}edit_per_page", $per_page );
-		$this->statuses  = sab_get_document_statuses( $this->document_type );
-		$this->counts    = sab_get_documents_counts( $this->document_type );
-		$paged           = $this->get_pagenum();
+		$per_page       = $this->get_items_per_page( $this->get_page_option(), 10 ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+		$per_page       = apply_filters( "{$this->get_hook_prefix()}edit_per_page", $per_page ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+		$this->statuses = sab_get_document_statuses( $this->document_type );
+		$this->counts   = sab_get_documents_counts( $this->document_type );
+		$paged          = $this->get_pagenum();
 
 		$args = array(
 			'limit'       => $per_page,
@@ -237,39 +242,38 @@ abstract class Table extends WP_List_Table {
 			'type'        => $this->document_type,
 		);
 
-		$raw_query_args = $_GET;
+		$raw_query_args = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		foreach( $raw_query_args as $query_arg => $data ) {
+		foreach ( $raw_query_args as $query_arg => $data ) {
+			if ( 'document_type' === $query_arg ) {
+				continue;
+			}
 
-		    if ( 'document_type' === $query_arg ) {
-		        continue;
-            }
+			if ( substr( $query_arg, 0, 9 ) === 'document_' ) {
+				$data      = sab_clean( wp_unslash( $data ) );
+				$query_arg = substr( $query_arg, 9 );
 
-		    if ( substr( $query_arg, 0, 9 ) === 'document_' ) {
-		        $data      = sab_clean( wp_unslash( $data ) );
-		        $query_arg = substr( $query_arg, 9 );
-
-		        if ( ! empty( $data ) ) {
-		            $args[ $query_arg ] = $data;
-                }
-            }
-        }
-
-		if ( isset( $_GET['orderby'] ) ) {
-		    $args['orderby'] = sab_clean( wp_unslash( $_GET['orderby'] ) );
+				if ( ! empty( $data ) ) {
+					$args[ $query_arg ] = $data;
+				}
+			}
 		}
 
-		if ( isset( $_GET['order'] ) ) {
-			$args['order'] = 'asc' === $_GET['order'] ? 'ASC' : 'DESC';
+		if ( isset( $_GET['orderby'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$args['orderby'] = sab_clean( wp_unslash( $_GET['orderby'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
 
-		if ( isset( $_GET['m'] ) ) {
-			$m          = sab_clean( wp_unslash( $_GET['m'] ) );
-			$year       = substr( $m, 0, 4 );
+		if ( isset( $_GET['order'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$args['order'] = 'asc' === $_GET['order'] ? 'ASC' : 'DESC'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+
+		if ( isset( $_GET['m'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$m    = sab_clean( wp_unslash( $_GET['m'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$year = substr( $m, 0, 4 );
 
 			if ( ! empty( $year ) ) {
-				$month      = '';
-				$day        = '';
+				$month = '';
+				$day   = '';
 
 				if ( strlen( $m ) > 5 ) {
 					$month = substr( $m, 4, 2 );
@@ -299,14 +303,15 @@ abstract class Table extends WP_List_Table {
 			}
 		}
 
-		if ( isset( $_GET['s'] ) ) {
-			$search = sab_clean( wp_unslash( $_GET['s'] ) );
+		if ( isset( $_GET['s'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$search = sab_clean( wp_unslash( $_GET['s'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 			if ( ! is_numeric( $search ) ) {
 				$search = '*' . $search . '*';
 			}
 
-			$args['search'] = $search;
+			$args['search']         = $search;
+			$args['search_columns'] = $this->get_search_columns( $search );
 		}
 
 		// Query the user IDs for this page
@@ -321,10 +326,24 @@ abstract class Table extends WP_List_Table {
 		);
 	}
 
+	protected function get_search_columns( $search ) {
+		$search_columns = array();
+
+		if ( is_numeric( $search ) ) {
+			$search_columns = array( 'document_id', 'document_reference_id', 'document_author_id', 'document_customer_id', 'document_number', '_reference_number' );
+		} elseif ( strlen( $search ) === 2 ) {
+			$search_columns = array( 'document_country' );
+		} else {
+			$search_columns = array( 'document_id', 'document_formatted_number', '_reference_number' );
+		}
+
+		return $search_columns;
+	}
+
 	/**
 	 */
 	public function no_items() {
-		echo _x( 'No documents found', 'storeabill-core', 'woocommerce-germanized-pro' );
+		echo esc_html_x( 'No documents found', 'storeabill-core', 'woocommerce-germanized-pro' );
 	}
 
 	/**
@@ -335,7 +354,7 @@ abstract class Table extends WP_List_Table {
 	 * @return bool Whether the current view is the "All" view.
 	 */
 	protected function is_base_request() {
-		$vars = $_GET;
+		$vars = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		unset( $vars['paged'] );
 
 		if ( empty( $vars ) ) {
@@ -352,13 +371,13 @@ abstract class Table extends WP_List_Table {
 	 */
 	protected function get_views() {
 
-		$status_links     = array();
-		$num_documents    = $this->counts;
-		$total_documents  = array_sum( (array) $num_documents );
-		$class            = '';
-		$all_args         = array();
+		$status_links    = array();
+		$num_documents   = $this->counts;
+		$total_documents = array_sum( (array) $num_documents );
+		$class           = '';
+		$all_args        = array();
 
-		if ( empty( $class ) && ( $this->is_base_request() || isset( $_REQUEST['all_documents'] ) ) ) {
+		if ( empty( $class ) && ( $this->is_base_request() || isset( $_REQUEST['all_documents'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$class = 'current';
 		}
 
@@ -366,7 +385,9 @@ abstract class Table extends WP_List_Table {
 			_nx(
 				'All <span class="count">(%s)</span>',
 				'All <span class="count">(%s)</span>',
-				$total_documents, 'storeabill-core', 'woocommerce-germanized-pro'
+				$total_documents,
+				'storeabill-core',
+				'storeabill'
 			),
 			number_format_i18n( $total_documents )
 		);
@@ -376,11 +397,11 @@ abstract class Table extends WP_List_Table {
 		foreach ( sab_get_document_statuses( $this->document_type ) as $status => $title ) {
 			$class = '';
 
-			if ( ! in_array( $status, array_keys( $this->statuses ) ) || empty( $num_documents[ $status ] ) ) {
+			if ( ! in_array( $status, array_keys( $this->statuses ), true ) || empty( $num_documents[ $status ] ) ) {
 				continue;
 			}
 
-			if ( isset( $_REQUEST['document_status'] ) && $status === $_REQUEST['document_status'] ) {
+			if ( isset( $_REQUEST['document_status'] ) && $status === $_REQUEST['document_status'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				$class = 'current';
 			}
 
@@ -389,7 +410,7 @@ abstract class Table extends WP_List_Table {
 			);
 
 			$status_label = sprintf(
-				translate_nooped_plural( _nx_noop( $title . ' <span class="count">(%s)</span>', $title . ' <span class="count">(%s)</span>', 'storeabill-core', 'woocommerce-germanized-pro' ), $num_documents[ $status ] ),
+				translate_nooped_plural( _nx_noop( ( $title . ' <span class="count">(%s)</span>' ), ( $title . ' <span class="count">(%s)</span>' ), 'storeabill-core', 'woocommerce-germanized-pro' ), $num_documents[ $status ] ), // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralSingle,WordPress.WP.I18n.NonSingularStringLiteralPlural
 				number_format_i18n( $num_documents[ $status ] )
 			);
 
@@ -437,7 +458,7 @@ abstract class Table extends WP_List_Table {
 	 * @return string
 	 */
 	public function current_action() {
-		if ( isset( $_REQUEST['delete_all'] ) || isset( $_REQUEST['delete_all2'] ) ) {
+		if ( isset( $_REQUEST['delete_all'] ) || isset( $_REQUEST['delete_all2'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return 'delete_all';
 		}
 
@@ -457,34 +478,38 @@ abstract class Table extends WP_List_Table {
 	protected function months_dropdown( $type = '' ) {
 		global $wpdb, $wp_locale;
 
-		$extra_checks = "";
+		$extra_checks = '';
 
-		if ( isset( $_GET['document_status'] ) && 'all' !== $_GET['document_status'] ) {
-			$extra_checks = $wpdb->prepare( ' AND document_status = %s', sab_clean( wp_unslash( $_GET['document_status'] ) ) );
+		if ( isset( $_GET['document_status'] ) && 'all' !== $_GET['document_status'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$extra_checks = $wpdb->prepare( ' AND document_status = %s', sab_clean( wp_unslash( $_GET['document_status'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
 
-		$months = $wpdb->get_results("
+		// @codingStandardsIgnoreStart
+		$months = $wpdb->get_results(
+			"
             SELECT DISTINCT YEAR( document_date_created ) AS year, MONTH( document_date_created ) AS month
             FROM $wpdb->storeabill_documents
             WHERE 1=1
             $extra_checks
             ORDER BY document_date_created DESC
-		" );
+		"
+		);
+		// @codingStandardsIgnoreEnd
 
 		$month_count = count( $months );
 
-		if ( ! $month_count || ( 1 == $month_count && 0 == $months[0]->month ) ) {
+		if ( ! $month_count || ( 1 === $month_count && 0 === (int) $months[0]->month ) ) {
 			return;
 		}
 
-		$m = isset( $_GET['m'] ) ? (int) $_GET['m'] : 0;
+		$m = isset( $_GET['m'] ) ? absint( wp_unslash( $_GET['m'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
-		<label for="filter-by-date" class="screen-reader-text"><?php echo _x( 'Filter by date', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></label>
+		<label for="filter-by-date" class="screen-reader-text"><?php echo esc_html_x( 'Filter by date', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></label>
 		<select name="m" id="filter-by-date">
-			<option<?php selected( $m, 0 ); ?> value="0"><?php echo _x( 'All dates', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></option>
+			<option<?php selected( $m, 0 ); ?> value="0"><?php echo esc_html_x( 'All dates', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></option>
 			<?php
 			foreach ( $months as $arc_row ) {
-				if ( 0 == $arc_row->year ) {
+				if ( 0 === $arc_row->year ) {
 					continue;
 				}
 
@@ -496,7 +521,7 @@ abstract class Table extends WP_List_Table {
 					selected( $m, $year . $month, false ),
 					esc_attr( $arc_row->year . $month ),
 					/* translators: 1: month name, 2: 4-digit year */
-					sprintf( _x( '%1$s %2$d', 'storeabill-core', 'woocommerce-germanized-pro' ), $wp_locale->get_month( $month ), $year )
+					sprintf( esc_html_x( '%1$s %2$d', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_html( $wp_locale->get_month( $month ) ), esc_html( $year ) )
 				);
 			}
 			?>
@@ -536,7 +561,7 @@ abstract class Table extends WP_List_Table {
 				$output = ob_get_clean();
 
 				if ( ! empty( $output ) ) {
-					echo $output;
+					echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 
 					submit_button( _x( 'Filter', 'storeabill-core', 'woocommerce-germanized-pro' ), '', 'filter_action', false, array( 'id' => 'document-query-submit' ) );
 				}
@@ -561,11 +586,11 @@ abstract class Table extends WP_List_Table {
 	protected function get_custom_columns() {
 		$columns = array();
 
-		$columns['cb']         = '<input type="checkbox" />';
-		$columns['title']      = _x( 'Title', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['date']       = _x( 'Date', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['status']     = _x( 'Status', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['actions']    = _x( 'Actions', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['cb']      = '<input type="checkbox" />';
+		$columns['title']   = _x( 'Title', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['date']    = _x( 'Date', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['status']  = _x( 'Status', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['actions'] = _x( 'Actions', 'storeabill-core', 'woocommerce-germanized-pro' );
 
 		return $columns;
 	}
@@ -575,20 +600,6 @@ abstract class Table extends WP_List_Table {
 	 */
 	public function get_columns() {
 		$columns = $this->get_custom_columns();
-
-		/**
-		 * Filters the columns displayed in the Shipments list table.
-		 *
-		 * The dynamic portion of this hook, `$this->get_hook_prefix()` is used to construct a
-		 * unique hook for a shipment type e.g. return. In case of simple shipments the type is omitted.
-		 *
-		 * Example hook name: woocommerce_gzd_return_shipments_table_edit_per_page
-		 *
-		 * @param string[] $columns An associative array of column headings.
-		 *
-		 * @since 3.0.0
-		 * @package Vendidero/Germanized/Shipments
-		 */
 		$columns = apply_filters( "{$this->get_hook_prefix()}columns", $columns );
 
 		return $columns;
@@ -598,8 +609,11 @@ abstract class Table extends WP_List_Table {
 	 * @return array
 	 */
 	protected function get_sortable_columns() {
-		return array(
-			'date' => array( 'date_created', false ),
+		return apply_filters(
+			"{$this->get_hook_prefix()}sortable_columns",
+			array(
+				'date' => array( 'date_created', false ),
+			)
 		);
 	}
 
@@ -640,7 +654,7 @@ abstract class Table extends WP_List_Table {
 	protected function column_actions( $document ) {
 		do_action( "{$this->get_hook_prefix()}actions_start", $document );
 
-		echo Admin::get_document_actions_html( Admin::get_document_actions( $document, 'table' ) ); // WPCS: XSS ok.
+		echo Admin::get_document_actions_html( Admin::get_document_actions( $document, 'table' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 
 		do_action( "{$this->get_hook_prefix()}actions_end", $document );
 	}
@@ -649,10 +663,10 @@ abstract class Table extends WP_List_Table {
 		if ( $this->user_can_edit( $document ) ) :
 			?>
 			<label class="screen-reader-text" for="cb-select-<?php echo esc_attr( $document->get_id() ); ?>">
-				<?php printf( _x( 'Select %s', 'storeabill-core', 'woocommerce-germanized-pro' ), $document->get_id() ); ?>
+				<?php printf( esc_html_x( 'Select %s', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_html( $document->get_id() ) ); ?>
 			</label>
 			<input id="cb-select-<?php echo esc_attr( $document->get_id() ); ?>" type="checkbox" name="document[]" value="<?php echo esc_attr( $document->get_id() ); ?>" />
-		<?php
+			<?php
 		endif;
 	}
 
@@ -664,7 +678,7 @@ abstract class Table extends WP_List_Table {
 	 * @param Document $document The current document object.
 	 */
 	public function column_status( $document ) {
-		echo '<span class="sab-status sab-document-status sab-document-type-' . esc_attr( $document->get_type() ) . '-status sab-document-status-' . esc_attr( $document->get_status() ) . '">' . sab_get_document_status_name( $document->get_status(), $document->get_type() ) .'</span>';
+		echo '<span class="sab-status sab-document-status sab-document-type-' . esc_attr( $document->get_type() ) . '-status sab-document-status-' . esc_attr( $document->get_status() ) . '">' . esc_html( sab_get_document_status_name( $document->get_status(), $document->get_type() ) ) . '</span>';
 	}
 
 	/**
@@ -683,11 +697,11 @@ abstract class Table extends WP_List_Table {
 		}
 
 		// Check if the order was created within the last 24 hours, and not in the future.
-		if ( $timestamp > strtotime( '-1 day', current_time( 'timestamp', true ) ) && $timestamp <= current_time( 'timestamp', true ) ) {
+		if ( $timestamp > strtotime( '-1 day', time() ) && $timestamp <= time() ) {
 			$show_date = sprintf(
-                /* translators: %s: human-readable time difference */
+				/* translators: %s: human-readable time difference */
 				_x( '%s ago', 'storeabill-human-readable-time-difference', 'woocommerce-germanized-pro' ),
-				human_time_diff( $document->get_date_created()->getTimestamp(), current_time( 'timestamp', true ) )
+				human_time_diff( $document->get_date_created()->getTimestamp(), time() )
 			);
 		} else {
 			$show_date = $document->get_date_created()->date_i18n( apply_filters( "{$this->get_hook_prefix()}date_format", sab_date_format() ) );
@@ -709,7 +723,7 @@ abstract class Table extends WP_List_Table {
 		$GLOBALS['document'] = $document;
 		$classes             = 'document document-status-' . $document->get_status();
 		?>
-		<tr id="document-<?php echo $document->get_id(); ?>" class="<?php echo esc_attr( $classes ); ?>">
+		<tr id="document-<?php echo esc_attr( $document->get_id() ); ?>" class="<?php echo esc_attr( $classes ); ?>">
 			<?php $this->single_row_columns( $document ); ?>
 		</tr>
 		<?php
@@ -729,8 +743,8 @@ abstract class Table extends WP_List_Table {
 			$actions['delete'] = _x( 'Delete Permanently', 'storeabill-core', 'woocommerce-germanized-pro' );
 		}
 
-		foreach( Admin::get_bulk_actions_handlers( $this->document_type ) as $bulk_action_handler ) {
-		    $actions[ $bulk_action_handler->get_action() ] = $bulk_action_handler->get_title();
+		foreach ( Admin::get_bulk_actions_handlers( $this->document_type ) as $bulk_action_handler ) {
+			$actions[ $bulk_action_handler->get_action() ] = $bulk_action_handler->get_title();
 		}
 
 		$actions = $this->get_custom_bulk_actions( $actions );

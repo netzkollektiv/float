@@ -33,7 +33,7 @@ final class Helper {
 			),
 		);
 
-		$response = wp_remote_get( $url, $args );
+		$response = wp_remote_get( esc_url_raw( $url ), $args );
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
@@ -83,19 +83,19 @@ final class Helper {
 			return false;
 		}
 
-		$file = [
+		$file = array(
 			'name'     => basename( $url ),
 			'type'     => 'font/' . $type,
 			'tmp_name' => $temp_file,
 			'error'    => 0,
 			'size'     => filesize( $temp_file ),
-		];
+		);
 
-		$overrides = [
+		$overrides = array(
 			'test_type' => false,
 			'test_form' => false,
 			'test_size' => true,
-		];
+		);
 
 		// Move the temporary file into the fonts uploads directory.
 		add_filter( 'upload_dir', array( __CLASS__, 'get_fonts_dir' ) );
@@ -104,7 +104,7 @@ final class Helper {
 
 		if ( empty( $results['error'] ) ) {
 			$saved_fonts[ $url ] = $results;
-			update_option( 'storeabill_font_local_filenames', $saved_fonts );
+			update_option( 'storeabill_font_local_filenames', $saved_fonts, false );
 
 			return $results['url'];
 		}

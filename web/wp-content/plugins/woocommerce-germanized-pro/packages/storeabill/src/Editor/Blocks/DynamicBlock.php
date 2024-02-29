@@ -127,7 +127,7 @@ abstract class DynamicBlock extends Block {
 	protected function parse_attributes( $attributes ) {
 		$defaults = array();
 
-		foreach( $this->get_attributes() as $attribute => $schema ) {
+		foreach ( $this->get_attributes() as $attribute => $schema ) {
 			$defaults[ $attribute ] = isset( $schema['default'] ) ? $schema['default'] : '';
 		}
 

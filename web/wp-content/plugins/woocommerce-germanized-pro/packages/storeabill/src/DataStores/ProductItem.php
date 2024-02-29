@@ -32,19 +32,21 @@ class ProductItem extends DocumentItem {
 		'_is_taxable',
 		'_is_virtual',
 		'_is_service',
+		'_is_photovoltaic_system',
 		'_has_differential_taxation',
-		'_sku'
+		'_sku',
 	);
 
 	protected function format_update_value( $document, $prop ) {
 		$value = parent::format_update_value( $document, $prop );
 
-		switch( $prop ) {
-			case "prices_include_tax":
-			case "is_taxable":
-			case "is_virtual":
-			case "is_service":
-			case "has_differential_taxation":
+		switch ( $prop ) {
+			case 'prices_include_tax':
+			case 'is_taxable':
+			case 'is_virtual':
+			case 'is_service':
+			case 'is_photovoltaic_system':
+			case 'has_differential_taxation':
 				$value = sab_bool_to_string( $value );
 				break;
 		}

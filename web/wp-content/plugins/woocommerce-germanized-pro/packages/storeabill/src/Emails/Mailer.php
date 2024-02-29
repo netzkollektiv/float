@@ -28,8 +28,8 @@ class Mailer {
 		 * This hook will only execute after a successful render which
 		 * does only happen after the invoice has been finalized.
 		 */
-		add_action( "storeabill_invoice_rendered", array( __CLASS__, 'maybe_send_invoice' ), 10 );
-		add_action( "storeabill_invoice_cancellation_rendered", array( __CLASS__, 'maybe_send_invoice' ), 10 );
+		add_action( 'storeabill_invoice_rendered', array( __CLASS__, 'maybe_send_invoice' ), 10 );
+		add_action( 'storeabill_invoice_cancellation_rendered', array( __CLASS__, 'maybe_send_invoice' ), 10 );
 	}
 
 	/**
@@ -44,9 +44,12 @@ class Mailer {
 	public static function invoice_table_show_net_prices( $invoice ) {
 		if ( $template = $invoice->get_template() ) {
 			if ( $item_table = $template->get_block( 'storeabill/item-table' ) ) {
-				$attributes = wp_parse_args( $item_table['attrs'], array(
-					'showPricesIncludingTax' => true,
-				) );
+				$attributes = wp_parse_args(
+					$item_table['attrs'],
+					array(
+						'showPricesIncludingTax' => true,
+					)
+				);
 
 				return $attributes['showPricesIncludingTax'] ? false : true;
 			}
@@ -91,13 +94,16 @@ class Mailer {
 				 */
 				ShortcodeManager::instance()->setup( $invoice->get_type() );
 
-				foreach( $total_block['innerBlocks'] as $total_row ) {
-					$attributes = wp_parse_args( $total_row['attrs'], array(
-						'totalType'   => '',
-						'hideIfEmpty' => false,
-						'heading'     => '',
-						'content'     => '{total}',
-					) );
+				foreach ( $total_block['innerBlocks'] as $total_row ) {
+					$attributes = wp_parse_args(
+						$total_row['attrs'],
+						array(
+							'totalType'   => '',
+							'hideIfEmpty' => false,
+							'heading'     => '',
+							'content'     => '{total}',
+						)
+					);
 
 					/**
 					 * Skip empty total type rows as this would result in
@@ -107,10 +113,12 @@ class Mailer {
 						continue;
 					}
 
+					$attributes['totalType'] = sab_map_invoice_total_type( $attributes['totalType'], $invoice );
+
 					$totals        = $invoice->get_totals( $attributes['totalType'] );
 					$total_content = $attributes['content'];
 
-					foreach( $totals as $total ) {
+					foreach ( $totals as $total ) {
 						Package::setup_document_total( $total );
 
 						if ( false !== $attributes['heading'] ) {
@@ -124,7 +132,7 @@ class Mailer {
 						$rows[] = array(
 							'type'            => $total->get_type(),
 							'formatted_label' => sab_do_shortcode( $total->get_formatted_label() ),
-							'formatted_total' => sab_do_shortcode( str_replace(  '{total}', $total->get_formatted_total(), $total_content ) ),
+							'formatted_total' => sab_do_shortcode( str_replace( '{total}', $total->get_formatted_total(), $total_content ) ),
 						);
 					}
 				}
@@ -136,11 +144,11 @@ class Mailer {
 		}
 
 		if ( empty( $rows ) ) {
-			foreach( $invoice->get_totals( array( 'total' ) ) as $total ) {
+			foreach ( $invoice->get_totals( array( 'total' ) ) as $total ) {
 				$rows[] = array(
 					'type'            => $total->get_type(),
 					'formatted_label' => $total->get_formatted_label(),
-					'formatted_total' => str_replace(  '{total}', $total->get_formatted_total(), $total_content ),
+					'formatted_total' => str_replace( '{total}', $total->get_formatted_total(), $total_content ),
 				);
 			}
 		}
@@ -154,9 +162,10 @@ class Mailer {
 	 * @param Invoice $invoice
 	 */
 	public static function maybe_send_invoice( $invoice ) {
-		$type = $invoice->get_type();
+		$type              = $invoice->get_type();
+		$auto_send_enabled = ( 'yes' === Package::get_setting( "{$type}_send_to_customer" ) && 'automation' === $invoice->get_created_via() );
 
-		if ( $invoice->is_finalized() && apply_filters( "storeabill_send_{$invoice->get_type()}_to_customer", ( 'yes' === Package::get_setting( "{$type}_send_to_customer" ) ), $invoice ) ) {
+		if ( $invoice->is_finalized() && apply_filters( "storeabill_send_{$invoice->get_type()}_to_customer", $auto_send_enabled, $invoice ) ) {
 			$invoice->send_to_customer();
 		}
 	}
@@ -178,20 +187,22 @@ class Mailer {
 		if ( ! apply_filters( "storeabill_{$document->get_type()}_hide_email_details", false, $document, $email ) ) {
 			if ( $plain_text ) {
 				sab_get_template(
-					self::get_template_path( 'emails/plain/document-details.php', $document->get_type() ), array(
+					self::get_template_path( 'emails/plain/document-details.php', $document->get_type() ),
+					array(
 						'document'      => $document,
 						'sent_to_admin' => $sent_to_admin,
 						'plain_text'    => $plain_text,
-						'email'         => $email
+						'email'         => $email,
 					)
 				);
 			} else {
 				sab_get_template(
-					self::get_template_path( 'emails/document-details.php', $document->get_type() ), array(
+					self::get_template_path( 'emails/document-details.php', $document->get_type() ),
+					array(
 						'document'      => $document,
 						'sent_to_admin' => $sent_to_admin,
 						'plain_text'    => $plain_text,
-						'email'         => $email
+						'email'         => $email,
 					)
 				);
 			}
@@ -210,20 +221,20 @@ class Mailer {
 		$fields = array(
 			array(
 				'label' => _x( 'Number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'value' => $document->get_formatted_number()
+				'value' => $document->get_formatted_number(),
 			),
 		);
 
 		if ( is_a( $document, '\Vendidero\StoreaBill\Interfaces\Invoice' ) ) {
 			$fields[] = array(
 				'label' => _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'value' => $document->get_formatted_price( $document->get_total() )
+				'value' => $document->get_formatted_price( $document->get_total() ),
 			);
 
 			if ( 'invoice' === $document->get_type() ) {
 				$fields[] = array(
 					'label' => _x( 'Payment Status', 'storeabill-core', 'woocommerce-germanized-pro' ),
-					'value' => sab_get_invoice_payment_status_name( $document->get_payment_status() )
+					'value' => sab_get_invoice_payment_status_name( $document->get_payment_status() ),
 				);
 			}
 		}
@@ -233,7 +244,8 @@ class Mailer {
 		if ( ! empty( $fields ) ) {
 			if ( $plain_text ) {
 				sab_get_template(
-					self::get_template_path( 'emails/plain/document-summary.php', $document->get_type() ), array(
+					self::get_template_path( 'emails/plain/document-summary.php', $document->get_type() ),
+					array(
 						'document'      => $document,
 						'sent_to_admin' => $sent_to_admin,
 						'plain_text'    => $plain_text,
@@ -243,7 +255,8 @@ class Mailer {
 				);
 			} else {
 				sab_get_template(
-					self::get_template_path( 'emails/document-summary.php', $document->get_type() ), array(
+					self::get_template_path( 'emails/document-summary.php', $document->get_type() ),
+					array(
 						'document'      => $document,
 						'sent_to_admin' => $sent_to_admin,
 						'plain_text'    => $plain_text,
@@ -275,7 +288,7 @@ class Mailer {
 	 * @return string|string[]
 	 */
 	protected static function get_template_path( $template, $document_type ) {
-		$type_path     = str_replace( "_", "-", sanitize_key( $document_type ) );
+		$type_path     = str_replace( '_', '-', sanitize_key( $document_type ) );
 		$type_template = str_replace( 'emails/', 'emails/' . $type_path . '/', $template );
 
 		if ( file_exists( Package::get_path() . '/templates/' . $type_template ) ) {
@@ -308,7 +321,7 @@ class Mailer {
 					'items'         => $document->get_items( $document->get_line_item_types() ),
 					'plain_text'    => $args['plain_text'],
 					'sent_to_admin' => $args['sent_to_admin'],
-					'columns'       => $args['columns']
+					'columns'       => $args['columns'],
 				),
 				$document
 			)
@@ -319,7 +332,7 @@ class Mailer {
 
 	public static function set_woocommerce_template_dir( $dir, $template ) {
 		if ( file_exists( Package::get_path() . '/templates/' . $template ) ) {
-			return untrailingslashit( Package::get_template_path() );
+			return untrailingslashit( apply_filters( 'storeabill_email_template_path', Package::get_template_path() ) );
 		}
 
 		return $dir;
@@ -332,18 +345,18 @@ class Mailer {
 			'storeabill_invoice_payment_status_paid_to_pending',
 			'storeabill_invoice_payment_status_partial_to_paid',
 			'storeabill_invoice_payment_status_partial_to_pending',
-			'storeabill_invoice_status_closed_to_cancelled'
+			'storeabill_invoice_status_closed_to_cancelled',
 		);
 
-		foreach( sab_get_document_types() as $type ) {
+		foreach ( sab_get_document_types() as $type ) {
 			$prefix   = 'storeabill_' . $type . '_status_';
 			$statuses = sab_get_document_statuses( $type );
 
-			if ( in_array( 'draft', $statuses ) && in_array( 'closed', $statuses ) ) {
+			if ( in_array( 'draft', $statuses, true ) && in_array( 'closed', $statuses, true ) ) {
 				$actions[] = $prefix . 'draft_to_closed';
 			}
 
-			if ( in_array( 'archived', $statuses ) && in_array( 'closed', $statuses ) ) {
+			if ( in_array( 'archived', $statuses, true ) && in_array( 'closed', $statuses, true ) ) {
 				$actions[] = $prefix . 'closed_to_archived';
 			}
 		}
@@ -370,7 +383,7 @@ class Mailer {
 
 			self::$emails = array();
 
-			foreach( sab_get_document_types() as $type ) {
+			foreach ( sab_get_document_types() as $type ) {
 				$document_type = sab_get_document_type( $type );
 
 				if ( 'accounting' === $document_type->group && ! Package::enable_accounting() ) {
@@ -390,7 +403,7 @@ class Mailer {
 			}
 		}
 
-		return apply_filters( "storeabill_emails", self::$emails );
+		return apply_filters( 'storeabill_emails', self::$emails );
 	}
 
 	protected static function sanitize_email_class( $class ) {

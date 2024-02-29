@@ -67,7 +67,7 @@ class ThirdCountryNotice extends DynamicBlock {
 		}
 
 		if ( ! empty( $country ) && Countries::is_third_country( $country, $postcode ) ) {
-			$this->content = $content;
+			$this->content = apply_filters( 'storeabill_document_third_country_notice', $content, $document );
 		}
 
 		/**

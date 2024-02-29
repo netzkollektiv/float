@@ -16,19 +16,19 @@ defined( 'ABSPATH' ) || exit;
 	<div class="invoice-header document-header spread">
 		<div class="left">
 			<h3 class="document-title">
-                <?php echo $cancellation->get_title( false ); ?>
-            </h3>
-            <span class="cancellation-parent"><?php printf( _x( 'Invoice %s', 'storeabill-core', 'woocommerce-germanized-pro' ), $cancellation->get_parent_formatted_number() ); ?></span>
-            <?php if ( $cancellation->is_finalized() ) : ?>
+				<?php echo wp_kses_post( $cancellation->get_title( false ) ); ?>
+			</h3>
+			<span class="cancellation-parent"><?php printf( esc_html_x( 'Invoice %s', 'storeabill-core', 'woocommerce-germanized-pro' ), wp_kses_post( $cancellation->get_parent_formatted_number() ) ); ?></span>
+			<?php if ( $cancellation->is_finalized() ) : ?>
 				<span class="document-locked invoice-locked sab-icon dashicons dashicons-lock"></span>
 			<?php endif; ?>
 		</div>
 
 		<div class="right">
-            <div class="document-actions">
-                <?php echo Admin::get_document_actions_html( Admin::get_document_actions( $cancellation, 'order' ) ); ?>
-            </div>
-			<span class="invoice-total price sab-price"><?php echo $cancellation->get_formatted_price( $cancellation->get_total() ); ?></span>
+			<div class="document-actions">
+				<?php echo Admin::get_document_actions_html( Admin::get_document_actions( $cancellation, 'order' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			</div>
+			<span class="invoice-total price sab-price"><?php echo $cancellation->get_formatted_price( $cancellation->get_total() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
 		</div>
 	</div>
 </div>

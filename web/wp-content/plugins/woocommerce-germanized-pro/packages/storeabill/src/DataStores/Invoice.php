@@ -21,7 +21,7 @@ class Invoice extends Document {
 		'date_custom'         => 'date_custom',
 		'date_custom_extra'   => 'date_custom_extra',
 		'date_of_service'     => '_date_of_service',
-		'date_of_service_end' => '_date_of_service_end'
+		'date_of_service_end' => '_date_of_service_end',
 	);
 
 	/**
@@ -32,16 +32,19 @@ class Invoice extends Document {
 	 */
 	protected $internal_meta_keys = array(
 		'_address',
+		'_created_via',
+		'_reference_number',
+		'_external_sync_handlers',
+		'_version',
 		'_shipping_address',
 		'_created_via',
-		'_version',
-		'_reference_number',
 		'_currency',
 		'_prices_include_tax',
 		'_is_reverse_charge',
 		'_is_oss',
 		'_vat_id',
 		'_is_taxable',
+		'_stores_vouchers_as_discount',
 		'_round_tax_at_subtotal',
 		'_tax_display_mode',
 		'_total',
@@ -63,10 +66,10 @@ class Invoice extends Document {
 		'_shipping_subtotal_tax',
 		'_fee_subtotal_tax',
 		'_voucher_total',
+		'_voucher_subtotal',
 		'_voucher_tax',
 		'_discount_tax',
 		'_payment_status',
-		'_external_sync_handlers',
 		'_payment_method_title',
 		'_payment_method_name',
 		'_payment_transaction_id',
@@ -74,7 +77,7 @@ class Invoice extends Document {
 		'_date_of_service',
 		'_date_of_service_gmt',
 		'_date_of_service_end',
-		'_date_of_service_end_gmt'
+		'_date_of_service_end_gmt',
 	);
 
 	/**
@@ -93,17 +96,26 @@ class Invoice extends Document {
 	protected function format_update_value( $document, $prop ) {
 		$value = parent::format_update_value( $document, $prop );
 
-		switch( $prop ) {
-			case "prices_include_tax":
-			case "round_tax_at_subtotal":
-			case "is_reverse_charge":
-			case "is_oss":
-			case "is_taxable":
+		switch ( $prop ) {
+			case 'prices_include_tax':
+			case 'round_tax_at_subtotal':
+			case 'is_reverse_charge':
+			case 'is_oss':
+			case 'is_taxable':
+			case 'stores_vouchers_as_discount':
 				$value = sab_bool_to_string( $value );
 				break;
-			case "payment_status":
+			case 'payment_status':
 				$value = $this->get_payment_status( $document );
 				break;
+		}
+
+		/**
+		 * Remove legacy voucher_subtotal meta on update as it is now
+		 * stored as _voucher_subtotal.
+		 */
+		if ( 'voucher_subtotal' === $prop ) {
+			delete_metadata( 'storeabill_document', $document->get_id(), 'voucher_subtotal' );
 		}
 
 		return $value;
@@ -150,11 +162,30 @@ class Invoice extends Document {
 			$status = apply_filters( "storeabill_{$invoice->get_type()}_get_default_payment_status", 'pending' );
 		}
 
-		if ( ! in_array( $status, array_keys( sab_get_invoice_payment_statuses() ) ) ) {
+		if ( ! in_array( $status, array_keys( sab_get_invoice_payment_statuses() ), true ) ) {
 			$status = 'pending';
 		}
 
 		return $status;
+	}
+
+	/**
+	 * Read extra data associated with the document.
+	 *
+	 * @param \Vendidero\StoreaBill\Document\Document $document Document object.
+	 * @since 1.0.0
+	 */
+	protected function read_extra_data( &$document ) {
+		parent::read_extra_data( $document );
+
+		/**
+		 * Legacy support for voucher_subtotal stored as custom meta.
+		 */
+		$voucher_subtotal_meta = get_metadata( 'storeabill_document', $document->get_id(), 'voucher_subtotal', true );
+
+		if ( $voucher_subtotal_meta ) {
+			$document->set_voucher_subtotal( $voucher_subtotal_meta );
+		}
 	}
 
 	public function get_query_args( $query_vars ) {
@@ -163,7 +194,7 @@ class Invoice extends Document {
 			'date_paid'    => 'date_custom',
 			'date_due'     => 'date_custom_extra',
 			'order_id'     => 'reference_id',
-			'order_number' => 'reference_number'
+			'order_number' => 'reference_number',
 		);
 
 		foreach ( $key_mapping as $query_key => $db_key ) {
@@ -178,11 +209,14 @@ class Invoice extends Document {
 			 */
 			if ( isset( $query_vars['orderby'] ) && ! empty( $query_vars['orderby'] ) ) {
 				if ( is_array( $query_vars['orderby'] ) ) {
-					if ( in_array( $query_key, $query_vars['orderby'] ) ) {
-						$query_vars['orderby'] = array_replace ( $query_vars['orderby'], array_fill_keys(
-							array_keys( $query_vars['orderby'], $query_key ),
-							$db_key
-						) );
+					if ( in_array( $query_key, $query_vars['orderby'], true ) ) {
+						$query_vars['orderby'] = array_replace(
+							$query_vars['orderby'],
+							array_fill_keys(
+								array_keys( $query_vars['orderby'], $query_key, true ),
+								$db_key
+							)
+						);
 					}
 				} else {
 					$query_vars['orderby'] = str_replace( $query_key, $db_key, $query_vars['orderby'] );
@@ -193,11 +227,14 @@ class Invoice extends Document {
 			 * Support searching columns
 			 */
 			if ( isset( $query_vars['search_columns'] ) && ! empty( $query_vars['search_columns'] ) ) {
-				if ( in_array( $query_key, $query_vars['search_columns'] ) ) {
-					$query_vars['search_columns'] = array_replace ( $query_vars['search_columns'], array_fill_keys(
-						array_keys( $query_vars['search_columns'], $query_key ),
-						$db_key
-					) );
+				if ( in_array( $query_key, $query_vars['search_columns'], true ) ) {
+					$query_vars['search_columns'] = array_replace(
+						$query_vars['search_columns'],
+						array_fill_keys(
+							array_keys( $query_vars['search_columns'], $query_key, true ),
+							$db_key
+						)
+					);
 				}
 			}
 		}
@@ -206,7 +243,7 @@ class Invoice extends Document {
 			$query_vars['payment_status'] = (array) $query_vars['payment_status'];
 			$query_vars['payment_status'] = array_map( 'sanitize_key', $query_vars['payment_status'] );
 
-			if ( in_array( 'all', $query_vars['payment_status'] ) || in_array( 'any', $query_vars['payment_status'] ) ) {
+			if ( in_array( 'all', $query_vars['payment_status'], true ) || in_array( 'any', $query_vars['payment_status'], true ) ) {
 				unset( $query_vars['payment_status'] );
 			}
 		}
@@ -237,6 +274,6 @@ class Invoice extends Document {
 			$query = $wpdb->prepare( "SELECT COUNT( * ) FROM {$wpdb->storeabill_documents} AS documents INNER JOIN {$wpdb->storeabill_documentmeta} AS meta ON ( documents.document_id = meta.storeabill_document_id AND meta.meta_key = '_payment_status' ) WHERE meta.meta_value = %s AND documents.document_type = %s", $status, $type );
 		}
 
-		return absint( $wpdb->get_var( $query ) );
+		return absint( $wpdb->get_var( $query ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 }

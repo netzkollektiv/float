@@ -78,7 +78,7 @@ class Subscriptions implements Compatibility {
 	protected static function get_subscription_dates_of_service_end( $invoice, $order ) {
 		$items = array();
 
-		foreach( $invoice->get_items( 'product' ) as $item ) {
+		foreach ( $invoice->get_items( 'product' ) as $item ) {
 			if ( $reference = $item->get_reference() ) {
 				if ( $end_date = self::get_date_of_service_end_by_item( $order, $reference, $invoice ) ) {
 					$items[ $item->get_id() ] = $end_date;
@@ -98,17 +98,16 @@ class Subscriptions implements Compatibility {
 		$item_is_subscription = false;
 
 		if ( function_exists( 'wcs_order_contains_subscription' ) &&
-		     function_exists( 'wcs_add_time' ) &&
-		     function_exists( 'wcs_get_subscriptions_for_order' ) &&
-		     function_exists( 'wcs_get_canonical_product_id' ) )
-		{
+			function_exists( 'wcs_add_time' ) &&
+			function_exists( 'wcs_get_subscriptions_for_order' ) &&
+			function_exists( 'wcs_get_canonical_product_id' ) ) {
 			if ( 'line_item' === $order_item->get_type() ) {
 				$woo_order_item         = $order_item->get_object();
 				$order_items_product_id = wcs_get_canonical_product_id( $woo_order_item );
 
-				foreach ( wcs_get_subscriptions_for_order( $woo_order, array( 'order_type' => 'parent' ) ) as $subscription ) {
+				foreach ( wcs_get_subscriptions_for_order( $woo_order, array( 'order_type' => array( 'parent', 'renewal' ) ) ) as $subscription ) {
 					foreach ( $subscription->get_items() as $line_item ) {
-						if ( wcs_get_canonical_product_id( $line_item ) == $order_items_product_id ) {
+						if ( (int) wcs_get_canonical_product_id( $line_item ) === (int) $order_items_product_id ) {
 							$item_is_subscription = true;
 							break 2;
 						}
@@ -131,17 +130,16 @@ class Subscriptions implements Compatibility {
 		$date_of_service_end = null;
 
 		if ( function_exists( 'wcs_order_contains_subscription' ) &&
-		     function_exists( 'wcs_add_time' ) &&
-		     function_exists( 'wcs_get_subscriptions_for_order' ) &&
-		     function_exists( 'wcs_get_canonical_product_id' ) &&
-		     wcs_order_contains_subscription( $woo_order, 'any' ) )
-		{
+			function_exists( 'wcs_add_time' ) &&
+			function_exists( 'wcs_get_subscriptions_for_order' ) &&
+			function_exists( 'wcs_get_canonical_product_id' ) &&
+			wcs_order_contains_subscription( $woo_order, 'any' ) ) {
 			$order_items_product_id = wcs_get_canonical_product_id( $woo_order_item );
 			$start_date             = $invoice->get_date_of_service();
 
-			foreach ( wcs_get_subscriptions_for_order( $woo_order, array( 'order_type' => 'parent' ) ) as $subscription ) {
+			foreach ( wcs_get_subscriptions_for_order( $woo_order, array( 'order_type' => array( 'parent', 'renewal' ) ) ) as $subscription ) {
 				foreach ( $subscription->get_items() as $line_item ) {
-					if ( wcs_get_canonical_product_id( $line_item ) == $order_items_product_id ) {
+					if ( (int) wcs_get_canonical_product_id( $line_item ) === (int) $order_items_product_id ) {
 						if ( $end_date = self::get_subscription_date_of_service_end( $subscription, $start_date ) ) {
 							$date_of_service_end = $end_date;
 							break 2;
@@ -162,12 +160,12 @@ class Subscriptions implements Compatibility {
 			/**
 			 * Remove one day from the end date, e.g. for one month billing period the end of service date should be the last day of the month
 			 */
-			$end_date = strtotime('-1 day', $end_date );
+			$end_date = strtotime( '-1 day', $end_date );
 
 			/**
 			 * In case the start date equals the end date, do not add
 			 */
-			if ( $start_date->getTimestamp() == $end_date ) {
+			if ( $start_date->getTimestamp() === $end_date ) {
 				$end_date = null;
 			}
 		}
@@ -187,8 +185,8 @@ class Subscriptions implements Compatibility {
 			$subscription_items = self::get_subscription_dates_of_service_end( $invoice, $order );
 
 			if ( ! empty( $subscription_items ) ) {
-				foreach( $subscription_items as $item_id => $date_of_service_end ) {
-					if ( $item_date_of_service_end != $date_of_service_end ) {
+				foreach ( $subscription_items as $item_id => $date_of_service_end ) {
+					if ( $item_date_of_service_end !== $date_of_service_end ) {
 						$should_belong = false;
 						break;
 					}
@@ -225,9 +223,9 @@ class Subscriptions implements Compatibility {
 				$sync     = false;
 
 				if ( $order = Helper::get_order( $renewal_order ) ) {
-					if ( in_array( $order->get_status(), $statuses ) ) {
+					if ( in_array( $order->get_status(), $statuses, true ) ) {
 						$sync = true;
-					} elseif( empty( $statuses ) && ( Automation::has_invoice_timing( 'status' ) || Automation::has_invoice_timing( 'status_payment_method' ) ) ) {
+					} elseif ( empty( $statuses ) && ( Automation::has_invoice_timing( 'status' ) || Automation::has_invoice_timing( 'status_payment_method' ) ) ) {
 						// If no status was selected within the status settings - sync right away
 						$sync = true;
 					}
@@ -243,7 +241,7 @@ class Subscriptions implements Compatibility {
 	}
 
 	public static function register_editor_shortcodes( $shortcodes, $document_type ) {
-		if ( in_array( $document_type, array( 'invoice', 'invoice_cancellation' ) ) ) {
+		if ( in_array( $document_type, array( 'invoice', 'invoice_cancellation' ), true ) ) {
 			$shortcodes['document'][] = array(
 				'shortcode' => 'document_reference?data=subscription_numbers',
 				'title'     => _x( 'Subscription order number(s)', 'storeabill-core', 'woocommerce-germanized-pro' ),
@@ -265,22 +263,22 @@ class Subscriptions implements Compatibility {
 				$result = array();
 
 				if ( function_exists( 'wcs_order_contains_subscription' ) &&
-				     function_exists( 'wcs_get_subscriptions_for_order' ) &&
-				     wcs_order_contains_subscription( $order->get_id() )
+					function_exists( 'wcs_get_subscriptions_for_order' ) &&
+					wcs_order_contains_subscription( $order->get_id() )
 				) {
 					$subscriptions = wcs_get_subscriptions_for_order( $order->get_id() );
 
 					if ( ! empty( $subscriptions ) ) {
-						foreach( $subscriptions as $subscription ) {
+						foreach ( $subscriptions as $subscription ) {
 							$result[] = $subscription->get_order_number();
 						}
 					}
-				/**
-				 * Check if it is a renewal
-				 */
+					/**
+					 * Check if it is a renewal
+					 */
 				} elseif ( function_exists( 'wcs_order_contains_renewal' ) &&
-				     function_exists( 'wcs_get_subscriptions_for_renewal_order' ) &&
-				     wcs_order_contains_renewal( $order->get_id() )
+					function_exists( 'wcs_get_subscriptions_for_renewal_order' ) &&
+					wcs_order_contains_renewal( $order->get_id() )
 				) {
 					$subscriptions = wcs_get_subscriptions_for_renewal_order( $order->get_id() );
 
@@ -291,8 +289,8 @@ class Subscriptions implements Compatibility {
 					}
 				}
 			}
-		} elseif( $document = $shortcodes->get_document() ) {
-			if ( 'subscription_numbers' === $atts['data'] && is_a( $document, 'Vendidero\StoreaBill\Interfaces\Previewable' )  ) {
+		} elseif ( $document = $shortcodes->get_document() ) {
+			if ( 'subscription_numbers' === $atts['data'] && is_a( $document, 'Vendidero\StoreaBill\Interfaces\Previewable' ) ) {
 				$result = array( '1234' );
 			}
 		}
@@ -308,7 +306,7 @@ class Subscriptions implements Compatibility {
 		$woo_order = $order->get_order();
 
 		if ( function_exists( 'wcs_order_contains_subscription' ) && wcs_order_contains_subscription( $woo_order, 'any' ) ) {
-			foreach( $invoice->get_items( 'product' ) as $item ) {
+			foreach ( $invoice->get_items( 'product' ) as $item ) {
 				if ( $order_item = $item->get_reference() ) {
 					if ( self::item_is_subscription( $order_item, $order ) ) {
 						$end_date = self::get_date_of_service_end_by_item( $order, $order_item, $invoice );

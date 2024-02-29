@@ -27,13 +27,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 do_action( 'storeabill_email_before_document_table', $document, $sent_to_admin, $plain_text, $email );
 
-echo wp_kses_post( wc_strtoupper( sprintf( esc_html_x( 'Details to your %s', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( $document->get_type() ) ) ) ) . "\n";
-echo "\n" . \Vendidero\StoreaBill\Emails\Mailer::get_items_html( $document, array( // WPCS: XSS ok.
-    'plain_text'    => $plain_text,
-    'sent_to_admin' => $sent_to_admin,
-    'columns'       => array( 'name', 'quantity' )
-) );
+echo wp_kses_post( wc_strtoupper( sprintf( esc_html_x( '%s details', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( $document->get_type() ) ) ) ) . "\n";
+echo "\n" . \Vendidero\StoreaBill\Emails\Mailer::get_items_html( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	$document,
+	array(
+		'plain_text'    => $plain_text,
+		'sent_to_admin' => $sent_to_admin,
+		'columns'       => array( 'name', 'quantity' ),
+	)
+);
 
 echo "==========\n\n";
 
-do_action( 'storeabill_email_after_document_table', $document, $sent_to_admin, $plain_text, $email ); ?>
+do_action( 'storeabill_email_after_document_table', $document, $sent_to_admin, $plain_text, $email );

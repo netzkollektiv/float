@@ -1,15 +1,17 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 class WC_GZDP_Unit_Price_Helper {
 
 	protected static $_instance = null;
 
 	public static function instance() {
-		if ( is_null( self::$_instance ) )
+		if ( is_null( self::$_instance ) ) {
 			self::$_instance = new self();
+		}
 		return self::$_instance;
 	}
 
@@ -17,7 +19,7 @@ class WC_GZDP_Unit_Price_Helper {
 		// Unit auto calculation
 		add_action( 'woocommerce_before_product_object_save', array( $this, 'before_product_save' ), 10 );
 		add_filter( 'woocommerce_gzd_product_saveable_data', array( $this, 'calculate_unit_price' ), 10, 2 );
-		
+
 		add_action( 'woocommerce_bulk_edit_variations', array( $this, 'bulk_save_variations_unit_price' ), 0, 4 );
 		add_action( 'woocommerce_product_quick_edit_save', array( $this, 'quick_edit_save_unit_price' ), 0, 1 );
 		add_action( 'woocommerce_product_bulk_edit_save', array( $this, 'bulk_edit_save_unit_price' ), 0, 1 );
@@ -45,9 +47,12 @@ class WC_GZDP_Unit_Price_Helper {
 		$gzd_product = wc_gzd_get_product( $product );
 		$parent      = false;
 
-		$data = wp_parse_args( $data, array(
-			'is_rest' => false,
-		) );
+		$data = wp_parse_args(
+			$data,
+			array(
+				'is_rest' => false,
+			)
+		);
 
 		$data_replaceable = $data;
 
@@ -57,15 +62,15 @@ class WC_GZDP_Unit_Price_Helper {
 				'unit',
 				'unit_base',
 				'unit_product',
-				'unit_price_auto'
+				'unit_price_auto',
 			);
 
-			foreach( $insert_defaults as $default ) {
-				if ( ! isset( $data_replaceable["_{$default}"] ) ) {
+			foreach ( $insert_defaults as $default ) {
+				if ( ! isset( $data_replaceable[ "_{$default}" ] ) ) {
 					$getter = "get_{$default}";
 
 					if ( is_callable( array( $gzd_product, $getter ) ) ) {
-						$data_replaceable["_{$default}"] = $gzd_product->$getter();
+						$data_replaceable[ "_{$default}" ] = $gzd_product->$getter();
 					}
 				}
 			}
@@ -76,20 +81,20 @@ class WC_GZDP_Unit_Price_Helper {
 			if ( $parent = wc_get_product( $product->get_parent_id() ) ) {
 				$gzd_parent_product = wc_gzd_get_product( $parent );
 
-                $inherited = array(
-                    'unit',
-                    'unit_base',
-                    'unit_product',
-                );
+				$inherited = array(
+					'unit',
+					'unit_base',
+					'unit_product',
+				);
 
-                foreach ( $inherited as $inherit ) {
-                	$getter = "get_{$inherit}";
+				foreach ( $inherited as $inherit ) {
+					$getter = "get_{$inherit}";
 
-                    if ( ! isset( $data[ '_' . $inherit ] ) || empty( $data[ '_' . $inherit ] ) ) {
-                        $data_replaceable[ '_' . $inherit ] = isset( $data[ '_parent_' . $inherit ] ) ? $data[ '_parent_' . $inherit ] : $gzd_parent_product->$getter();
-                    }
-                }
-            }
+					if ( ! isset( $data[ '_' . $inherit ] ) || empty( $data[ '_' . $inherit ] ) ) {
+						$data_replaceable[ '_' . $inherit ] = isset( $data[ '_parent_' . $inherit ] ) ? $data[ '_parent_' . $inherit ] : $gzd_parent_product->$getter();
+					}
+				}
+			}
 		}
 
 		$mandatory = array(
@@ -110,10 +115,13 @@ class WC_GZDP_Unit_Price_Helper {
 			}
 		}
 
-		$unit_price_data = wc_gzd_recalculate_unit_price( array(
-			'base'     => $data_replaceable['_unit_base'],
-			'products' => isset( $data_replaceable['_unit_product'] ) && ! empty( $data_replaceable['_unit_product'] ) ? $data_replaceable['_unit_product'] : 1,
-		), $gzd_product );
+		$unit_price_data = wc_gzd_recalculate_unit_price(
+			array(
+				'base'     => $data_replaceable['_unit_base'],
+				'products' => isset( $data_replaceable['_unit_product'] ) && ! empty( $data_replaceable['_unit_product'] ) ? $data_replaceable['_unit_product'] : 1,
+			),
+			$gzd_product
+		);
 
 		$data['_unit_price_regular'] = $unit_price_data['regular'];
 		$data['_unit_price_sale']    = '';
@@ -131,7 +139,6 @@ class WC_GZDP_Unit_Price_Helper {
 	 * @return array
 	 */
 	public function get_product_unit_price_data( $product ) {
-
 		$gzd_product = wc_gzd_get_product( $product );
 
 		$unit_data = array(

@@ -43,15 +43,15 @@ class CancellationTable extends Table {
 	protected function get_custom_columns() {
 		$columns = array();
 
-		$columns['cb']       = '<input type="checkbox" />';
-		$columns['title']    = _x( 'Title', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['date']     = _x( 'Date', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['status']   = _x( 'Status', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['invoice']  = _x( 'Invoice', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['order']    = _x( 'Order', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['address']  = _x( 'Address', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['total']    = _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' );
-		$columns['actions']  = _x( 'Actions', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['cb']      = '<input type="checkbox" />';
+		$columns['title']   = _x( 'Title', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['date']    = _x( 'Date', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['status']  = _x( 'Status', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['invoice'] = _x( 'Invoice', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['order']   = _x( 'Order', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['address'] = _x( 'Address', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['total']   = _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' );
+		$columns['actions'] = _x( 'Actions', 'storeabill-core', 'woocommerce-germanized-pro' );
 
 		return $columns;
 	}
@@ -60,11 +60,14 @@ class CancellationTable extends Table {
 	 * @return array
 	 */
 	protected function get_sortable_columns() {
-		return array(
-			'date'     => array( 'date_created', false ),
-			'title'    => array( 'number' ),
-			'total'    => array( 'total' ),
-			'order'    => array( 'order_id' ),
+		return apply_filters(
+			"{$this->get_hook_prefix()}sortable_columns",
+			array(
+				'date'  => array( 'date_created', false ),
+				'title' => array( 'number' ),
+				'total' => array( 'total' ),
+				'order' => array( 'order_id' ),
+			)
 		);
 	}
 
@@ -74,7 +77,7 @@ class CancellationTable extends Table {
 	 * @param Simple $document The current document object.
 	 */
 	public function column_total( $document ) {
-		echo $document->get_formatted_price( $document->get_total() );
+		echo wp_kses_post( $document->get_formatted_price( $document->get_total() ) );
 	}
 
 	/**
@@ -86,9 +89,9 @@ class CancellationTable extends Table {
 		$title = $document->get_title();
 
 		if ( $url = $document->get_edit_url() ) {
-			echo '<a href="' . esc_url( $url ) . '">' . $title . '</a> ';
+			echo '<a href="' . esc_url( $url ) . '">' . wp_kses_post( $title ) . '</a> ';
 		} else {
-			echo $title . ' ';
+			echo wp_kses_post( $title ) . ' ';
 		}
 	}
 
@@ -98,7 +101,7 @@ class CancellationTable extends Table {
 	 * @param Cancellation $document The current document object.
 	 */
 	public function column_invoice( $document ) {
-		echo $document->get_parent_formatted_number();
+		echo wp_kses_post( $document->get_parent_formatted_number() );
 	}
 
 	/**
@@ -108,9 +111,9 @@ class CancellationTable extends Table {
 	 */
 	public function column_order( $document ) {
 		if ( ( $order = $document->get_order() ) ) {
-			echo '<a href="' . $order->get_edit_url() . '">' . $order->get_formatted_number() . '</a>';
+			echo '<a href="' . esc_url( $order->get_edit_url() ) . '">' . wp_kses_post( $order->get_formatted_number() ) . '</a>';
 		} else {
-			echo $document->get_order_number();
+			echo wp_kses_post( $document->get_order_number() );
 		}
 	}
 

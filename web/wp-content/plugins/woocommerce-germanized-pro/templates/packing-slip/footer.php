@@ -10,5 +10,5 @@ defined( 'ABSPATH' ) || exit;
 global $document;
 ?>
 <footer id="footer">
-	<?php echo sab_render_blocks( $document->get_template()->get_footer_blocks() ); ?>
+	<?php echo sab_render_blocks( $document->get_template()->get_footer_blocks() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 </footer>

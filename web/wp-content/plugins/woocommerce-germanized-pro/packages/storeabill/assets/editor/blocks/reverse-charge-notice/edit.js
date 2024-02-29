@@ -13,7 +13,7 @@ import {
     AlignmentToolbar,
 } from '@wordpress/block-editor';
 
-import { PanelBody } from "@wordpress/components";
+import { PanelBody, TextareaControl } from "@wordpress/components";
 import { compose } from "@wordpress/compose";
 import { FORMAT_TYPES } from '@storeabill/settings';
 import { useRef } from "@wordpress/element";
@@ -26,11 +26,15 @@ function ReverseChargeNoticeEdit( {
     setFontSize,
     className
 } ) {
-    const { content, align } = attributes;
+    const { content, align, virtualNotice } = attributes;
 
     const classes = classnames( 'document-reverse-charge-notice placeholder-wrapper', className, {
         [ `has-text-align-${ align }` ]: align,
         [ fontSize.class ]: fontSize.class,
+    } );
+
+    const visibilityClasses = classnames( 'notice notice-warning sab-visibility-notice', className, {
+        [ `has-text-align-${ align }` ]: align
     } );
 
     const ref = useRef();
@@ -56,6 +60,14 @@ function ReverseChargeNoticeEdit( {
                 />
             </BlockControls>
             <InspectorControls>
+                <PanelBody>
+                    <TextareaControl
+                        label={ _x( 'Virtual notice', 'storeabill-core', 'storeabill' ) }
+                        value={ virtualNotice }
+                        help={ _x( 'Deviating notice for invoices containing virtual items only.', 'storeabill-core', 'storeabill' ) }
+                        onChange={ ( value ) => setAttributes( { virtualNotice: value } ) }
+                    />
+                </PanelBody>
                 <PanelBody title={ _x( 'Typography', 'storeabill-core', 'storeabill' ) }>
                     <FontSizePicker
                         value={ convertFontSizeForPicker( fontSize.size ) }
@@ -64,7 +76,7 @@ function ReverseChargeNoticeEdit( {
                 </PanelBody>
             </InspectorControls>
             { InspectorControlsColorPanel }
-            <span className="notice notice-warning sab-visibility-notice">{ _x( 'Conditional visibility', 'storeabill-core', 'storeabill' ) }</span>
+            <span className={ visibilityClasses }>{ _x( 'Conditional visibility', 'storeabill-core', 'storeabill' ) }</span>
             <TextColor>
                 <RichText
                     tagName="p"

@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 class Email extends \WC_Email {
 
 	public function __construct() {
-		$this->template_base  = Package::get_path() . '/templates/';
+		$this->template_base = Package::get_path() . '/templates/';
 
 		parent::__construct();
 	}

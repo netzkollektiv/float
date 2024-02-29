@@ -27,10 +27,10 @@ class ItemImage extends ItemTableColumnBlock {
 
 	public function get_attributes() {
 		return array(
-			'className'       => $this->get_schema_string(),
-			'customWidth'     => $this->get_schema_number( 75 ),
-			'renderTotal'     => $this->get_schema_number( 1 ),
-			'renderNumber'    => $this->get_schema_number( 1 ),
+			'className'    => $this->get_schema_string(),
+			'customWidth'  => $this->get_schema_number( 75 ),
+			'renderTotal'  => $this->get_schema_number( 1 ),
+			'renderNumber' => $this->get_schema_number( 1 ),
 		);
 	}
 

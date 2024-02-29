@@ -39,7 +39,7 @@ do_action( 'storeabill_email_before_document_table', $document, $sent_to_admin, 
 		$after  = '';
 	}
 	/* translators: %s: Order ID. */
-	echo wp_kses_post( $before . sprintf( _x( 'Details to your %s', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( $document->get_type() ) ) . $after );
+	echo wp_kses_post( $before . sprintf( _x( '%s details', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_type_label( $document->get_type() ) ) . $after );
 	?>
 </h2>
 
@@ -53,11 +53,14 @@ do_action( 'storeabill_email_before_document_table', $document, $sent_to_admin, 
 		</thead>
 		<tbody>
 		<?php
-		echo \Vendidero\StoreaBill\Emails\Mailer::get_items_html( $document, array( // WPCS: XSS ok.
-			'plain_text'    => $plain_text,
-			'sent_to_admin' => $sent_to_admin,
-			'columns'       => array( 'name', 'quantity' )
-		) );
+		echo \Vendidero\StoreaBill\Emails\Mailer::get_items_html( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			$document,
+			array( // WPCS: XSS ok.
+				'plain_text'    => $plain_text,
+				'sent_to_admin' => $sent_to_admin,
+				'columns'       => array( 'name', 'quantity' ),
+			)
+		);
 		?>
 		</tbody>
 	</table>

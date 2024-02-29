@@ -26,7 +26,8 @@ class ItemTableColumn extends DynamicBlock {
 			'align'                  => $this->get_schema_align( 'left' ),
 			'headingTextColor'       => $this->get_schema_string(),
 			'headingBackgroundColor' => $this->get_schema_string(),
-			'headingFontSize'        => $this->get_schema_string( '' ),
+			'headingFontSize'        => $this->get_schema_number( sab_get_document_default_font_size() ),
+			'fontSize'               => $this->get_schema_string( '' ),
 		);
 	}
 

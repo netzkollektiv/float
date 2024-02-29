@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -20,14 +20,14 @@ class S25 extends \Vendidero\StoreaBill\Vendor\Mpdf\Barcode\AbstractBarcode impl
 	 * @param string $code
 	 * @param bool $checksum
 	 */
-	public function __construct($code, $checksum = false)
+	public function __construct($code, $checksum = false, $quiet_zone_left = null, $quiet_zone_right = null)
 	{
 		$this->init($code, $checksum);
 
 		$this->data['nom-X'] = 0.381; // Nominal value for X-dim (bar width) in mm (2 X min. spec.)
 		$this->data['nom-H'] = 10;  // Nominal value for Height of Full bar in mm (non-spec.)
-		$this->data['lightmL'] = 10; // LEFT light margin =  x X-dim (spec.)
-		$this->data['lightmR'] = 10; // RIGHT light margin =  x X-dim (spec.)
+		$this->data['lightmL'] = ($quiet_zone_left !== null ? $quiet_zone_left : 10); // LEFT light margin =  x X-dim (spec.)
+		$this->data['lightmR'] = ($quiet_zone_right !== null ? $quiet_zone_right : 10); // RIGHT light margin =  x X-dim (spec.)
 		$this->data['lightTB'] = 0; // TOP/BOTTOM light margin =  x X-dim (non-spec.)
 	}
 

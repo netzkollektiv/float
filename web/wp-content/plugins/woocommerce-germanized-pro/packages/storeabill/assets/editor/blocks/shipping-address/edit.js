@@ -25,7 +25,7 @@ const ShippingAddressEdit = ( {
     className
 } ) => {
 
-    const { align, content, hideIfEqualsBilling } = attributes;
+    const { align, content, heading, hideIfEqualsBilling } = attributes;
     let preview = getPreview();
 
     const address = preview.formatted_shipping_address;
@@ -40,9 +40,13 @@ const ShippingAddressEdit = ( {
         [ fontSize.size ]
     );
 
-    const classes = classnames( 'document-shipping-address placeholder-wrapper', className, {
+    const classes = classnames( 'document-shipping-address address-wrapper placeholder-wrapper', className, {
         [ `has-text-align-${ align }` ]: align,
         [ fontSize.class ]: fontSize.class,
+    } );
+
+    const visibilityClasses = classnames( 'notice notice-warning sab-visibility-notice', className, {
+        [ `has-text-align-${ align }` ]: align
     } );
 
     return (
@@ -67,14 +71,23 @@ const ShippingAddressEdit = ( {
                 </PanelBody>
             </InspectorControls>
             { InspectorControlsColorPanel }
-            { hideIfEqualsBilling && <span className="notice notice-warning sab-visibility-notice">{ _x( 'Conditional visibility', 'storeabill-core', 'storeabill' ) }</span> }
-            <div className="shipping-address-wrapper">
+            { hideIfEqualsBilling && <span className={ visibilityClasses }>{ _x( 'Conditional visibility', 'storeabill-core', 'storeabill' ) }</span> }
+            <div className={ classes }>
                 <TextColor>
+                    <RichText
+                        className="address-heading"
+                        value={heading}
+                        tagName="p"
+                        allowedFormats={FORMAT_TYPES}
+                        onChange={(value) =>
+                            setAttributes({heading: value})
+                        }
+                    />
                     <RichText
                         tagName="p"
                         value={ replacePlaceholderWithPreview( content, address, '{content}' ) }
                         placeholder={ replacePlaceholderWithPreview( undefined, address, '{content}' ) }
-                        className={ classes }
+                        className="sab-address-content placeholder-wrapper"
                         onChange={ ( value ) =>
                             setAttributes( { content: replacePreviewWithPlaceholder( value, '{content}' ) } )
                         }

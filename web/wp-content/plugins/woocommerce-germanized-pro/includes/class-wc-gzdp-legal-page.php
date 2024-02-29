@@ -25,7 +25,7 @@ class WC_GZDP_Legal_Page extends \Vendidero\Germanized\Pro\StoreaBill\PostDocume
 	}
 
 	public function get_content_pdf() {
-	 	return apply_filters( 'woocommerce_gzdp_legal_page_pdf_content', $this->get_content(), $this );
+		return apply_filters( 'woocommerce_gzdp_legal_page_pdf_content', $this->get_content(), $this );
 	}
 
 	public function is_type( $type ) {
@@ -104,8 +104,6 @@ class WC_GZDP_Legal_Page extends \Vendidero\Germanized\Pro\StoreaBill\PostDocume
 
 	public function populate() {
 		wc_deprecated_function( 'WC_GZDP_Legal_Page::populate', '3.0.0' );
-
-		return;
 	}
 
 	public function get_option( $key, $default = false, $suppress_typing = false ) {
@@ -211,4 +209,4 @@ class WC_GZDP_Legal_Page extends \Vendidero\Germanized\Pro\StoreaBill\PostDocume
 	}
 }
 
-?>
+

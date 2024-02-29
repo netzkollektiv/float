@@ -24,13 +24,12 @@ final class PMXE_Wpallimport
 	public static function create_an_import( & $export )
 	{
 
-		$custom_type = (empty($export->options['cpt'])) ? 'post' : $export->options['cpt'][0];
+		if (
+		    $export->options['is_generate_import'] && wp_all_export_is_compatible()
+            && (!isset($export->options['enable_real_time_exports']) || !$export->options['enable_real_time_exports'])
+        )
+		{
 
-		// Do not create an import for WooCommerce Orders & Refunds
-		// if ( in_array($custom_type, array('shop_order'))) return false;
-
-		if ( $export->options['is_generate_import'] and wp_all_export_is_compatible() ){				
-				
 			$import = new PMXI_Import_Record();
 
 			if ( ! empty($export->options['import_id']) ) $import->getById($export->options['import_id']);
@@ -118,6 +117,10 @@ final class PMXE_Wpallimport
 		    $custom_type = 'woo_reviews';
         }
 
+        if(XmlExportEngine::$is_custom_addon_export) {
+		    $custom_type = 'gf_entries';
+        }
+
 		// Do not create an import template for WooCommerce Refunds
 		if ( $export->options['export_to'] == 'xml' && in_array($export->options['xml_template_type'], array('custom', 'XmlGoogleMerchants')) )  return false;
 
@@ -177,7 +180,18 @@ final class PMXE_Wpallimport
 				'update_categories_logic' => 'only',
 				'taxonomies_list' => '',
 				'export_id' => $export->id
-			);					
+			);
+
+			if(XmlExportEngine::$is_custom_addon_export) {
+
+                $gf_addon = \GF_Export_Add_On::get_instance();
+                $sub_post_type = $gf_addon->add_on->get_sub_post_type();
+
+                if(class_exists('GFAPI')) {
+                    $form = GFAPI::get_form($sub_post_type);
+                    self::$templateOptions['gravity_form_title'] = $form['title'];
+                }
+            }
 
 			if ( in_array('product', $exportOptions['cpt']) )
 			{				
@@ -226,7 +240,7 @@ final class PMXE_Wpallimport
 					'convert_decimal_separator' => 1,
 					'grouping_indicator' => 'xpath',				
 					'is_update_product_type' => 1,
-					'make_simple_product' => 1,
+					'make_simple_product' => 0,
 					'single_product_regular_price_adjust_type' => '%',
 					'single_product_sale_price_adjust_type' => '%',					
 					'is_variation_product_manage_stock' => 'no',
@@ -382,7 +396,13 @@ final class PMXE_Wpallimport
 
 		}
 
-		$link_to_import and $export->options['is_generate_import'] and self::link_template_to_import( $export, $file_path, $foundPosts );
+		if($link_to_import && $export->options['is_generate_import']
+            &&
+            (!isset($export->options['enable_real_time_exports'])
+                || !$export->options['enable_real_time_exports'])
+        ) {
+            self::link_template_to_import( $export, $file_path, $foundPosts );
+        }
 	}
 
 	public static function link_template_to_import( & $export, $file_path, $foundPosts )
@@ -397,7 +417,7 @@ final class PMXE_Wpallimport
 									
 			$import = new PMXI_Import_Record();
 
-			$import->getById($exportOptions['import_id']);	
+			$import->getById($exportOptions['import_id']);
 
 			if ( ! $import->isEmpty() and $import->parent_import_id == 99999 ){
 
@@ -429,7 +449,7 @@ final class PMXE_Wpallimport
 
 					if ( ! in_array($xmlPath, $exportOptions['attachment_list']) )
 					{
-						$exportOptions['attachment_list'][] = $csv->xml_path;							
+						$exportOptions['attachment_list'][] = $csv->xml_path;
 					}
 					
 					$historyPath = $csv->xml_path;
@@ -554,7 +574,8 @@ final class PMXE_Wpallimport
                         self::$templateOptions['fields'][$field_options['key']] = XmlExportACF::prepare_import_template($options, self::$templateOptions, $acf_list, $element_name, $field_options);
                     }
 
-					break;				
+					break;
+
 
 				default:
 
@@ -574,8 +595,21 @@ final class PMXE_Wpallimport
                         }
 
 						XmlExportUser::prepare_import_template($options, self::$templateOptions, $element_name, $ID, $cf_list);
-
                     }
+
+
+                    if(XmlExportEngine::$is_custom_addon_export) {
+					    XmlExportCustomRecord::prepare_import_template($options, self::$templateOptions, $element_name, $ID);
+                        if (empty($required_add_ons['PMAI_Plugin']))
+                        {
+                            $required_add_ons['PMGI_Plugin'] = array(
+                                'name' => 'Gravity Forms Add-On',
+                                'paid' => true,
+
+                                'url'  => 'http://www.wpallimport.com/advanced-custom-fields/?utm_source=wordpress.org&utm_medium=wpai-import-template&utm_campaign=free+wp+all+export+plugin'
+                            );
+                        }
+					}
 
 					if (XmlExportEngine::$is_comment_export) {
                         XmlExportComment::prepare_import_template($options, self::$templateOptions, $element_name, $ID);

@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Total {
 
-	protected $total = 0;
+	protected $total = 0.0;
 
 	protected $document = null;
 
@@ -22,7 +22,7 @@ class Total {
 	public function __construct( $document, $args = array() ) {
 		$this->document = $document;
 
-		foreach( $args as $key => $arg ) {
+		foreach ( $args as $key => $arg ) {
 			$setter = 'set_' . $key;
 
 			if ( is_callable( array( $this, $setter ) ) ) {
@@ -39,12 +39,15 @@ class Total {
 		$this->type = $type;
 	}
 
+	/**
+	 * @return float
+	 */
 	public function get_total() {
-		return $this->total;
+		return (float) $this->total;
 	}
 
 	public function set_total( $total ) {
-		$this->total = $total;
+		$this->total = (float) $total;
 	}
 
 	public function get_placeholders() {
@@ -107,7 +110,7 @@ class Total {
 			'total'           => $this->get_total(),
 			'total_formatted' => $this->get_formatted_total(),
 			'placeholders'    => $this->get_placeholders(),
-			'type'            => $this->get_type()
+			'type'            => $this->get_type(),
 		);
 	}
 }

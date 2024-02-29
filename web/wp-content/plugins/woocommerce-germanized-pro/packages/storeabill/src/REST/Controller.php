@@ -327,27 +327,27 @@ abstract class Controller extends WC_REST_Controller {
 	 * @return array
 	 */
 	protected function prepare_objects_query( $request ) {
-		$args                        = array();
-		$args['offset']              = $request['offset'];
-		$args['order']               = $request['order'];
-		$args['orderby']             = $request['orderby'];
-		$args['page']                = $request['page'];
-		$args['include']             = $request['include'];
-		$args['exclude']             = $request['exclude'];
-		$args['limit']               = $request['per_page'];
-		$args['parent_id']           = $request['parent'];
-		$args['search']              = $request['search'];
+		$args              = array();
+		$args['offset']    = $request['offset'];
+		$args['order']     = $request['order'];
+		$args['orderby']   = $request['orderby'];
+		$args['page']      = $request['page'];
+		$args['include']   = $request['include'];
+		$args['exclude']   = $request['exclude'];
+		$args['limit']     = $request['per_page'];
+		$args['parent_id'] = $request['parent'];
+		$args['search']    = $request['search'];
 
-		if( 'id' === $args['orderby'] ) {
+		if ( 'id' === $args['orderby'] ) {
 			$args['orderby'] = 'ID';
 		}
 
 		// Set before into date query. Date query must be specified as an array of an array.
 		if ( isset( $request['before'] ) && isset( $request['after'] ) ) {
 			$args['date_created'] = $request['after'] . '...' . $request['before'];
-		} elseif( isset( $request['after'] ) ) {
+		} elseif ( isset( $request['after'] ) ) {
 			$args['date_created'] = '>' . $request['after'];
-		} elseif( isset( $request['before'] ) ) {
+		} elseif ( isset( $request['before'] ) ) {
 			$args['date_created'] = '<' . $request['before'];
 		}
 
@@ -412,7 +412,7 @@ abstract class Controller extends WC_REST_Controller {
 				$attrib_name      = substr( $attrib_name_match[0], $beginning_offset, $attrib_name_end - $beginning_offset );
 
 				if ( isset( $request[ $attrib_name ] ) ) {
-					$base  = str_replace( "(?P<$attrib_name>[\d]+)", $request[ $attrib_name ], $base );
+					$base = str_replace( "(?P<$attrib_name>[\d]+)", $request[ $attrib_name ], $base );
 				}
 			}
 		}
@@ -427,12 +427,12 @@ abstract class Controller extends WC_REST_Controller {
 			}
 
 			$prev_link = add_query_arg( 'page', $prev_page, $base );
-			$response->link_header( 'prev', $prev_link );
+			$response->link_header( 'prev', esc_url_raw( $prev_link ) );
 		}
 		if ( $max_pages > $page ) {
 			$next_page = $page + 1;
 			$next_link = add_query_arg( 'page', $next_page, $base );
-			$response->link_header( 'next', $next_link );
+			$response->link_header( 'next', esc_url_raw( $next_link ) );
 		}
 
 		return $response;
@@ -512,7 +512,7 @@ abstract class Controller extends WC_REST_Controller {
 	 */
 	protected function prepare_links( $object, $request ) {
 		$links = array(
-			'self' => array(
+			'self'       => array(
 				'href' => rest_url( sprintf( '/%s/%s/%d', $this->namespace, $this->rest_base, $object->get_id() ) ),
 			),
 			'collection' => array(
@@ -537,81 +537,81 @@ abstract class Controller extends WC_REST_Controller {
 		$params['context']            = $this->get_context_param();
 		$params['context']['default'] = 'view';
 
-		$params['page'] = array(
-			'description'        => _x( 'Current page of the collection.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'integer',
-			'default'            => 1,
-			'sanitize_callback'  => 'absint',
-			'validate_callback'  => 'rest_validate_request_arg',
-			'minimum'            => 1,
+		$params['page']     = array(
+			'description'       => _x( 'Current page of the collection.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'integer',
+			'default'           => 1,
+			'sanitize_callback' => 'absint',
+			'validate_callback' => 'rest_validate_request_arg',
+			'minimum'           => 1,
 		);
 		$params['per_page'] = array(
-			'description'        => _x( 'Maximum number of items to be returned in result set.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'integer',
-			'default'            => 10,
-			'minimum'            => 1,
-			'maximum'            => 100,
-			'sanitize_callback'  => 'absint',
-			'validate_callback'  => 'rest_validate_request_arg',
+			'description'       => _x( 'Maximum number of items to be returned in result set.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'integer',
+			'default'           => 10,
+			'minimum'           => 1,
+			'maximum'           => 100,
+			'sanitize_callback' => 'absint',
+			'validate_callback' => 'rest_validate_request_arg',
 		);
-		$params['search'] = array(
-			'description'        => _x( 'Limit results to those matching a string.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'string',
-			'sanitize_callback'  => 'sanitize_text_field',
-			'validate_callback'  => 'rest_validate_request_arg',
+		$params['search']   = array(
+			'description'       => _x( 'Limit results to those matching a string.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+			'validate_callback' => 'rest_validate_request_arg',
 		);
-		$params['after'] = array(
-			'description'        => _x( 'Limit response to resources published after a given ISO8601 compliant date.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'string',
-			'format'             => 'date-time',
-			'validate_callback'  => 'rest_validate_request_arg',
+		$params['after']    = array(
+			'description'       => _x( 'Limit response to resources published after a given ISO8601 compliant date.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'string',
+			'format'            => 'date-time',
+			'validate_callback' => 'rest_validate_request_arg',
 		);
-		$params['before'] = array(
-			'description'        => _x( 'Limit response to resources published before a given ISO8601 compliant date.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'string',
-			'format'             => 'date-time',
-			'validate_callback'  => 'rest_validate_request_arg',
+		$params['before']   = array(
+			'description'       => _x( 'Limit response to resources published before a given ISO8601 compliant date.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'string',
+			'format'            => 'date-time',
+			'validate_callback' => 'rest_validate_request_arg',
 		);
-		$params['exclude'] = array(
+		$params['exclude']  = array(
 			'description'       => _x( 'Ensure result set excludes specific IDs.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			'type'              => 'array',
 			'items'             => array(
-				'type'          => 'integer',
+				'type' => 'integer',
 			),
 			'default'           => array(),
 			'sanitize_callback' => 'wp_parse_id_list',
 		);
-		$params['include'] = array(
+		$params['include']  = array(
 			'description'       => _x( 'Limit result set to specific ids.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			'type'              => 'array',
 			'items'             => array(
-				'type'          => 'integer',
+				'type' => 'integer',
 			),
 			'default'           => array(),
 			'sanitize_callback' => 'wp_parse_id_list',
 		);
-		$params['offset'] = array(
-			'description'        => _x( 'Offset the result set by a specific number of items.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'integer',
-			'sanitize_callback'  => 'absint',
-			'validate_callback'  => 'rest_validate_request_arg',
+		$params['offset']   = array(
+			'description'       => _x( 'Offset the result set by a specific number of items.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'integer',
+			'sanitize_callback' => 'absint',
+			'validate_callback' => 'rest_validate_request_arg',
 		);
-		$params['order'] = array(
-			'description'        => _x( 'Order sort attribute ascending or descending.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'string',
-			'default'            => 'desc',
-			'enum'               => array( 'asc', 'desc' ),
-			'validate_callback'  => 'rest_validate_request_arg',
+		$params['order']    = array(
+			'description'       => _x( 'Order sort attribute ascending or descending.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'string',
+			'default'           => 'desc',
+			'enum'              => array( 'asc', 'desc' ),
+			'validate_callback' => 'rest_validate_request_arg',
 		);
-		$params['orderby'] = array(
-			'description'        => _x( 'Sort collection by object attribute.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'type'               => 'string',
-			'default'            => 'date',
-			'enum'               => array(
+		$params['orderby']  = array(
+			'description'       => _x( 'Sort collection by object attribute.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'type'              => 'string',
+			'default'           => 'date',
+			'enum'              => array(
 				'date',
 				'id',
 			),
-			'validate_callback'  => 'rest_validate_request_arg',
+			'validate_callback' => 'rest_validate_request_arg',
 		);
 
 		/**

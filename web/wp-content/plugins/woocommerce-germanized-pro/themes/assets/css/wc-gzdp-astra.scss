@@ -61,13 +61,53 @@ table.shop_table .wc-gzd-item-desc p {
   border: none !important;
 }
 
+.woocommerce-multistep-checkout .step-buttons {
+  margin-bottom: 1.5em;
+
+  &.step-buttons-order {
+    text-align: center;
+  }
+}
+
 .woocommerce-multistep-checkout p.data-privacy {
   clear: left;
 }
 
-.wc-gzd-checkbox-placeholder {
-  float: none;
+.ast-modern-checkout.woocommerce-multistep-checkout {
+  .ast-two-column-checkout .woocommerce-checkout #ast-order-review-wrapper {
+    width: 100%;
+    float: none;
+  }
+}
+
+.woocommerce form .wc-gzd-checkbox-placeholder {
+  float: left;
   clear: both;
+  width: 100%;
+
+  .form-row label {
+    overflow: auto !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+    position: relative !important;
+    user-select: inherit !important;
+    pointer-events: inherit !important;
+  }
+}
+
+.wc-gzd-food-table {
+  width: auto;
+
+  tr {
+    text-align: left;
+
+    &.wc-gzd-nutrient-table-item-is-child {
+      th {
+        padding-left: 1em;
+        font-weight: normal;
+      }
+    }
+  }
 }
 
 @media (min-width: 769px) {
@@ -79,13 +119,13 @@ table.shop_table .wc-gzd-item-desc p {
 }
 
 .woocommerce.woocommerce-checkout form #order_review_heading, .woocommerce-page.woocommerce-checkout form #order_review_heading {
-  border: none;
+  border: none !important;
   float: none;
   clear: both;
   width: 100%;
-  padding-left: 0;
-  padding-top: 0;
-  margin-top: 1.5em;
+  padding-left: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 1.5em !important;
 }
 
 .woocommerce.woocommerce-checkout form #order_review table, .woocommerce-page.woocommerce-checkout form #order_review table {
@@ -103,10 +143,34 @@ table.shop_table .wc-gzd-item-desc p {
 }
 
 .woocommerce-page.woocommerce-checkout form #order_review, .woocommerce-page.woocommerce-checkout form #order_review {
-  border-top-width: 2px;
-  padding-bottom: 1.5em;
+  border-top-width: 2px !important;
+  padding-bottom: 1.5em !important;
+  margin-bottom: 1.5em !important;
 }
 
 .woocommerce-page.woocommerce-checkout form #order_review th, .woocommerce-page.woocommerce-checkout form #order_review td {
   padding-left: 12px;
+}
+
+/**
+ * Modern checkout
+ */
+.ast-modern-checkout {
+  .woocommerce #order_review .woocommerce-checkout-review-order-table tbody tr td.product-name {
+    flex-wrap: wrap;
+  }
+
+  p#billing_title_field, p#shipping_title_field {
+    width: 100%;
+  }
+
+  .wc-gzd-checkbox-placeholder {
+    margin-bottom: .5em;
+
+    p.form-row {
+      label {
+        font-weight: normal;
+      }
+    }
+  }
 }

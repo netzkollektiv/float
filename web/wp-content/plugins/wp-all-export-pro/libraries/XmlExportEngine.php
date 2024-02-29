@@ -576,7 +576,6 @@ if (!class_exists('XmlExportEngine')) {
 
                 foreach ($wp_taxonomies as $key => $obj) {
 
-                    //var_dump($obj->name);
                     if (in_array($obj->name, $product_meta_keys)) continue;
                     if (in_array($obj->name, array('nav_menu'))) continue;
 
@@ -588,9 +587,6 @@ if (!class_exists('XmlExportEngine')) {
                         );
                 }
             }
-
-
-
 
             if (self::get_addons_service()->isAcfAddonActive()) {
                 // Prepare existing ACF groups & fields
@@ -792,15 +788,16 @@ if (!class_exists('XmlExportEngine')) {
             foreach ($available_sections as $slug => $section) {
                 if (!empty($this->available_data[$section['content']]) or !empty($section['additional'])):
                     ?>
-                    <p class="wpae-available-fields-group"><?php echo $section['title']; ?><span
+                    <p class="wpae-available-fields-group"><?php echo esc_html($section['title']); ?><span
                                 class="wpae-expander">+</span></p>
                     <div class="wpae-custom-field">
                         <ul>
                             <?php if (!empty($this->available_data[$section['content']])): ?>
                                 <li>
                                     <div class="default_column" rel="">
-                                        <label class="wpallexport-element-label"><?php echo __("All", "wp_all_export_plugin") . ' ' . $section['title']; ?></label>
-                                        <input type="hidden" name="rules[]" value="pmxe_<?php echo $slug; ?>"/>
+                                        <label class="wpallexport-element-label"><?php esc_html_e("All", "wp_all_export_plugin" . ' ' . $section['title']); ?></label>
+                                        <input type="hidden" name="rules[]"
+                                               value="pmxe_<?php echo esc_attr($slug); ?>"/>
                                     </div>
                                 </li>
                                 <?php
@@ -817,27 +814,27 @@ if (!class_exists('XmlExportEngine')) {
                                     }
 
                                     ?>
-                                    <li class="pmxe_<?php echo $slug; ?> <?php if ($is_auto_field) echo 'wp_all_export_auto_generate'; ?>">
-                                        <div class="custom_column" rel="<?php echo($i + 1); ?>">
-                                            <label class="wpallexport-xml-element"><?php echo (is_array($field)) ? $field['name'] : $field; ?></label>
+                                    <li class="pmxe_<?php echo esc_attr($slug); ?> <?php if ($is_auto_field) echo 'wp_all_export_auto_generate'; ?>">
+                                        <div class="custom_column" rel="<?php echo(intval($i) + 1); ?>">
+                                            <label class="wpallexport-xml-element"><?php echo (is_array($field)) ? esc_html($field['name']) : esc_html($field); ?></label>
                                             <input type="hidden" name="ids[]" value="1"/>
                                             <input type="hidden" name="cc_label[]"
-                                                   value="<?php echo (is_array($field)) ? $field['label'] : $field; ?>"/>
+                                                   value="<?php echo (is_array($field)) ? esc_attr($field['label']) : esc_attr($field); ?>"/>
                                             <input type="hidden" name="cc_php[]" value="0"/>
                                             <input type="hidden" name="cc_code[]" value=""/>
                                             <input type="hidden" name="cc_sql[]" value="0"/>
                                             <input type="hidden" name="cc_options[]" value="0"/>
                                             <input type="hidden" name="cc_type[]"
-                                                   value="<?php echo (is_array($field)) ? $field['type'] : $slug; ?>"/>
+                                                   value="<?php echo (is_array($field)) ? esc_attr($field['type']) : esc_attr($slug); ?>"/>
                                             <input type="hidden" name="cc_value[]"
-                                                   value="<?php echo (is_array($field)) ? $field['label'] : $field; ?>"/>
+                                                   value="<?php echo (is_array($field)) ? esc_attr($field['label']) : esc_attr($field); ?>"/>
                                             <input type="hidden" name="cc_name[]"
-                                                   value="<?php echo (is_array($field)) ? $field['name'] : $field; ?>"/>
+                                                   value="<?php echo (is_array($field)) ? esc_attr($field['name']) : esc_attr($field); ?>"/>
                                             <input type="hidden" name="cc_settings[]" value="0"/>
                                             <input type="hidden" name="cc_combine_multiple_fields[]"
-                                                   value="<?php echo (is_array($field)) ? $field['cc_combine_multiple_fields'] : ''; ?>"/>
+                                                   value="<?php echo (is_array($field)) ? esc_attr($field['cc_combine_multiple_fields']) : ''; ?>"/>
                                             <input type="hidden" name="cc_combine_multiple_fields_value[]"
-                                                   value="<?php echo (is_array($field)) ? $field['cc_combine_multiple_fields_value'] : ''; ?>"/>
+                                                   value="<?php echo (is_array($field)) ? esc_attr($field['cc_combine_multiple_fields_value']) : ''; ?>"/>
                                         </div>
                                     </li>
                                     <?php
@@ -852,6 +849,7 @@ if (!class_exists('XmlExportEngine')) {
                                         <p class="wpae-available-fields-group"><?php echo $sub_section['title']; ?><span
                                                     class="wpae-expander">+</span></p>
                                         <div class="wpae-custom-field">
+
                                             <?php
                                             $show_additional_subsection = apply_filters("wp_all_export_show_additional_subsection", true, $sub_slug, $sub_section);
                                             do_action("wp_all_export_before_available_subsection", $sub_slug, $sub_section);
@@ -860,9 +858,9 @@ if (!class_exists('XmlExportEngine')) {
                                                 <ul>
                                                     <li>
                                                         <div class="default_column" rel="">
-                                                            <label class="wpallexport-element-label"><?php echo __("All", "wp_all_export_plugin") . ' ' . $sub_section['title']; ?></label>
+                                                            <label class="wpallexport-element-label"><?php esc_html_e("All", "wp_all_export_plugin") . ' ' . $sub_section['title']; ?></label>
                                                             <input type="hidden" name="rules[]"
-                                                                   value="pmxe_<?php echo $slug; ?>_<?php echo $sub_slug; ?>"/>
+                                                                   value="pmxe_<?php echo esc_attr($slug); ?>_<?php echo esc_attr($sub_slug); ?>"/>
                                                         </div>
                                                     </li>
                                                     <?php
@@ -873,29 +871,30 @@ if (!class_exists('XmlExportEngine')) {
                                                             $field += $default;
                                                         }
                                                         ?>
-                                                        <li class="pmxe_<?php echo $slug; ?>_<?php echo $sub_slug; ?> <?php if ($is_auto_field) echo 'wp_all_export_auto_generate'; ?>">
-                                                            <div class="custom_column" rel="<?php echo($i + 1); ?>">
-                                                                <label class="wpallexport-xml-element"><?php echo (is_array($field)) ? XmlExportEngine::sanitizeFieldName($field['name']) : $field; ?></label>
+                                                        <li class="pmxe_<?php echo esc_attr($slug); ?>_<?php echo esc_attr($sub_slug); ?> <?php if ($is_auto_field) echo 'wp_all_export_auto_generate'; ?>">
+                                                            <div class="custom_column"
+                                                                 rel="<?php echo intval(($i + 1)); ?>">
+                                                                <label class="wpallexport-xml-element"><?php echo (is_array($field)) ? esc_html(XmlExportEngine::sanitizeFieldName($field['name'])) : esc_html($field); ?></label>
                                                                 <input type="hidden" name="ids[]" value="1"/>
                                                                 <input type="hidden" name="cc_label[]"
-                                                                       value="<?php echo (is_array($field)) ? $field['label'] : $field; ?>"/>
+                                                                       value="<?php echo (is_array($field)) ? esc_attr($field['label']) : esc_attr($field); ?>"/>
                                                                 <input type="hidden" name="cc_php[]" value="0"/>
                                                                 <input type="hidden" name="cc_code[]" value=""/>
                                                                 <input type="hidden" name="cc_sql[]" value="0"/>
                                                                 <input type="hidden" name="cc_options[]"
-                                                                       value="<?php echo $field_options; ?>"/>
+                                                                       value="<?php echo esc_attr($field_options); ?>"/>
                                                                 <input type="hidden" name="cc_type[]"
-                                                                       value="<?php echo (is_array($field)) ? $field['type'] : $sub_slug; ?>"/>
+                                                                       value="<?php echo (is_array($field)) ? esc_attr($field['type']) : esc_attr($sub_slug); ?>"/>
                                                                 <input type="hidden" name="cc_value[]"
-                                                                       value="<?php echo (is_array($field)) ? $field['label'] : $field; ?>"/>
+                                                                       value="<?php echo (is_array($field)) ? esc_attr($field['label']) : esc_attr($field); ?>"/>
                                                                 <input type="hidden" name="cc_name[]"
-                                                                       value="<?php echo (is_array($field)) ? XmlExportEngine::sanitizeFieldName($field['name']) : $field; ?>"/>
+                                                                       value="<?php echo (is_array($field)) ? esc_attr(XmlExportEngine::sanitizeFieldName($field['name'])) : esc_attr($field); ?>"/>
                                                                 <input type="hidden" name="cc_settings[]" value=""/>
                                                                 <input type="hidden" name="cc_combine_multiple_fields[]"
-                                                                       value="<?php echo (is_array($field)) ? $field['cc_combine_multiple_fields'] : ''; ?>"/>
+                                                                       value="<?php echo (is_array($field)) ? esc_attr($field['cc_combine_multiple_fields']) : ''; ?>"/>
                                                                 <input type="hidden"
                                                                        name="cc_combine_multiple_fields_value[]"
-                                                                       value="<?php echo (is_array($field)) ? $field['cc_combine_multiple_fields_value'] : ''; ?>"/>
+                                                                       value="<?php echo (is_array($field)) ? esc_attr($field['cc_combine_multiple_fields_value']) : ''; ?>"/>
                                                             </div>
                                                         </li>
                                                         <?php
@@ -903,6 +902,7 @@ if (!class_exists('XmlExportEngine')) {
                                                     }
                                                     ?>
                                                 </ul>
+
                                                 <?php
                                             }
                                             ?>
@@ -956,6 +956,15 @@ if (!class_exists('XmlExportEngine')) {
                 self::$woo_order_export->render_filters();
             }
 
+            if(self::$is_custom_addon_export) {
+                if(class_exists('GF_Export_Add_On')) {
+                    $addon = GF_Export_Add_On::get_instance();
+                    $addon->render_filters();
+                    unset($available_sections);
+                }
+
+            }
+
             if (!empty($available_sections)) {
                 $exclude = array('wpml_lang', 'wpml_trid');
 
@@ -963,7 +972,7 @@ if (!class_exists('XmlExportEngine')) {
                     if (!empty($section['content']) && !empty($this->available_data[$section['content']]) || !empty($section['fields'])):
                         ?>
 
-                        <optgroup label="<?php echo $section['title']; ?>">
+                        <optgroup label="<?php echo esc_html($section['title']); ?>">
 
                             <?php if (!empty($section['content']) && !empty($this->available_data[$section['content']])): ?>
 
@@ -982,19 +991,19 @@ if (!class_exists('XmlExportEngine')) {
                                             $exclude_fields = array('attributes');
                                             if (!in_array($field_label, $exclude_fields)):
                                                 ?>
-                                                <option value="<?php echo 'cf_' . $field_label; ?>"><?php echo $field_name; ?></option>
+                                                <option value="<?php echo esc_attr('cf_' . $field_label); ?>"><?php echo esc_html($field_name); ?></option>
                                                 <?php
                                             endif;
                                             break;
                                         case 'cf':
                                             ?>
-                                            <option value="<?php echo 'cf_' . $field_label; ?>"><?php echo $field_name; ?></option>
+                                            <option value="<?php echo esc_attr('cf_' . $field_label); ?>"><?php echo esc_html($field_name); ?></option>
                                             <?php
                                             break;
                                         case 'cats':
                                         case 'attr':
                                             ?>
-                                            <option value="<?php echo 'tx_' . $field_label; ?>"><?php echo $field_name; ?></option>
+                                            <option value="<?php echo esc_attr('tx_' . $field_label); ?>"><?php echo esc_html($field_name); ?></option>
                                             <?php
                                             break;
                                         default:
@@ -1006,7 +1015,7 @@ if (!class_exists('XmlExportEngine')) {
                                                         break;
                                                     case 'user_nicename':
                                                         ?>
-                                                        <option value="user_role"><?php _e('User Role', 'wp_all_export_plugin'); ?></option>
+                                                        <option value="user_role"><?php esc_html_e('User Role', 'wp_all_export_plugin'); ?></option>
                                                         <?php
                                                         break;
                                                 }
@@ -1056,7 +1065,7 @@ if (!class_exists('XmlExportEngine')) {
                                                 }
                                             }
                                             ?>
-                                            <option value="<?php echo $field_label; ?>"><?php echo $field_name; ?></option>
+                                            <option value="<?php echo esc_attr($field_label); ?>"><?php echo esc_html($field_name); ?></option>
                                             <?php
                                             break;
                                     }
@@ -1070,7 +1079,7 @@ if (!class_exists('XmlExportEngine')) {
 
                                 <?php foreach ($section['fields'] as $key => $title) : ?>
 
-                                    <option value="<?php echo $key; ?>"><?php echo $title; ?></option>
+                                    <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($title); ?></option>
 
                                 <?php endforeach; ?>
 
@@ -1082,23 +1091,25 @@ if (!class_exists('XmlExportEngine')) {
 
                     endif;
 
-                    if (!empty($section['additional'])) {
-                        foreach ($section['additional'] as $sub_slug => $sub_section) {
-                            if ($sub_slug == 'attributes') {
+                    if ( ! empty($section['additional']) )
+                    {
+                        foreach ($section['additional'] as $sub_slug => $sub_section)
+                        {
+                            if ( $sub_slug == 'attributes' ) {
                                 ?>
                                 <optgroup label="<?php echo $sub_section['title']; ?>">
                                     <?php
                                     foreach ($sub_section['meta'] as $field) :
-                                        if (isset($field['type'])) {
+                                        if(isset($field['type'])) {
                                             switch ($field['type']) {
                                                 case 'attr':
                                                     ?>
-                                                    <option value="<?php echo 'tx_' . $field['label']; ?>"><?php echo $field['name']; ?></option>
+                                                    <option value="<?php echo esc_attr('tx_' . $field['label']); ?>"><?php echo esc_html($field['name']); ?></option>
                                                     <?php
                                                     break;
                                                 case 'cf':
                                                     ?>
-                                                    <option value="<?php echo 'cf_' . $field['label']; ?>"><?php echo $field['name']; ?></option>
+                                                    <option value="<?php echo esc_attr('cf_' . $field['label']); ?>"><?php echo esc_html($field['name']); ?></option>
                                                     <?php
                                                     break;
                                                 default:
@@ -1117,16 +1128,18 @@ if (!class_exists('XmlExportEngine')) {
                 }
             }
 
-            if (!self::$is_comment_export && !self::$is_woo_review_export) {
-                $disable_acf = apply_filters('wp_all_export_disable_acf', false);
 
-                if (!$disable_acf && self::get_addons_service()->isAcfAddonActive()) {
-                    // Render Available ACF
-                    self::$acf_export->render_filters();
+                        if (!self::$is_comment_export && !self::$is_woo_review_export) {
+                            $disable_acf = apply_filters('wp_all_export_disable_acf', false);
+
+                            if (!$disable_acf && self::get_addons_service()->isAcfAddonActive()) {
+                                // Render Available ACF
+                                self::$acf_export->render_filters();
+
                 }
             }
-
         }
+
 
         public function render_new_field()
         {
@@ -1162,9 +1175,9 @@ if (!class_exists('XmlExportEngine')) {
                                         if ($field_type == 'cf' && $field_name == '_thumbnail_id') continue;
                                         ?>
                                         <option
-                                                value="<?php echo $field_type; ?>"
-                                                label="<?php echo $field_label; ?>"
-                                                options="<?php echo $field_options; ?>"><?php echo $field_name; ?></option>
+                                                value="<?php echo esc_attr($field_type); ?>"
+                                                label="<?php echo esc_attr($field_label); ?>"
+                                                options="<?php echo esc_attr($field_options); ?>"><?php echo esc_html($field_name); ?></option>
                                         <?php
                                     }
                                 }
@@ -1187,9 +1200,9 @@ if (!class_exists('XmlExportEngine')) {
                                             $field_options = empty($field['options']) ? '{"is_export_featured":true,"is_export_attached":true,"image_separator":"|"}' : $field['options'];
                                             ?>
                                             <option
-                                                    value="<?php echo $field_type; ?>"
-                                                    label="<?php echo $field_label; ?>"
-                                                    options="<?php echo $field_options; ?>"><?php echo $field_name; ?></option>
+                                                    value="<?php echo esc_attr($field_type); ?>"
+                                                    label="<?php echo esc_attr($field_label); ?>"
+                                                    options="<?php echo esc_attr($field_options); ?>"><?php echo esc_html($field_name); ?></option>
                                             <?php
                                         }
                                         ?>
@@ -1201,6 +1214,7 @@ if (!class_exists('XmlExportEngine')) {
                     }
 
                     if (!self::$is_comment_export && !self::$is_woo_review_export) {
+
                         $disable_acf = apply_filters('wp_all_export_disable_acf', false);
 
                         if (!$disable_acf && self::get_addons_service()->isAcfAddonActive()) {
@@ -1211,7 +1225,8 @@ if (!class_exists('XmlExportEngine')) {
 
                     ?>
                     <optgroup label="Advanced">
-                        <option value="sql" label="sql"><?php _e("SQL Query", "wp_all_export_plugin"); ?></option>
+                        <option value="sql"
+                                label="sql"><?php esc_html_e("SQL Query", "wp_all_export_plugin"); ?></option>
                     </optgroup>
                 </select>
                 <?php
@@ -1247,7 +1262,7 @@ if (!class_exists('XmlExportEngine')) {
 
             // Validate Custom XML Template header
             if (empty($result['custom_xml_template_header'])) {
-                $this->errors->add('form-validation', __('Missing custom XML template header.', 'wp_all_export_plugin'));
+                $this->errors->add('form-validation', esc_html__('Missing custom XML template header.', 'wp_all_export_plugin'));
             }
             // Validate Custom XML Template post LOOP
             if (empty($result['custom_xml_template_loop'])) {
@@ -1320,7 +1335,8 @@ if (!class_exists('XmlExportEngine')) {
 
         public static function getProductVariationMode()
         {
-            if(!XmlExportEngine::get_addons_service()->isWooCommerceAddonActive()) {
+
+            if (!XmlExportEngine::get_addons_service()->isWooCommerceAddonActive()) {
                 return self::VARIABLE_PRODUCTS_EXPORT_PARENT;
             }
 

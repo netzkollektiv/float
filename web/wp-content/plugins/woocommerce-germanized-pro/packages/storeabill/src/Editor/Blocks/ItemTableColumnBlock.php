@@ -42,6 +42,8 @@ abstract class ItemTableColumnBlock extends DynamicBlock {
 			}
 		}
 
+		$inc_tax = apply_filters( 'storeabill_document_item_table_prices_include_tax', $inc_tax, $prefix, $discount_total_type, isset( $GLOBALS['document'] ) ? $GLOBALS['document'] : false, isset( $GLOBALS['document_item'] ) ? $GLOBALS['document_item'] : false );
+
 		if ( ! $inc_tax ) {
 			if ( strpos( $prefix, '_total' ) !== false ) {
 				$getter = str_replace( '_total', '', $getter );
@@ -54,10 +56,13 @@ abstract class ItemTableColumnBlock extends DynamicBlock {
 	}
 
 	protected function wrap( $output, $attributes ) {
-		$attributes = wp_parse_args( $attributes, array(
-			'renderNumber' => 1,
-			'renderTotal'  => 1,
-		) );
+		$attributes = wp_parse_args(
+			$attributes,
+			array(
+				'renderNumber' => 1,
+				'renderTotal'  => 1,
+			)
+		);
 
 		$output_sanitized = trim( preg_replace( '/\s+/', '', $output ) );
 
@@ -68,7 +73,7 @@ abstract class ItemTableColumnBlock extends DynamicBlock {
 			return '';
 		}
 
-		$render_class = $attributes['renderNumber'] === 1 ? 'item-data-first' : 'item-data-' . $attributes['renderNumber'];
+		$render_class = 1 === $attributes['renderNumber'] ? 'item-data-first' : 'item-data-' . $attributes['renderNumber'];
 
 		if ( $attributes['renderNumber'] === $attributes['renderTotal'] ) {
 			$render_class .= ' item-data-last';

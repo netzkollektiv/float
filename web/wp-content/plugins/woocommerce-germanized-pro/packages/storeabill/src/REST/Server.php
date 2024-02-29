@@ -20,7 +20,7 @@ class Server {
 	 *
 	 * @var array
 	 */
-	protected $controllers = [];
+	protected $controllers = array();
 
 	/**
 	 * Hook into WordPress ready to init the REST API as needed.
@@ -49,9 +49,9 @@ class Server {
 	protected function get_rest_namespaces() {
 		return apply_filters(
 			'storeabill_rest_api_get_rest_namespaces',
-			[
+			array(
 				'sab/v1' => $this->get_v1_controllers(),
-			]
+			)
 		);
 	}
 
@@ -61,12 +61,12 @@ class Server {
 	 * @return array
 	 */
 	protected function get_v1_controllers() {
-		$controllers = [
+		$controllers = array(
 			'invoices'           => '\Vendidero\StoreaBill\REST\InvoiceController',
 			'cancellations'      => '\Vendidero\StoreaBill\REST\CancellationController',
 			'preview_fonts'      => '\Vendidero\StoreaBill\REST\PreviewFontsController',
 			'preview_shortcodes' => '\Vendidero\StoreaBill\REST\PreviewShortcodesController',
-		];
+		);
 
 		if ( ! Package::enable_accounting() ) {
 			$controllers = array_diff_key( $controllers, array_flip( array( 'invoices', 'cancellations' ) ) );

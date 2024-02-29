@@ -12,7 +12,7 @@ class Data extends \WC_Data {
 	protected $data_store_name = '';
 
 	public function __construct( $read = 0 ) {
-		$this->data_store_name = substr(  $this->data_store_name, 0, 4 ) !== 'sab_' ? 'sab_' . $this->data_store_name : $this->data_store_name;
+		$this->data_store_name = substr( $this->data_store_name, 0, 4 ) !== 'sab_' ? 'sab_' . $this->data_store_name : $this->data_store_name;
 
 		parent::__construct( $read );
 	}
@@ -96,7 +96,7 @@ class Data extends \WC_Data {
 			 */
 			do_action( 'storeabill_after_' . $this->object_type . '_object_save', $this, $this->data_store );
 
-		} catch( \Exception $e ) {
+		} catch ( \Exception $e ) {
 			$this->handle_exception( $e );
 		}
 

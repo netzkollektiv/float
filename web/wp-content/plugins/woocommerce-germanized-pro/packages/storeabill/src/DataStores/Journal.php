@@ -33,7 +33,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 		'is_archived',
 		'number_min_size',
 		'date_last_reset',
-		'reset_interval'
+		'reset_interval',
 	);
 
 	/*
@@ -61,7 +61,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 			'journal_last_number'         => 0,
 			'journal_date_last_reset'     => gmdate( 'Y-m-d H:i:s', $journal->get_date_last_reset( 'edit' )->getOffsetTimestamp() ),
 			'journal_date_last_reset_gmt' => gmdate( 'Y-m-d H:i:s', $journal->get_date_last_reset( 'edit' )->getTimestamp() ),
-			'journal_reset_interval'      => $journal->get_reset_interval( 'edit' )
+			'journal_reset_interval'      => $journal->get_reset_interval( 'edit' ),
 		);
 
 		$wpdb->insert(
@@ -86,7 +86,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 			 * @since 1.0.0
 			 * @package Vendidero/Germanized/Shipments
 			 */
-			do_action( "storeabill_new_journal", $journal_id, $journal );
+			do_action( 'storeabill_new_journal', $journal_id, $journal );
 		}
 	}
 
@@ -103,7 +103,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 		$changed_props = array_keys( $journal->get_changes() );
 		$journal_data  = array();
 
-		if ( in_array( 'reset_interval', $changed_props ) ) {
+		if ( in_array( 'reset_interval', $changed_props, true ) ) {
 			$journal->set_date_last_reset( time() );
 			$changed_props[] = 'date_last_reset';
 		}
@@ -114,14 +114,14 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 				continue;
 			}
 
-			switch( $prop ) {
-				case "is_archived":
+			switch ( $prop ) {
+				case 'is_archived':
 					$journal_data[ 'journal_' . $prop ] = sab_bool_to_string( $journal->get_is_archived() );
 					break;
-				case "date_last_reset":
+				case 'date_last_reset':
 					if ( is_callable( array( $journal, 'get_' . $prop ) ) ) {
-						$journal_data[ 'journal_' . $prop ]          = $journal->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $journal->{'get_' . $prop}( 'edit' )->getOffsetTimestamp() ) : '0000-00-00 00:00:00';
-						$journal_data[ 'journal_' . $prop . '_gmt' ] = $journal->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $journal->{'get_' . $prop}( 'edit' )->getTimestamp() ) : '0000-00-00 00:00:00';
+						$journal_data[ 'journal_' . $prop ]          = $journal->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $journal->{'get_' . $prop}( 'edit' )->getOffsetTimestamp() ) : null;
+						$journal_data[ 'journal_' . $prop . '_gmt' ] = $journal->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $journal->{'get_' . $prop}( 'edit' )->getTimestamp() ) : null;
 					}
 					break;
 				default:
@@ -152,7 +152,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 		 * @since 1.0.0
 		 * @package Vendidero/StoreaBill
 		 */
-		do_action( "storeabill_journal_updated", $journal->get_id(), $journal );
+		do_action( 'storeabill_journal_updated', $journal->get_id(), $journal );
 	}
 
 	/**
@@ -178,7 +178,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 			 * @since 1.0.0
 			 * @package Vendidero/StoreaBill
 			 */
-			do_action( "storeabill_journal_archived", $journal->get_id(), $journal );
+			do_action( 'storeabill_journal_archived', $journal->get_id(), $journal );
 		} else {
 			$wpdb->delete( $wpdb->storeabill_journals, array( 'journal_id' => $journal->get_id() ), array( '%d' ) );
 			$this->clear_caches( $journal );
@@ -192,7 +192,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 			 * @since 1.0.0
 			 * @package Vendidero/StoreaBill
 			 */
-			do_action( "storeabill_journal_deleted", $journal->get_id(), $journal );
+			do_action( 'storeabill_journal_deleted', $journal->get_id(), $journal );
 		}
 	}
 
@@ -223,8 +223,8 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 					'number_format'   => $data->journal_number_format,
 					'number_min_size' => $data->journal_number_min_size,
 					'type'            => $data->journal_type,
-					'date_last_reset' => '0000-00-00 00:00:00' !== $data->journal_date_last_reset_gmt ? wc_string_to_timestamp( $data->journal_date_last_reset_gmt ) : null,
-					'reset_interval'  => $data->journal_reset_interval
+					'date_last_reset' => sab_is_valid_mysql_datetime( $data->journal_date_last_reset_gmt ) ? wc_string_to_timestamp( $data->journal_date_last_reset_gmt ) : null,
+					'reset_interval'  => $data->journal_reset_interval,
 				)
 			);
 
@@ -238,7 +238,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 			 * @since 1.0.0
 			 * @package Vendidero/StoreaBill
 			 */
-			do_action( "storeabill_journal_loaded", $journal );
+			do_action( 'storeabill_journal_loaded', $journal );
 		} else {
 			throw new Exception( _x( 'Invalid journal.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
@@ -269,7 +269,6 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 		$next = 0;
 
 		try {
-
 			if ( ! $journal->get_id() ) {
 				throw new Exception( _x( 'Journal has to be saved in DB before updating numbers.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 			}
@@ -280,15 +279,26 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 
 			sab_transaction_query( 'start' );
 
-			if ( $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}storeabill_journals SET journal_last_number=last_insert_id(journal_last_number+1) WHERE journal_id = %d", $journal->get_id() ) ) === false ) {
-				throw new Exception( _x( 'Error updating journal sequential number.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+			/**
+			 * Use separate requests for sqlite to update and retrieve the latest, incremented sequential number as
+			 * sqlite does not support last_insert_id() during updates.
+			 */
+			if ( is_a( $wpdb, 'WP_SQLite_DB\wpsqlitedb' ) ) {
+				if ( $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}storeabill_journals SET journal_last_number=journal_last_number+1 WHERE journal_id = %d", $journal->get_id() ) ) === false ) {
+					throw new Exception( _x( 'Error updating journal sequential number.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+				}
+
+				$next = $wpdb->get_var( $wpdb->prepare( "SELECT journal_last_number FROM {$wpdb->prefix}storeabill_journals WHERE journal_id = %d", $journal->get_id() ) );
+			} else {
+				if ( $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}storeabill_journals SET journal_last_number=last_insert_id(journal_last_number+1) WHERE journal_id = %d", $journal->get_id() ) ) === false ) {
+					throw new Exception( _x( 'Error updating journal sequential number.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+				}
+
+				$next = $wpdb->get_var( 'SELECT LAST_INSERT_ID()' );
 			}
 
-			$next = $wpdb->get_var( 'SELECT LAST_INSERT_ID()' );
-
 			sab_transaction_query( 'commit' );
-
-		} catch( Exception $e ) {
+		} catch ( Exception $e ) {
 			sab_transaction_query( 'rollback' );
 
 			return new WP_Error( 'numbering-error', $e->getMessage() );
@@ -321,7 +331,7 @@ class Journal extends WC_Data_Store_WP implements WC_Object_Data_Store_Interface
 
 			sab_transaction_query( 'commit' );
 
-		} catch( Exception $e ) {
+		} catch ( Exception $e ) {
 			sab_transaction_query( 'rollback' );
 
 			return new WP_Error( 'numbering-error', $e->getMessage() );

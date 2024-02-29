@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -11,8 +11,11 @@ namespace Vendidero\StoreaBill\Vendor\Mpdf;
 use Vendidero\StoreaBill\Vendor\Mpdf\Color\ColorConverter;
 use Vendidero\StoreaBill\Vendor\Mpdf\Color\ColorModeConverter;
 use Vendidero\StoreaBill\Vendor\Mpdf\Color\ColorSpaceRestrictor;
+use Vendidero\StoreaBill\Vendor\Mpdf\File\LocalContentLoader;
 use Vendidero\StoreaBill\Vendor\Mpdf\Fonts\FontCache;
 use Vendidero\StoreaBill\Vendor\Mpdf\Fonts\FontFileFinder;
+use Vendidero\StoreaBill\Vendor\Mpdf\Http\CurlHttpClient;
+use Vendidero\StoreaBill\Vendor\Mpdf\Http\SocketHttpClient;
 use Vendidero\StoreaBill\Vendor\Mpdf\Image\ImageProcessor;
 use Vendidero\StoreaBill\Vendor\Mpdf\Pdf\Protection;
 use Vendidero\StoreaBill\Vendor\Mpdf\Pdf\Protection\UniqidGenerator;
@@ -33,11 +36,20 @@ use Vendidero\StoreaBill\Vendor\Psr\Log\LoggerInterface;
 class ServiceFactory
 {
 
+	/**
+	 * @var \Vendidero\StoreaBill\Vendor\Mpdf\Container\ContainerInterface|null
+	 */
+	private $container;
+
+	public function __construct($container = null)
+	{
+		$this->container = $container;
+	}
+
 	public function getServices(
 		Mpdf $mpdf,
 		LoggerInterface $logger,
 		$config,
-		$restrictColorSpace,
 		$languageToFont,
 		$scriptToLanguage,
 		$fontDescriptor,
@@ -50,8 +62,7 @@ class ServiceFactory
 		$colorModeConverter = new ColorModeConverter();
 		$colorSpaceRestrictor = new ColorSpaceRestrictor(
 			$mpdf,
-			$colorModeConverter,
-			$restrictColorSpace
+			$colorModeConverter
 		);
 		$colorConverter = new ColorConverter($mpdf, $colorModeConverter, $colorSpaceRestrictor);
 
@@ -64,7 +75,21 @@ class ServiceFactory
 
 		$fontFileFinder = new FontFileFinder($config['fontDir']);
 
-		$cssManager = new CssManager($mpdf, $cache, $sizeConverter, $colorConverter);
+		if ($this->container && $this->container->has('httpClient')) {
+			$httpClient = $this->container->get('httpClient');
+		} elseif (\function_exists('curl_init')) {
+			$httpClient = new CurlHttpClient($mpdf, $logger);
+		} else {
+			$httpClient = new SocketHttpClient($logger);
+		}
+
+		$localContentLoader = $this->container && $this->container->has('localContentLoader')
+			? $this->container->get('localContentLoader')
+			: new LocalContentLoader();
+
+		$assetFetcher = new AssetFetcher($mpdf, $localContentLoader, $httpClient, $logger);
+
+		$cssManager = new CssManager($mpdf, $cache, $sizeConverter, $colorConverter, $assetFetcher);
 
 		$otl = new Otl($mpdf, $fontCache);
 
@@ -80,8 +105,6 @@ class ServiceFactory
 
 		$hyphenator = new Hyphenator($mpdf);
 
-		$remoteContentFetcher = new RemoteContentFetcher($mpdf, $logger);
-
 		$imageProcessor = new ImageProcessor(
 			$mpdf,
 			$otl,
@@ -92,7 +115,7 @@ class ServiceFactory
 			$cache,
 			$languageToFont,
 			$scriptToLanguage,
-			$remoteContentFetcher,
+			$assetFetcher,
 			$logger
 		);
 
@@ -150,7 +173,9 @@ class ServiceFactory
 			'sizeConverter' => $sizeConverter,
 			'colorConverter' => $colorConverter,
 			'hyphenator' => $hyphenator,
-			'remoteContentFetcher' => $remoteContentFetcher,
+			'localContentLoader' => $localContentLoader,
+			'httpClient' => $httpClient,
+			'assetFetcher' => $assetFetcher,
 			'imageProcessor' => $imageProcessor,
 			'protection' => $protection,
 
@@ -168,8 +193,47 @@ class ServiceFactory
 			'colorWriter' => $colorWriter,
 			'backgroundWriter' => $backgroundWriter,
 			'javaScriptWriter' => $javaScriptWriter,
-
 			'resourceWriter' => $resourceWriter
+		];
+	}
+
+	public function getServiceIds()
+	{
+		return [
+			'otl',
+			'bmp',
+			'cache',
+			'cssManager',
+			'directWrite',
+			'fontCache',
+			'fontFileFinder',
+			'form',
+			'gradient',
+			'tableOfContents',
+			'tag',
+			'wmf',
+			'sizeConverter',
+			'colorConverter',
+			'hyphenator',
+			'localContentLoader',
+			'httpClient',
+			'assetFetcher',
+			'imageProcessor',
+			'protection',
+			'languageToFont',
+			'scriptToLanguage',
+			'writer',
+			'fontWriter',
+			'metadataWriter',
+			'imageWriter',
+			'formWriter',
+			'pageWriter',
+			'bookmarkWriter',
+			'optionalContentWriter',
+			'colorWriter',
+			'backgroundWriter',
+			'javaScriptWriter',
+			'resourceWriter',
 		];
 	}
 

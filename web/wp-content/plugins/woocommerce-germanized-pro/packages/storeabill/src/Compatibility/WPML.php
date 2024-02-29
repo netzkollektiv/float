@@ -166,10 +166,10 @@ class WPML implements Compatibility {
 			return false;
 		}
 
-		$domain     = 'admin_texts_woocommerce_' . $email_id . '_settings';
-		$namePrefix = '[woocommerce_' . $email_id . '_settings]';
+		$domain      = 'admin_texts_woocommerce_' . $email_id . '_settings';
+		$name_prefix = '[woocommerce_' . $email_id . '_settings]';
 
-		return $woocommerce_wpml->emails->wcml_get_translated_email_string( $domain, $namePrefix . $option_name, false, self::$email_lang );
+		return $woocommerce_wpml->emails->wcml_get_translated_email_string( $domain, $name_prefix . $option_name, false, self::$email_lang );
 	}
 
 	/**
@@ -249,7 +249,9 @@ class WPML implements Compatibility {
 			return;
 		}
 
-		if ( ( $lang = $document->get_meta( '_wpml_language', true ) ) && ! empty( $lang ) ) {
+		$lang = apply_filters( 'storeabill_wpml_render_language', $document->get_meta( '_wpml_language', true ), $document, $is_preview );
+
+		if ( $lang && ! empty( $lang ) ) {
 			self::switch_language( $lang );
 		}
 	}
@@ -326,18 +328,21 @@ class WPML implements Compatibility {
 	}
 
 	protected static function get_emails() {
-		return apply_filters( 'storeabill_wpml_email_ids', array(
-			'\Vendidero\StoreaBill\Emails\SimpleInvoice'       => 'sab_simple_invoice',
-			'\Vendidero\StoreaBill\Emails\CancellationInvoice' => 'sab_cancellation_invoice',
-			'\Vendidero\StoreaBill\Emails\Document'            => 'sab_document',
-			'\Vendidero\StoreaBill\Emails\DocumentAdmin'       => 'sab_document_admin',
-		) );
+		return apply_filters(
+			'storeabill_wpml_email_ids',
+			array(
+				'\Vendidero\StoreaBill\Emails\SimpleInvoice' => 'sab_simple_invoice',
+				'\Vendidero\StoreaBill\Emails\CancellationInvoice' => 'sab_cancellation_invoice',
+				'\Vendidero\StoreaBill\Emails\Document' => 'sab_document',
+				'\Vendidero\StoreaBill\Emails\DocumentAdmin' => 'sab_document_admin',
+			)
+		);
 	}
 
 	protected static function get_email_options() {
 		$email_options = array();
 
-		foreach( self::get_emails() as $key => $email_id ) {
+		foreach ( self::get_emails() as $key => $email_id ) {
 			$email_options[ $key ] = 'woocommerce_' . $email_id . '_settings';
 		}
 
@@ -368,8 +373,8 @@ class WPML implements Compatibility {
 	 * @param $post
 	 */
 	public static function maybe_copy_template( $template, $post_id, $post ) {
-		if ( isset( $_GET['trid'] ) ) {
-			$original_id      = absint( $_GET['trid'] );
+		if ( isset( $_GET['trid'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$original_id      = absint( $_GET['trid'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$original_post_id = \SitePress::get_original_element_id_by_trid( $original_id );
 
 			/**
@@ -447,8 +452,7 @@ class WPML implements Compatibility {
 		}
 
 		if ( isset( $sitepress ) && is_callable( array( $sitepress, 'get_current_language' ) ) && is_callable( array( $sitepress, 'switch_lang' ) ) ) {
-
-			if ( $sitepress->get_current_language() != $lang ) {
+			if ( $lang !== $sitepress->get_current_language() ) {
 				self::$new_language = $lang;
 			}
 
@@ -564,14 +568,23 @@ class WPML implements Compatibility {
 	}
 
 	public static function order_item_variation_attribute_filter( $display_value, $meta, $item ) {
+		global $sitepress, $woocommerce_wpml;
+
+		$lang = $sitepress->get_current_language();
+
 		if ( is_a( $item, 'WC_Order_Item_Product' ) ) {
 			$variation_id = $item->get_variation_id();
 
 			if ( $variation_id ) {
-				$attribute_value = get_post_meta( $variation_id, 'attribute_' . $meta->key, true );
+				$taxonomy = substr( $meta->key, 0, 3 ) !== 'pa_' ? wc_attribute_taxonomy_name( $meta->key ) : $meta->key;
 
-				if ( $attribute_value ) {
-					return $attribute_value;
+				if ( is_callable( array( $woocommerce_wpml->terms, 'wcml_get_term_id_by_slug' ) ) && is_callable( array( $woocommerce_wpml->terms, 'wcml_get_translated_term' ) ) ) {
+					$term_id         = $woocommerce_wpml->terms->wcml_get_term_id_by_slug( $taxonomy, $meta->value );
+					$translated_term = $woocommerce_wpml->terms->wcml_get_translated_term( $term_id, $taxonomy, $lang );
+
+					if ( $translated_term ) {
+						return $translated_term->name;
+					}
 				}
 			}
 		}

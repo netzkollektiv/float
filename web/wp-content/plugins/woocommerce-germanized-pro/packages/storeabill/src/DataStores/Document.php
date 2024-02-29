@@ -3,6 +3,7 @@
 namespace Vendidero\StoreaBill\DataStores;
 
 use Vendidero\StoreaBill\Document\Factory;
+use Vendidero\StoreaBill\Package;
 use Vendidero\StoreaBill\Utilities\CacheHelper;
 use WC_Data_Store_WP;
 use WC_Object_Data_Store_Interface;
@@ -36,7 +37,7 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		'_created_via',
 		'_reference_number',
 		'_external_sync_handlers',
-		'_version'
+		'_version',
 	);
 
 	protected $internal_date_props_to_keys = array(
@@ -44,7 +45,7 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		'date_modified'     => 'date_modified',
 		'date_sent'         => 'date_sent',
 		'date_custom'       => 'date_custom',
-		'date_custom_extra' => 'date_custom_extra'
+		'date_custom_extra' => 'date_custom_extra',
 	);
 
 	protected $core_props = array(
@@ -105,20 +106,20 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		$this->maybe_set_number( $document );
 
 		$data = array(
-			'document_country'           => $document->get_country( 'edit' ),
-			'document_reference_id'      => $document->get_reference_id( 'edit' ),
-			'document_parent_id'         => $document->get_parent_id( 'edit' ),
-			'document_customer_id'       => $document->get_customer_id( 'edit' ),
-			'document_author_id'         => $document->get_author_id( 'edit' ),
-			'document_number'            => $document->get_number( 'edit' ),
-			'document_formatted_number'  => $document->get_formatted_number( 'edit' ),
-			'document_status'            => $this->get_status( $document ),
-			'document_type'              => $document->get_type(),
-			'document_reference_type'    => $document->get_reference_type( 'edit' ),
-			'document_journal_type'      => $document->get_journal_type( 'edit' ),
-			'document_relative_path'     => $document->get_relative_path( 'edit' ),
-			'document_date_created'      => gmdate( 'Y-m-d H:i:s', $document->get_date_created( 'edit' )->getOffsetTimestamp() ),
-			'document_date_created_gmt'  => gmdate( 'Y-m-d H:i:s', $document->get_date_created( 'edit' )->getTimestamp() ),
+			'document_country'          => $document->get_country( 'edit' ),
+			'document_reference_id'     => $document->get_reference_id( 'edit' ),
+			'document_parent_id'        => $document->get_parent_id( 'edit' ),
+			'document_customer_id'      => $document->get_customer_id( 'edit' ),
+			'document_author_id'        => $document->get_author_id( 'edit' ),
+			'document_number'           => $document->get_number( 'edit' ),
+			'document_formatted_number' => $document->get_formatted_number( 'edit' ),
+			'document_status'           => $this->get_status( $document ),
+			'document_type'             => $document->get_type(),
+			'document_reference_type'   => $document->get_reference_type( 'edit' ),
+			'document_journal_type'     => $document->get_journal_type( 'edit' ),
+			'document_relative_path'    => $document->get_relative_path( 'edit' ),
+			'document_date_created'     => gmdate( 'Y-m-d H:i:s', $document->get_date_created( 'edit' )->getOffsetTimestamp() ),
+			'document_date_created_gmt' => gmdate( 'Y-m-d H:i:s', $document->get_date_created( 'edit' )->getTimestamp() ),
 		);
 
 		if ( $document->get_date_sent() ) {
@@ -189,7 +190,7 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 			$status = apply_filters( "storeabill_{$document->get_type()}_get_default_status", $default_status );
 		}
 
-		if ( ! in_array( $status, array_keys( sab_get_document_statuses( $document->get_type() ) ) ) ) {
+		if ( ! in_array( $status, array_keys( sab_get_document_statuses( $document->get_type() ) ), true ) ) {
 			$status = 'draft';
 		}
 
@@ -211,7 +212,7 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		$document_data = array();
 
 		// Make sure country in core props is updated as soon as the address changes
-		if ( in_array( 'address', $changed_props ) ) {
+		if ( in_array( 'address', $changed_props, true ) ) {
 			$changed_props[] = 'country';
 		}
 
@@ -224,18 +225,18 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 				continue;
 			}
 
-			switch( $prop ) {
-				case "status":
+			switch ( $prop ) {
+				case 'status':
 					$document_data[ 'document_' . $prop ] = $this->get_status( $document );
 					break;
-				case "date_created":
-				case "date_modified":
-				case "date_sent":
-				case "date_custom":
-				case "date_custom_extra":
+				case 'date_created':
+				case 'date_modified':
+				case 'date_sent':
+				case 'date_custom':
+				case 'date_custom_extra':
 					if ( is_callable( array( $document, 'get_' . $prop ) ) ) {
-						$document_data[ 'document_' . $prop ]          = $document->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $document->{'get_' . $prop}( 'edit' )->getOffsetTimestamp() ) : '0000-00-00 00:00:00';
-						$document_data[ 'document_' . $prop . '_gmt' ] = $document->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $document->{'get_' . $prop}( 'edit' )->getTimestamp() ) : '0000-00-00 00:00:00';
+						$document_data[ 'document_' . $prop ]          = $document->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $document->{'get_' . $prop}( 'edit' )->getOffsetTimestamp() ) : null;
+						$document_data[ 'document_' . $prop . '_gmt' ] = $document->{'get_' . $prop}( 'edit' ) ? gmdate( 'Y-m-d H:i:s', $document->{'get_' . $prop}( 'edit' )->getTimestamp() ) : null;
 					}
 					break;
 				default:
@@ -361,11 +362,11 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 					'formatted_number'  => $data->document_formatted_number,
 					'journal_type'      => $data->document_journal_type,
 					'relative_path'     => $data->document_relative_path,
-					'date_created'      => '0000-00-00 00:00:00' !== $data->document_date_created_gmt ? wc_string_to_timestamp( $data->document_date_created_gmt ) : null,
-					'date_modified'     => '0000-00-00 00:00:00' !== $data->document_date_modified_gmt ? wc_string_to_timestamp( $data->document_date_modified_gmt ) : null,
-					'date_sent'         => '0000-00-00 00:00:00' !== $data->document_date_sent_gmt ? wc_string_to_timestamp( $data->document_date_sent_gmt ) : null,
-					'date_custom'       => '0000-00-00 00:00:00' !== $data->document_date_custom_gmt ? wc_string_to_timestamp( $data->document_date_custom_gmt ) : null,
-					'date_custom_extra' => '0000-00-00 00:00:00' !== $data->document_date_custom_extra_gmt ? wc_string_to_timestamp( $data->document_date_custom_extra_gmt ) : null,
+					'date_created'      => sab_is_valid_mysql_datetime( $data->document_date_created_gmt ) ? wc_string_to_timestamp( $data->document_date_created_gmt ) : null,
+					'date_modified'     => sab_is_valid_mysql_datetime( $data->document_date_modified_gmt ) ? wc_string_to_timestamp( $data->document_date_modified_gmt ) : null,
+					'date_sent'         => sab_is_valid_mysql_datetime( $data->document_date_sent_gmt ) ? wc_string_to_timestamp( $data->document_date_sent_gmt ) : null,
+					'date_custom'       => sab_is_valid_mysql_datetime( $data->document_date_custom_gmt ) ? wc_string_to_timestamp( $data->document_date_custom_gmt ) : null,
+					'date_custom_extra' => sab_is_valid_mysql_datetime( $data->document_date_custom_extra_gmt ) ? wc_string_to_timestamp( $data->document_date_custom_extra_gmt ) : null,
 					'status'            => $data->document_status,
 				)
 			);
@@ -412,13 +413,14 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 					$success = true;
 
 					do_action( "storeabill_{$document->get_type()}_numbered", $document->get_id(), $document );
+				} else {
+					Package::extended_log( sprintf( 'Error during number transition for document #%1$s: %2$s', $document->get_id(), $number->get_error_message() ) );
 				}
 			}
 
 			if ( ! $success ) {
 				/**
-				 * Make sure that the document does not transitions to closed
-				 * in case the numbering failed.
+				 * Make sure that the document does not transition to closed in case the numbering fails.
 				 */
 				$document->set_status( 'draft' );
 			}
@@ -478,7 +480,7 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 	protected function read_document_data( &$document ) {
 		$props = array();
 
-		foreach( $this->internal_meta_keys as $meta_key ) {
+		foreach ( $this->internal_meta_keys as $meta_key ) {
 			$props[ substr( $meta_key, 1 ) ] = $this->format_read_value( $meta_key, $document );
 		}
 
@@ -518,10 +520,10 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		$updated_props     = array();
 		$meta_key_to_props = array();
 
-		foreach( $this->internal_meta_keys as $meta_key ) {
+		foreach ( $this->internal_meta_keys as $meta_key ) {
 			$prop_name = substr( $meta_key, 1 );
 
-			if ( in_array( $prop_name, $this->core_props ) ) {
+			if ( in_array( $prop_name, $this->core_props, true ) ) {
 				continue;
 			}
 
@@ -539,7 +541,6 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		$props_to_update = $this->filter_props_to_update( $props_to_update, $document );
 
 		foreach ( $props_to_update as $meta_key => $prop ) {
-
 			if ( ! is_callable( array( $document, "get_$prop" ) ) ) {
 				continue;
 			}
@@ -714,9 +715,12 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 		}
 
 		if ( ! empty( $notices ) ) {
-			$notices = array_map( function( $item ) {
-				return sab_get_document_notice( $item->document_notice_id, $item->document_notice_type );
-			}, $notices );
+			$notices = array_map(
+				function( $item ) {
+					return sab_get_document_notice( $item->document_notice_id, $item->document_notice_type );
+				},
+				$notices
+			);
 		} else {
 			$notices = array();
 		}
@@ -729,7 +733,7 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 	 *
 	 * @param \Vendidero\StoreaBill\Document\Document $document Document object.
 	 */
-	public function delete_notices( $document) {
+	public function delete_notices( $document ) {
 		global $wpdb;
 
 		$wpdb->query( $wpdb->prepare( "DELETE FROM noticemeta USING {$wpdb->storeabill_document_noticemeta} noticemeta INNER JOIN {$wpdb->storeabill_document_notices} notices WHERE noticemeta.storeabill_document_notice_id = notices.document_notice_id and notices.document_id = %d", $document->get_id() ) );
@@ -911,6 +915,6 @@ abstract class Document extends WC_Data_Store_WP implements WC_Object_Data_Store
 			$query = $wpdb->prepare( "SELECT COUNT( * ) FROM {$wpdb->storeabill_documents} WHERE document_status = %s and document_type = %s", $status, $type );
 		}
 
-		return absint( $wpdb->get_var( $query ) );
+		return absint( $wpdb->get_var( $query ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 }

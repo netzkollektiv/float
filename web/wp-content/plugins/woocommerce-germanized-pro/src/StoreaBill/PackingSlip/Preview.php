@@ -14,9 +14,12 @@ class Preview extends PackingSlip implements Previewable {
 	public function __construct( $args = array() ) {
 		parent::__construct( 0 );
 
-		$args = wp_parse_args( $args, array(
-			'is_editor_preview' => false,
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'is_editor_preview' => false,
+			)
+		);
 
 		$this->set_is_editor_preview( $args['is_editor_preview'] );
 		$this->set_date_created( sab_string_to_datetime( 'now' ) );
@@ -25,14 +28,16 @@ class Preview extends PackingSlip implements Previewable {
 		$this->set_shipment_id( 0 );
 		$this->set_order_id( 4031 );
 
-		$this->set_address( array(
-			'first_name' => _x( 'John', 'example-address', 'woocommerce-germanized-pro' ),
-			'last_name'  => _x( 'Doe', 'example-address', 'woocommerce-germanized-pro' ),
-			'address_1'  => _x( 'Doe Street 12', 'example-address', 'woocommerce-germanized-pro' ),
-			'postcode'   => _x( '12345', 'example-address', 'woocommerce-germanized-pro' ),
-			'city'       => _x( 'Berlin', 'example-address', 'woocommerce-germanized-pro' ),
-			'country'    => _x( 'DE', 'example-address', 'woocommerce-germanized-pro' ),
-		) );
+		$this->set_address(
+			array(
+				'first_name' => _x( 'John', 'example-address', 'woocommerce-germanized-pro' ),
+				'last_name'  => _x( 'Doe', 'example-address', 'woocommerce-germanized-pro' ),
+				'address_1'  => _x( 'Doe Street 12', 'example-address', 'woocommerce-germanized-pro' ),
+				'postcode'   => _x( '12345', 'example-address', 'woocommerce-germanized-pro' ),
+				'city'       => _x( 'Berlin', 'example-address', 'woocommerce-germanized-pro' ),
+				'country'    => _x( 'DE', 'example-address', 'woocommerce-germanized-pro' ),
+			)
+		);
 
 		$attributes = array(
 			array(
@@ -73,22 +78,28 @@ class Preview extends PackingSlip implements Previewable {
 			$item->set_total( 10 );
 		}
 
-		foreach( $this->get_items() as $item ) {
+		foreach ( $this->get_items() as $item ) {
 			foreach ( $this->get_item_preview_meta( $item->get_item_type(), $item ) as $meta ) {
-				$meta = wp_parse_args( $meta, array(
-					'type'    => '',
-					'preview' => '',
-				) );
+				$meta = wp_parse_args(
+					$meta,
+					array(
+						'type'    => '',
+						'preview' => '',
+					)
+				);
 
 				$item->update_meta_data( $meta['type'], $meta['preview'] );
 			}
 		}
 
 		foreach ( $this->get_preview_meta() as $meta ) {
-			$meta = wp_parse_args( $meta, array(
-				'type'    => '',
-				'preview' => '',
-			) );
+			$meta = wp_parse_args(
+				$meta,
+				array(
+					'type'    => '',
+					'preview' => '',
+				)
+			);
 
 			$this->update_meta_data( $meta['type'], $meta['preview'] );
 		}
@@ -111,7 +122,7 @@ class Preview extends PackingSlip implements Previewable {
 	}
 
 	public function is_editor_preview() {
-		return $this->editor_preview === true;
+		return true === $this->editor_preview;
 	}
 
 	public function set_is_editor_preview( $is_editor ) {
@@ -123,7 +134,7 @@ class Preview extends PackingSlip implements Previewable {
 	}
 
 	public function save() {
-		foreach( $this->get_items() as $item ) {
+		foreach ( $this->get_items() as $item ) {
 			$item->apply_changes();
 		}
 

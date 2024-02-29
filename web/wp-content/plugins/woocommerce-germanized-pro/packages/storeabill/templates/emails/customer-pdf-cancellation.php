@@ -2,7 +2,7 @@
 /**
  * @var $document \Vendidero\StoreaBill\Document\Document
  *
- * @version 1.0.0
+ * @version 1.1.0
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -12,12 +12,12 @@ defined( 'ABSPATH' ) || exit;
 do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <?php /* translators: %s: Customer first name */ ?>
-	<p><?php echo apply_filters( 'storeabill_email_document_customer_salutation', sprintf( _x( 'Hi %s,', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_salutation( $document ) ), $document, $email ); ?></p><?php // phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped ?>
+	<p><?php echo apply_filters( 'storeabill_email_document_customer_salutation', sprintf( esc_html_x( 'Hi %s,', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_html( sab_get_document_salutation( $document ) ) ), $document, $email ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
 
 	<p>
 		<?php
-		/* translators: %s: Site title */
-		printf( _x( '%s has been attached to this email. Find details below for your reference:', 'storeabill-core', 'woocommerce-germanized-pro' ), $document->get_title() ); // phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped
+		/* translators: %s: Document title */
+		printf( esc_html_x( '%s has been attached to this email. Find details below for your reference:', 'storeabill-core', 'woocommerce-germanized-pro' ), wp_kses_post( $document->get_title() ) );
 		?>
 	</p>
 <?php

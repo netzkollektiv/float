@@ -3,15 +3,16 @@
 namespace Vendidero\StoreaBill\Document;
 
 use Vendidero\StoreaBill\Admin\Admin;
+use Vendidero\StoreaBill\Utilities\CacheHelper;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Shipment Order
  *
- * @class 		WC_GZD_Shipment_Order
- * @version		1.0.0
- * @author 		Vendidero
+ * @class       WC_GZD_Shipment_Order
+ * @version     1.0.0
+ * @author      Vendidero
  */
 class BulkMerge extends BulkActionHandler {
 
@@ -32,6 +33,8 @@ class BulkMerge extends BulkActionHandler {
 
 		if ( ! empty( $current ) ) {
 			foreach ( $current as $document_id ) {
+				CacheHelper::prevent_caching();
+
 				if ( $document = sab_get_document( $document_id ) ) {
 					if ( $document->has_file() ) {
 						$this->add_file( $document->get_relative_path() );
@@ -50,14 +53,17 @@ class BulkMerge extends BulkActionHandler {
 
 		if ( ( $path = $this->get_file() ) && file_exists( $path ) ) {
 
-			$download_url = add_query_arg( array(
-				'action'      => 'sab-download-bulk-documents',
-				'object_type' => $this->get_object_type(),
-				'bulk_action' => $this->get_action_name(),
-				'force'       => 'no'
-			), wp_nonce_url( admin_url(), 'sab-download-bulk-documents' ) );
+			$download_url = add_query_arg(
+				array(
+					'action'      => 'sab-download-bulk-documents',
+					'object_type' => $this->get_object_type(),
+					'bulk_action' => $this->get_action_name(),
+					'force'       => 'no',
+				),
+				wp_nonce_url( admin_url(), 'sab-download-bulk-documents' )
+			);
 
-			$download_button = '<a class="button button-primary bulk-download-button" style="margin-left: 1em;" href="' . $download_url . '" target="_blank">' . _x( 'Download', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</a>';
+			$download_button = '<a class="button button-primary bulk-download-button" style="margin-left: 1em;" href="' . esc_url( $download_url ) . '" target="_blank">' . _x( 'Download', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</a>';
 		}
 
 		return $download_button;
@@ -109,7 +115,7 @@ class BulkMerge extends BulkActionHandler {
 		try {
 			$merger = sab_get_pdf_merger();
 
-			foreach( $this->get_files() as $file_to_merge ) {
+			foreach ( $this->get_files() as $file_to_merge ) {
 				$file_to_merge = sab_get_absolute_file_path( $file_to_merge );
 
 				if ( file_exists( $file_to_merge ) ) {
@@ -122,7 +128,8 @@ class BulkMerge extends BulkActionHandler {
 			if ( $new_file_path = sab_upload_document( $this->get_filename(), $new_file_stream, true, true ) ) {
 				update_user_meta( get_current_user_id(), $this->get_file_option_name(), $new_file_path );
 			}
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 	}
 
 	protected function add_file( $path ) {

@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\StoreaBill\WooCommerce;
+
 use Vendidero\StoreaBill\Interfaces\SyncableReferenceItem;
 use Vendidero\StoreaBill\Invoice\ProductItem;
 use WC_Order_Item;
@@ -22,20 +23,23 @@ class OrderItemProduct extends OrderItemTaxable {
 
 		$document_item->set_product_id( $this->get_product_id() );
 
-		$is_virtual = false;
-		$is_service = false;
-		$sku        = '';
+		$is_virtual             = false;
+		$is_service             = false;
+		$is_photovoltaic_system = false;
+		$sku                    = '';
 
 		if ( $product = $document_item->get_product() ) {
-			$is_virtual = $product->is_virtual();
-			$is_service = $product->is_service();
-			$sku        = $product->get_sku();
+			$is_virtual             = $product->is_virtual();
+			$is_service             = $product->is_service();
+			$is_photovoltaic_system = $product->is_photovoltaic_system();
+			$sku                    = $product->get_sku();
 		}
 
 		$props = array(
-			'is_virtual' => $is_virtual,
-			'is_service' => $is_service,
-			'sku'        => $sku,
+			'is_virtual'             => $is_virtual,
+			'is_service'             => $is_service,
+			'is_photovoltaic_system' => $is_photovoltaic_system,
+			'sku'                    => $sku,
 		);
 
 		$props = apply_filters( "{$this->get_hook_prefix()}sync_props", $props, $this, $args );
@@ -54,7 +58,7 @@ class OrderItemProduct extends OrderItemTaxable {
 		$existing_slugs         = array();
 		$custom_attribute_slugs = array();
 
-		foreach( $attributes as $attribute ) {
+		foreach ( $attributes as $attribute ) {
 			$existing_slugs[] = $attribute->get_key();
 		}
 

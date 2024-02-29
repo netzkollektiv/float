@@ -85,8 +85,8 @@ class Email extends DocumentAdmin {
 
 	protected function get_additional_form_fields() {
 		return array(
-			'recipient'       => array(
-				'title'       => _x( 'Recipient(s)', 'woocommerce-germanized-pro' ),
+			'recipient' => array(
+				'title'       => __( 'Recipient(s)', 'woocommerce-germanized-pro' ),
 				'type'        => 'text',
 				/* translators: %s: WP admin email */
 				'description' => sprintf( __( 'Enter recipients (comma separated) for this email. Defaults to %s.', 'woocommerce-germanized-pro' ), '<code>' . esc_attr( get_option( 'admin_email' ) ) . '</code>' ),

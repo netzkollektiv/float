@@ -19,13 +19,64 @@ window.germanized = window.germanized || {};
                 .on( 'checkout_error', this.onUpdatedCheckout )
                 .on( 'country_to_state_changing', this.onCountryToStateChange );
 
+            if ( this.params.refresh_vat_id_status ) {
+                $( document.body ).on( 'updated_checkout', this.refreshRequiredStatus );
+            }
+
             this.showOrHideVatIdField();
         },
 
-        onCountryToStateChange: function() {
+        refreshRequiredStatus: function() {
             var self = germanized.pro_checkout;
 
-            self.onChangePostcode();
+            var params = {
+                'security': self.params.vat_id_status_refresh_nonce,
+                'action'  : 'woocommerce_gzdp_vat_id_status_refresh'
+            };
+
+            var $vatField = $( '.woocommerce-checkout' ).find( '#billing_vat_id:visible, #shipping_vat_id:visible' ).parents( '.form-row' );
+
+            if ( $vatField.length ) {
+                $.ajax({
+                    type: "POST",
+                    url:  self.params.ajax_url,
+                    data: params,
+                    success: function( data ) {
+                        $vatField = $( '.woocommerce-checkout' ).find( '#billing_vat_id:visible, #shipping_vat_id:visible' ).parents( '.form-row' );
+
+                        if ( $vatField.length > 0 ) {
+                            if ( data.vat_id_required ) {
+                                if ( $vatField.find( 'label .optional' ).length ) {
+                                    $vatField.find( 'label .optional' ).hide();
+                                }
+
+                                if ( ! $vatField.find( 'label .required' ).length ) {
+                                    $added = $vatField.find( 'label' ).append( '&nbsp;<abbr class="required" title="' + self.params.i18n_vat_id_label_required + '">*</abbr>' );
+                                }
+
+                                $vatField.find( 'label .required' ).show();
+                            } else {
+                                if ( $vatField.find( 'label .required' ).length ) {
+                                    $vatField.find( 'label .required' ).hide();
+                                }
+
+                                if ( ! $vatField.find( 'label .optional' ).length ) {
+                                    $vatField.find( 'label' ).append( '&nbsp;<span class="optional">(' + self.params.i18n_vat_id_label_optional + ')</span>' );
+                                }
+
+                                $vatField.find( 'label .optional' ).show();
+                            }
+                        }
+                    },
+                    dataType: 'json'
+                });
+            }
+        },
+
+        onCountryToStateChange: function( event, country, wrapper ) {
+            var self = germanized.pro_checkout;
+
+            self.showOrHideVatIdField( wrapper );
         },
 
         getVatExemptPostcodesByCountry: function( country ) {
@@ -42,87 +93,24 @@ window.germanized = window.germanized || {};
         },
 
         onChangePostcode: function() {
-            var thisform       = $( '.woocommerce-checkout' ),
-                self           = germanized.pro_checkout,
-                $fields        = thisform.find( '#billing_vat_id, #shipping_vat_id' ),
-                $postcodefield = thisform.find( '#billing_postcode, #shipping_postcode' ),
-                $countryfield  = thisform.find( '#billing_country, #shipping_country' );
+            var self     = germanized.pro_checkout,
+                $wrapper = $( this ).parents( '.woocommerce-billing-fields, .woocommerce-shipping-fields' );
 
-            $countryfield.each( function( key, value ) {
-                var $field = thisform.find( value );
-
-                if ( $field.length > 0 ) {
-                    var fieldPrefix = 'billing';
-
-                    if ( $field.attr( 'id' ).includes( 'shipping' ) ) {
-                        fieldPrefix = 'shipping';
-                    }
-
-                    var $vatId    = thisform.find( '#' + fieldPrefix + '_vat_id' );
-                    var $postcode = thisform.find( '#' + fieldPrefix + '_postcode' );
-
-                    if ( $vatId.length > 0 && $postcode.length > 0 ) {
-                        var $parent         = $vatId.closest( '.form-row' ),
-                            country         = $field.val(),
-                            exemptPostcodes = self.getVatExemptPostcodesByCountry( country ),
-                            postcode        = $postcode.val().toString().toUpperCase().trim();
-
-                        postcode = postcode.replace( /[\\s\\-]/, '' );
-
-                        if ( 'GB' === country ) {
-                            var postcodeStart = postcode.substring( 0, 2 );
-
-                            if ( 'BT' === postcodeStart ) {
-                                $parent.show();
-                            } else {
-                                $parent.hide();
-                            }
-                        } else if ( exemptPostcodes.length > 0 ) {
-                            var isExempt = false;
-
-                            $.each( exemptPostcodes, function( i, exemptPostcode ) {
-                                if ( exemptPostcode.includes( '*' ) ) {
-                                    exemptPostcode    = exemptPostcode.replace( '*', '' );
-                                    var postcodeStart = postcode.substring( 0, exemptPostcode.length );
-
-                                    if ( exemptPostcode === postcodeStart ) {
-                                        isExempt = true;
-                                        return false;
-                                    }
-                                } else if ( exemptPostcode === postcode ) {
-                                    isExempt = true;
-                                    return false;
-                                }
-                            } );
-
-                            if ( isExempt ) {
-                                $parent.hide();
-                            } else {
-                                $( document.body ).off( 'country_to_state_changing', self.onCountryToStateChange );
-
-                                var $wrapper = 'shipping' === fieldPrefix ? $('.woocommerce-shipping-fields') : $('.woocommerce-billing-fields');
-
-                                $( document.body ).trigger( 'country_to_state_changing', [ country, $wrapper ] );
-
-                                $( document.body ).on( 'country_to_state_changing', self.onCountryToStateChange );
-                            }
-                        }
-                    }
-                }
-            });
+            self.showOrHideVatIdField( $wrapper );
         },
 
-        onUpdatedCheckout: function( e, data ) {
-            var $field      = $( '.woocommerce-checkout' ).find( '#billing_vat_id:visible, #shipping_vat_id:visible' ),
-                $errors     = $( '.woocommerce-checkout' ).find( '.woocommerce-error' ),
+        onUpdatedCheckout: function() {
+            var $wrapper    = $( '.woocommerce-billing-fields, .woocommerce-shipping-fields' ),
+                $field      = $wrapper.find( '#billing_vat_id:visible, #shipping_vat_id:visible' ),
+                $errors     = $( '.woocommerce-error' ),
                 hasVatError = false;
 
             if ( $errors.length > 0 ) {
-                $vatIdError     = $errors.find( '[data-id$="vat_id"]' );
+                var $vatIdError = $errors.find( '[data-id$="vat_id"]' );
 
                 if ( $vatIdError.length > 0 ) {
                     var fieldId = $vatIdError.data( 'id' );
-                    $field      = $( '.woocommerce-checkout' ).find( '#' + fieldId );
+                    $field      = $wrapper.find( '#' + fieldId );
                     hasVatError = true;
                 }
             }
@@ -180,8 +168,6 @@ window.germanized = window.germanized || {};
         },
 
         onChangeCompany: function() {
-            var self = germanized.pro_checkout;
-
             $( 'body' ).trigger( 'update_checkout' );
         },
 
@@ -191,32 +177,127 @@ window.germanized = window.germanized || {};
             self.showOrHideVatIdField();
         },
 
-        showOrHideVatIdField: function() {
-            var self             = germanized.pro_checkout,
-                $checkbox        = $( '#ship-to-different-address-checkbox' ),
-                $billing_vat_id  = $( '#billing_vat_id' );
+        showOrHideVatIdField: function( $wrapper ) {
+            $wrapper = ( typeof $wrapper === 'undefined' ) ? $( '.woocommerce-billing-fields' ) : $wrapper;
 
-            if ( $checkbox.is( ':checked' ) ) {
-                // Backup real value
-                $billing_vat_id.data( 'field-value', $billing_vat_id.val() );
+            var self                = germanized.pro_checkout,
+                $countryField       = $wrapper.find( '#billing_country, #shipping_country' ),
+                $checkbox           = $( '#ship-to-different-address-checkbox' ),
+                $billingWrapper     = $wrapper.hasClass( 'woocommerce-billing-fields' ) ? $wrapper : $( '.woocommerce-billing-fields' ),
+                $billing_vat_id     = $billingWrapper.find( '#billing_vat_id' ),
+                relevantAddressType = 'billing';
 
-                // Use placeholder value to make sure billing vat id wont throw empty errors
-                $billing_vat_id.val( '' ).parents( '.form-row' ).hide();
+            /**
+             * Let's check which field is relevant first (billing or shipping VAT ID).
+             */
+            if ( self.params.supports_shipping_vat_id ) {
+                if ( $checkbox.is( ':checked' ) ) {
+                    // Backup real value
+                    $billing_vat_id.data( 'field-value', $billing_vat_id.val() );
 
-                self.onChangeVatID();
-            } else {
-                if ( ! $billing_vat_id.val() || $billing_vat_id.val() === '1' ) {
-                    var oldVal = $billing_vat_id.data( 'field-value' );
+                    // Use placeholder value to make sure billing vat id won't throw empty errors
+                    $billing_vat_id.val( '' ).parents( '.form-row' ).hide();
 
-                    $billing_vat_id.val( oldVal );
+                    relevantAddressType = 'shipping';
+
+                    self.onChangeVatID();
+                } else {
+                    if ( ! $billing_vat_id.val() || $billing_vat_id.val() === '1' ) {
+                        var oldVal = $billing_vat_id.data( 'field-value' );
+
+                        $billing_vat_id.val( oldVal );
+                    }
+
+                    $billing_vat_id.parents( '.form-row' ).hide();
+
+                    $( document.body ).off( 'country_to_state_changing', self.onCountryToStateChange );
+                    $( document.body ).trigger( 'country_to_state_changing', [ $billingWrapper.find( '#billing_country' ).val(), $wrapper ] );
+                    $( document.body ).on( 'country_to_state_changing', self.onCountryToStateChange );
+                }
+            }
+
+            /**
+             * Check whether a postcode exemption exists or not.
+             */
+            if ( $countryField.length > 0 ) {
+                var fieldPrefix = 'billing',
+                    checkPostcodeExempt = true;
+
+                if ( $countryField.attr( 'id' ).includes( 'shipping' ) ) {
+                    fieldPrefix = 'shipping';
                 }
 
-                $billing_vat_id.parents( '.form-row' ).hide();
+                /**
+                 * In case a (differing) shipping address is set, do not show/hide
+                 * billing VAT ID field based on postcode exemptions.
+                 */
+                if ( relevantAddressType !== fieldPrefix ) {
+                    checkPostcodeExempt = false;
+                }
 
-                var $wrapper    = $('.woocommerce-billing-fields');
-                var country     = $( '#billing_country' ).val();
+                if ( checkPostcodeExempt ) {
+                    var $vatId    = $wrapper.find( '#' + fieldPrefix + '_vat_id' );
+                    var $postcode = $wrapper.find( '#' + fieldPrefix + '_postcode' );
 
-                $( document.body ).trigger( 'country_to_state_changing', [ country, $wrapper ] );
+                    if ( $vatId.length > 0 && $postcode.length > 0 ) {
+                        var $parent         = $vatId.closest( '.form-row' ),
+                            country         = $countryField.val(),
+                            exemptPostcodes = self.getVatExemptPostcodesByCountry( country ),
+                            postcode        = $postcode.val().toString().toUpperCase().trim();
+
+                        postcode = postcode.replace( /[\\s\\-]/, '' );
+
+                        /**
+                         * Allow passing a parameter to explicitly allow VAT Ids for UK
+                         */
+                        if ( 'GB' === country && 'no' === self.params.great_britain_supports_vat_id ) {
+                            var postcodeStart = postcode.substring( 0, 2 );
+
+                            if ( 'BT' === postcodeStart ) {
+                                $parent.show();
+                            } else {
+                                $parent.hide();
+                            }
+                        } else if ( exemptPostcodes.length > 0 ) {
+                            var isExempt = false;
+
+                            $.each( exemptPostcodes, function( i, exemptPostcode ) {
+                                if ( exemptPostcode.includes( '*' ) ) {
+                                    exemptPostcode    = exemptPostcode.replace( '*', '' );
+                                    var postcodeStart = postcode.substring( 0, exemptPostcode.length );
+
+                                    if ( exemptPostcode === postcodeStart ) {
+                                        isExempt = true;
+                                        return false;
+                                    }
+                                } else if ( exemptPostcode === postcode ) {
+                                    isExempt = true;
+                                    return false;
+                                }
+                            } );
+
+                            if ( isExempt ) {
+                                $parent.hide();
+                            } else {
+                                $( document.body ).off( 'country_to_state_changing', self.onCountryToStateChange );
+                                $( document.body ).trigger( 'country_to_state_changing', [ country, $wrapper ] );
+                                $( document.body ).on( 'country_to_state_changing', self.onCountryToStateChange );
+                            }
+                        }
+                    }
+                }
+            }
+
+            /**
+             * In case the vat id status is being refresh via AJAX make sure
+             * to hide the optional/required indicators to prevent flashing.
+             */
+            if ( self.params.refresh_vat_id_status ) {
+                var $vatIdField = $wrapper.find( '#billing_vat_id:visible, #shipping_vat_id:visible' ).parents( '.form-row' );
+
+                if ( $vatIdField.length ) {
+                    $vatIdField.find( 'label .required, label .optional' ).hide();
+                }
             }
         }
     };
@@ -224,5 +305,4 @@ window.germanized = window.germanized || {};
     $( document ).ready( function() {
         germanized.pro_checkout.init();
     });
-
 })( jQuery, window.germanized );

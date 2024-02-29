@@ -2,7 +2,7 @@
 // See: https://github.com/picturepan2/spectre
 @import '../../node_modules/spectre.css/src/variables';
 
-$primary-color: #0085ba;
+$primary-color: #8865ff;
 $gray-color: #b5b5b5;
 $border-color: #b5b5b5;
 $light-color: #f1f1f1;
@@ -18,19 +18,25 @@ body {
 }
 
 .wc-gzdp-setup {
-  .logo-wrapper {
-    display: flex;
-    justify-content: center;
+  .wc-gzdp-setup-header {
+    margin-top: 5em;
+    width: 100%;
 
-    .logo {
-      display: inline-block;
-      text-indent: -9999px;
-      width: 298px;
-      vertical-align: top;
-      margin-top: 3rem;
-      height: 89px;
-      background: url(../images/germanized.svg) no-repeat;
-      background-size: 298px auto;
+    .logo-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1.5em;
+
+      .logo {
+        display: inline-block;
+        text-indent: -9999px;
+        width: 7em;
+        vertical-align: top;
+        height: 7em;
+        background: url(../images/icon-germanized.svg) no-repeat;
+        background-size: contain;
+      }
     }
   }
 }
@@ -53,9 +59,13 @@ body {
   zoom: 1;
   margin-top: 1.5em;
 
+  a {
+    color: $primary-color;
+  }
+
   .error {
     margin: 0;
-    margin-bottom: 1em;
+    margin-bottom: 1.5em;
     box-shadow: none;
   }
 

@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -20,6 +20,10 @@ class ImageTypeGuesser
 	{
 		if (in_array(substr($data, 6, 4), ['JFIF', 'Exif'], true) || strpos($data, chr(255) . chr(216)) === 0) { // 0xFF 0xD8	// mpDF 5.7.2
 			return 'jpeg';
+		}
+
+		if (in_array(substr($data, 0, 4), ['RIFF'], true)) {
+			return 'webp';
 		}
 
 		if (in_array(substr($data, 0, 6), ['GIF87a', 'GIF89a'], true)) {

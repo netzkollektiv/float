@@ -1,7 +1,8 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 class WC_GZDP_Contract_Helper {
 
@@ -15,8 +16,7 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	public function __construct() {
-
-	    add_filter( 'woocommerce_email_classes', array( $this, 'add_emails' ), 30 );
+		add_filter( 'woocommerce_email_classes', array( $this, 'add_emails' ), 30 );
 		add_filter( 'woocommerce_create_order', array( $this, 'set_default_order_status' ) );
 
 		// Add order confirmation meta
@@ -33,16 +33,16 @@ class WC_GZDP_Contract_Helper {
 		add_action( 'woocommerce_checkout_order_processed', array( $this, 'remove_gateway_redirect' ) );
 
 		// This removes Germanized Information (e.g. delivery time etc. as well)
-        add_action( 'woocommerce_email_order_details', array( $this, 'remove_email_payment_instructions' ), 0, 4 );
+		add_action( 'woocommerce_email_order_details', array( $this, 'remove_email_payment_instructions' ), 0, 4 );
 
-        add_filter( 'woocommerce_gzd_order_confirmation_email_default_text', array( $this, 'order_confirmation_default_text' ), 10, 1 );
+		add_filter( 'woocommerce_gzd_order_confirmation_email_default_text', array( $this, 'order_confirmation_default_text' ), 10, 1 );
 
-        add_filter( 'woocommerce_gzd_show_order_pay_now_button', array( $this, 'show_or_hide_pay_now_button' ), 10, 2 );
+		add_filter( 'woocommerce_gzd_show_order_pay_now_button', array( $this, 'show_or_hide_pay_now_button' ), 10, 2 );
 
-        add_filter( 'woocommerce_gzd_is_order_confirmation_email', array( $this, 'register_order_confirmation' ), 10, 2 );
+		add_filter( 'woocommerce_gzd_is_order_confirmation_email', array( $this, 'register_order_confirmation' ), 10, 2 );
 
-        $this->prevent_transactional_emails();
-        $this->admin_hooks();
+		$this->prevent_transactional_emails();
+		$this->admin_hooks();
 	}
 
 	public function register_order_confirmation( $is_confirmation, $email_id ) {
@@ -54,25 +54,23 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	private function prevent_transactional_emails() {
-        // Prevent transactional emails for confirmed orders
-        $statuses = array( 'processing', 'pending', 'on-hold' );
+		// Prevent transactional emails for confirmed orders
+		$statuses = array( 'processing', 'pending', 'on-hold' );
 
-        foreach( $statuses as $status ) {
-            add_action( 'woocommerce_order_status_' . $status, array( $this, 'unhook_transactional_emails_confirmed' ), 5, 1 );
-        }
+		foreach ( $statuses as $status ) {
+			add_action( 'woocommerce_order_status_' . $status, array( $this, 'unhook_transactional_emails_confirmed' ), 5, 1 );
+		}
 
-        // Prevent transactional emails for unconfirmed orders
-        $statuses = array( 'confirmed' );
+		// Prevent transactional emails for unconfirmed orders
+		$statuses = array( 'confirmed' );
 
-        foreach( $statuses as $status ) {
-            add_action( 'woocommerce_order_status_' . $status, array( $this, 'unhook_transactional_emails_unconfirmed' ), 10, 1 );
-        }
-    }
+		foreach ( $statuses as $status ) {
+			add_action( 'woocommerce_order_status_' . $status, array( $this, 'unhook_transactional_emails_unconfirmed' ), 10, 1 );
+		}
+	}
 
 	public function remove_email_payment_instructions( $order, $sent_to_admin, $plain_text, $email ) {
-
-		if ( $email->id === 'customer_processing_order' && wc_gzdp_order_needs_confirmation( $order->get_id() ) ) {
-			
+		if ( 'customer_processing_order' === $email->id && wc_gzdp_order_needs_confirmation( $order->get_id() ) ) {
 			$gateways = WC()->payment_gateways()->payment_gateways();
 			$gateway  = $order->get_payment_method();
 
@@ -127,39 +125,44 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	public function save_confirmation_text_option() {
-
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
 
-		if ( isset( $_POST['woocommerce_gzd_email_order_confirmation_text'] ) ) {
-			update_option( 'woocommerce_gzd_email_order_confirmation_text', wp_unslash( wp_kses_post( trim( $_POST['woocommerce_gzd_email_order_confirmation_text'] ) ) ) );
-		} elseif( isset( $_POST['woocommerce_gzdp_contract_helper_email_order_processing_text'] ) ) {
-			update_option( 'woocommerce_gzdp_contract_helper_email_order_processing_text', wp_unslash( wp_kses_post( trim( $_POST['woocommerce_gzdp_contract_helper_email_order_processing_text'] ) ) ) );
+		if ( isset( $_POST['woocommerce_gzd_email_order_confirmation_text'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			update_option( 'woocommerce_gzd_email_order_confirmation_text', wp_filter_post_kses( trim( wp_unslash( $_POST['woocommerce_gzd_email_order_confirmation_text'] ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		} elseif ( isset( $_POST['woocommerce_gzdp_contract_helper_email_order_processing_text'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			update_option( 'woocommerce_gzdp_contract_helper_email_order_processing_text', wp_filter_post_kses( trim( wp_unslash( $_POST['woocommerce_gzdp_contract_helper_email_order_processing_text'] ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 	}
 
 	public function confirmation_text_options( $object ) {
 		if ( 'customer_order_confirmation' === $object->id ) {
-			$args = apply_filters( 'woocommerce_gzd_admin_email_order_confirmation_text_option', array(
-				'id'                => 'woocommerce_gzd_email_order_confirmation_text',
-				'label'             => __( 'Confirmation text', 'woocommerce-germanized-pro' ),
-				'placeholder'       => __( 'Your order has been processed. We are glad to confirm the order to you. Your order details are shown below for your reference.', 'woocommerce-germanized-pro' ),
-				'desc' 		        => __( 'This text will be inserted within the order confirmation email. Use {order_number}, {site_title} or {order_date} as placeholder.', 'woocommerce-germanized-pro' ),
-				'value'             => get_option( 'woocommerce_gzd_email_order_confirmation_text' ),
-				'custom_attributes' => array(),
-			) );
+			$args = apply_filters(
+				'woocommerce_gzd_admin_email_order_confirmation_text_option',
+				array(
+					'id'                => 'woocommerce_gzd_email_order_confirmation_text',
+					'label'             => __( 'Confirmation text', 'woocommerce-germanized-pro' ),
+					'placeholder'       => __( 'Your order has been processed. We are glad to confirm the order to you. Your order details are shown below for your reference.', 'woocommerce-germanized-pro' ),
+					'desc'              => __( 'This text will be inserted within the order confirmation email. Use {order_number}, {site_title} or {order_date} as placeholder.', 'woocommerce-germanized-pro' ),
+					'value'             => get_option( 'woocommerce_gzd_email_order_confirmation_text' ),
+					'custom_attributes' => array(),
+				)
+			);
 
 			include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/views/html-admin-email-text-option.php';
-		} elseif( 'customer_processing_order' === $object->id ) {
-			$args = apply_filters( 'woocommerce_gzd_admin_email_order_confirmation_text_option', array(
-				'id'                => 'woocommerce_gzdp_contract_helper_email_order_processing_text',
-				'label'             => __( 'Processing text', 'woocommerce-germanized-pro' ),
-				'placeholder'       => __( 'Thank you for your order. We will now manually check your order and send you another email as soon as your order has been confirmed.', 'woocommerce-germanized-pro' ),
-				'desc' 		        => __( 'This text will be inserted within the order processing email. Use {order_number}, {site_title} or {order_date} as placeholder.', 'woocommerce-germanized-pro' ),
-				'value'             => get_option( 'woocommerce_gzdp_contract_helper_email_order_processing_text' ),
-				'custom_attributes' => array(),
-			) );
+		} elseif ( 'customer_processing_order' === $object->id ) {
+			$args = apply_filters(
+				'woocommerce_gzd_admin_email_order_confirmation_text_option',
+				array(
+					'id'                => 'woocommerce_gzdp_contract_helper_email_order_processing_text',
+					'label'             => __( 'Processing text', 'woocommerce-germanized-pro' ),
+					'placeholder'       => __( 'Thank you for your order. We will now manually check your order and send you another email as soon as your order has been confirmed.', 'woocommerce-germanized-pro' ),
+					'desc'              => __( 'This text will be inserted within the order processing email. Use {order_number}, {site_title} or {order_date} as placeholder.', 'woocommerce-germanized-pro' ),
+					'value'             => get_option( 'woocommerce_gzdp_contract_helper_email_order_processing_text' ),
+					'custom_attributes' => array(),
+				)
+			);
 
 			include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/views/html-admin-email-text-option.php';
 		}
@@ -170,8 +173,8 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	public function get_processing_order_email_text( $order_id ) {
-		$order        = is_numeric( $order_id ) ? wc_get_order( $order_id ) : $order_id;
-		$plain        = apply_filters( 'woocommerce_gzdp_order_processing_email_plain_text', get_option( 'woocommerce_gzdp_contract_helper_email_order_processing_text' ) );
+		$order = is_numeric( $order_id ) ? wc_get_order( $order_id ) : $order_id;
+		$plain = apply_filters( 'woocommerce_gzdp_order_processing_email_plain_text', get_option( 'woocommerce_gzdp_contract_helper_email_order_processing_text' ) );
 
 		if ( ! $plain || '' === $plain ) {
 			$plain = __( 'Thank you for your order. We will now manually check your order and send you another email as soon as your order has been confirmed.', 'woocommerce-germanized-pro' );
@@ -183,7 +186,7 @@ class WC_GZDP_Contract_Helper {
 			'{order_date}'   => wc_gzd_get_order_date( $order ),
 		);
 
-		foreach( $placeholders as $placeholder => $value ) {
+		foreach ( $placeholders as $placeholder => $value ) {
 			$plain = str_replace( $placeholder, $value, $plain );
 		}
 
@@ -227,7 +230,7 @@ class WC_GZDP_Contract_Helper {
 
 	public function set_order_confirmation_needed_3( $order, $data_store ) {
 		// Makes sure we do only target new admin orders
-		if ( is_admin() && isset( $_POST ) && ! empty( $_POST ) && isset( $_POST['post_status'] ) && 'draft' === $_POST['post_status'] ) {
+		if ( is_admin() && isset( $_POST ) && ! empty( $_POST ) && isset( $_POST['post_status'] ) && 'draft' === $_POST['post_status'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$order->update_meta_data( '_order_needs_confirmation', true );
 		}
 	}
@@ -238,90 +241,88 @@ class WC_GZDP_Contract_Helper {
 		$order->save();
 	}
 
-    public function unhook_transactional_emails_confirmed( $order_id ) {
-        if ( ! wc_gzdp_order_needs_confirmation( $order_id ) ) {
+	public function unhook_transactional_emails_confirmed( $order_id ) {
+		if ( ! wc_gzdp_order_needs_confirmation( $order_id ) ) {
+			$hooks = array(
+				'woocommerce_order_status_pending_to_processing',
+				'woocommerce_order_status_pending_to_completed',
+				'woocommerce_order_status_pending_to_on-hold',
+				'woocommerce_order_status_on-hold_to_processing',
+				'woocommerce_order_status_on-hold_to_completed',
+			);
 
-            $hooks = array(
-                'woocommerce_order_status_pending_to_processing',
-                'woocommerce_order_status_pending_to_completed',
-                'woocommerce_order_status_pending_to_on-hold',
-                'woocommerce_order_status_on-hold_to_processing',
-	            'woocommerce_order_status_on-hold_to_completed',
-            );
+			$emails = array(
+				'WC_Email_Customer_Processing_Order',
+				'WC_GZDP_Email_Customer_Order_Confirmation',
+			);
 
-            $emails = array(
-            	'WC_Email_Customer_Processing_Order',
-	            'WC_GZDP_Email_Customer_Order_Confirmation',
-            );
+			// Make sure emails are initted and events are hooked
+			WC()->mailer()->emails;
 
-            // Make sure emails are initted and events are hooked
-            WC()->mailer()->emails;
+			foreach ( $emails as $email ) {
+				foreach ( $hooks as $hook ) {
+					wc_gzdp_remove_class_action( $hook . '_notification', $email, 'trigger', 10 );
+				}
+			}
 
-            foreach( $emails as $email ) {
-            	foreach( $hooks as $hook ) {
-		            wc_gzdp_remove_class_action( $hook . '_notification', $email, 'trigger', 10 );
-	            }
-            }
+			// If emails are being deferred
+			foreach ( $hooks as $hook ) {
+				remove_action( $hook, array( 'WC_Emails', 'queue_transactional_email' ) );
+			}
+		}
+	}
 
-            // If emails are being deferred
-            foreach( $hooks as $hook ) {
-                remove_action( $hook, array( 'WC_Emails', 'queue_transactional_email' ) );
-            }
+	public function unhook_transactional_emails_unconfirmed( $order_id ) {
+		if ( wc_gzdp_order_needs_confirmation( $order_id ) ) {
 
-        }
-    }
+			$hooks = array(
+				'woocommerce_order_status_completed',
+			);
 
-    public function unhook_transactional_emails_unconfirmed( $order_id ) {
-        if ( wc_gzdp_order_needs_confirmation( $order_id ) ) {
+			$emails = array(
+				'WC_Email_Customer_Processing_Order',
+				'WC_GZDP_Email_Customer_Order_Confirmation',
+			);
 
-        	$hooks = array(
-                'woocommerce_order_status_completed',
-            );
+			// Make sure emails are initted and events are hooked
+			WC()->mailer()->emails;
 
-	        $emails = array(
-		        'WC_Email_Customer_Processing_Order',
-		        'WC_GZDP_Email_Customer_Order_Confirmation',
-	        );
+			foreach ( $emails as $email ) {
+				foreach ( $hooks as $hook ) {
+					wc_gzdp_remove_class_action( $hook . '_notification', $email, 'trigger', 10 );
+				}
+			}
 
-	        // Make sure emails are initted and events are hooked
-	        WC()->mailer()->emails;
+			// If emails are being deferred
+			foreach ( $hooks as $hook ) {
+				remove_action( $hook, array( 'WC_Emails', 'queue_transactional_email' ) );
+			}
+		}
+	}
 
-	        foreach( $emails as $email ) {
-		        foreach( $hooks as $hook ) {
-			        wc_gzdp_remove_class_action( $hook . '_notification', $email, 'trigger', 10 );
-		        }
-	        }
+	public function unhook_transactional_emails( $order_id ) {
 
-	        // If emails are being deferred
-            foreach( $hooks as $hook ) {
-                remove_action( $hook, array( 'WC_Emails', 'queue_transactional_email' ) );
-            }
-        }
-    }
+		$hooks = array(
+			'woocommerce_order_status_pending_to_processing',
+			'woocommerce_order_status_pending_to_completed',
+			'woocommerce_order_status_pending_to_cancelled',
+			'woocommerce_order_status_pending_to_failed',
+			'woocommerce_order_status_pending_to_on-hold',
+			'woocommerce_order_status_failed_to_processing',
+			'woocommerce_order_status_failed_to_completed',
+			'woocommerce_order_status_failed_to_on-hold',
+			'woocommerce_order_status_on-hold_to_processing',
+			'woocommerce_order_status_on-hold_to_cancelled',
+			'woocommerce_order_status_on-hold_to_failed',
+			'woocommerce_order_status_completed',
+		);
 
-    public function unhook_transactional_emails( $order_id ) {
-
-	    $hooks = array(
-            'woocommerce_order_status_pending_to_processing',
-            'woocommerce_order_status_pending_to_completed',
-            'woocommerce_order_status_pending_to_cancelled',
-            'woocommerce_order_status_pending_to_failed',
-            'woocommerce_order_status_pending_to_on-hold',
-            'woocommerce_order_status_failed_to_processing',
-            'woocommerce_order_status_failed_to_completed',
-            'woocommerce_order_status_failed_to_on-hold',
-            'woocommerce_order_status_on-hold_to_processing',
-            'woocommerce_order_status_on-hold_to_cancelled',
-            'woocommerce_order_status_on-hold_to_failed',
-            'woocommerce_order_status_completed'
-        );
-
-        foreach( $hooks as $hook ) {
-            remove_action( $hook, array( 'WC_Emails', 'queue_transactional_email' ) );
-            remove_action( $hook, array( 'WC_Emails', 'send_transactional_email' ) );
-            remove_all_actions( $hook . '_notification' );
-        }
-    }
+		foreach ( $hooks as $hook ) {
+			remove_action( $hook, array( 'WC_Emails', 'queue_transactional_email' ) );
+			remove_action( $hook, array( 'WC_Emails', 'send_transactional_email' ) );
+			remove_all_actions( $hook . '_notification' );
+		}
+	}
 
 	public function confirm_order( $order_id ) {
 		$order = wc_get_order( $order_id );
@@ -339,35 +340,35 @@ class WC_GZDP_Contract_Helper {
 		$mailer = WC()->mailer();
 		$mails  = $mailer->get_emails();
 
-        // Do now allow sending transactional emails
-        $statuses = wc_get_order_statuses();
+		// Do now allow sending transactional emails
+		$statuses = wc_get_order_statuses();
 
-        foreach( $statuses as $status => $title ) {
-            $status = str_replace( 'wc-', '', $status );
-            add_action( 'woocommerce_order_status_' . $status, array( $this, 'unhook_transactional_emails' ), 10, 1 );
-        }
+		foreach ( $statuses as $status => $title ) {
+			$status = str_replace( 'wc-', '', $status );
+			add_action( 'woocommerce_order_status_' . $status, array( $this, 'unhook_transactional_emails' ), 10, 1 );
+		}
 
-        // Make sure that stock is not being increased
-        remove_action( 'woocommerce_order_status_cancelled', 'wc_maybe_increase_stock_levels' );
-        remove_action( 'woocommerce_order_status_pending', 'wc_maybe_increase_stock_levels' );
+		// Make sure that stock is not being increased
+		remove_action( 'woocommerce_order_status_cancelled', 'wc_maybe_increase_stock_levels' );
+		remove_action( 'woocommerce_order_status_pending', 'wc_maybe_increase_stock_levels' );
 
-        // Update to default
+		// Update to default
 		$order->update_status( $default_status );
 
 		// Fallback to ensure no fatal errors while trying to empty cart
-		if ( WC()->cart == null ) {
+		if ( null === WC()->cart ) {
 			WC()->cart = new WC_Cart();
 		}
 
 		$gateways = WC()->payment_gateways()->payment_gateways();
-		$result = false;
+		$result   = false;
 
 		add_filter( 'woocommerce_can_reduce_order_stock', array( $this, 'maybe_disallow_stock_reducing' ), 10, 2 );
 		add_action( 'woocommerce_before_order_object_save', array( $this, 'maybe_prevent_failed_order_status' ), 10, 1 );
 
 		if ( $order->needs_payment() && isset( $gateways[ $order->get_payment_method() ] ) ) {
 			$gateway = $gateways[ $order->get_payment_method() ];
-			
+
 			if ( is_object( $gateway ) ) {
 				// Stop output
 				ob_start();
@@ -393,13 +394,11 @@ class WC_GZDP_Contract_Helper {
 			do_action( 'woocommerce_gzdp_order_confirmed', $order, $order_id );
 		}
 
-		if ( function_exists(  'wc_maybe_increase_stock_levels' ) ) {
-            // Readd stock hooks
-            add_action( 'woocommerce_order_status_cancelled', 'wc_maybe_increase_stock_levels' );
-            add_action( 'woocommerce_order_status_pending', 'wc_maybe_increase_stock_levels' );
-        }
-
-		return;
+		if ( function_exists( 'wc_maybe_increase_stock_levels' ) ) {
+			// Readd stock hooks
+			add_action( 'woocommerce_order_status_cancelled', 'wc_maybe_increase_stock_levels' );
+			add_action( 'woocommerce_order_status_pending', 'wc_maybe_increase_stock_levels' );
+		}
 	}
 
 	/**
@@ -447,8 +446,7 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	public function add_payment_link( $template_name, $template_path, $located, $args ) {
-
-		if ( $template_name != 'checkout/thankyou.php' ) {
+		if ( 'checkout/thankyou.php' !== $template_name ) {
 			return;
 		}
 
@@ -470,7 +468,7 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	public function hide_payment_info( $template_name, $template_path, $located, $args ) {
-		if ( $template_name != 'checkout/thankyou.php' ) {
+		if ( 'checkout/thankyou.php' !== $template_name ) {
 			return;
 		}
 
@@ -490,7 +488,7 @@ class WC_GZDP_Contract_Helper {
 
 		if ( $hide_info ) {
 
-			foreach( WC()->payment_gateways()->payment_gateways() as $key => $method ) {
+			foreach ( WC()->payment_gateways()->payment_gateways() as $key => $method ) {
 				remove_all_actions( 'woocommerce_thankyou_' . $key );
 			}
 
@@ -514,6 +512,12 @@ class WC_GZDP_Contract_Helper {
 			return $emails;
 		}
 
+		// Remove default triggers for the old instance initialised in WC_GZD_Email_Customer_Processing_Order
+		remove_action( 'woocommerce_order_status_cancelled_to_processing_notification', array( $emails['WC_Email_Customer_Processing_Order'], 'trigger' ), 10 );
+		remove_action( 'woocommerce_order_status_failed_to_processing_notification', array( $emails['WC_Email_Customer_Processing_Order'], 'trigger' ), 10 );
+		remove_action( 'woocommerce_order_status_on-hold_to_processing_notification', array( $emails['WC_Email_Customer_Processing_Order'], 'trigger' ), 10 );
+		remove_action( 'woocommerce_order_status_pending_to_processing_notification', array( $emails['WC_Email_Customer_Processing_Order'], 'trigger' ), 10 );
+
 		// Swap emails to disable automatic order confirmation
 		$emails['WC_GZDP_Email_Customer_Order_Confirmation'] = include WC_germanized_pro()->plugin_path() . '/includes/emails/class-wc-gzdp-email-customer-order-confirmation.php';
 		$emails['WC_Email_Customer_Processing_Order']        = include WC_germanized_pro()->plugin_path() . '/includes/emails/class-wc-gzdp-email-customer-processing-order.php';
@@ -522,16 +526,16 @@ class WC_GZDP_Contract_Helper {
 	}
 
 	public function get_confirmation_url( $order_id, $args = array() ) {
-		return wp_nonce_url( add_query_arg( $args, admin_url( 'admin-ajax.php?action=woocommerce_gzdp_confirm_order&order_id=' . $order_id ) ), 'woocommerce-gzdp-confirm-order' );
+		return esc_url_raw( wp_nonce_url( add_query_arg( $args, admin_url( 'admin-ajax.php?action=woocommerce_gzdp_confirm_order&order_id=' . $order_id ) ), 'woocommerce-gzdp-confirm-order' ) );
 	}
 
 	public function admin_order_actions( $actions, $the_order ) {
 		if ( wc_gzdp_order_needs_confirmation( $the_order ) ) {
-			$actions = array();
+			$actions             = array();
 			$actions['complete'] = array(
-				'url'       => $this->get_confirmation_url( $the_order->get_id() ),
-				'name'      => __( 'Confirm Order', 'woocommerce-germanized-pro' ),
-				'action'    => "complete"
+				'url'    => $this->get_confirmation_url( $the_order->get_id() ),
+				'name'   => __( 'Confirm Order', 'woocommerce-germanized-pro' ),
+				'action' => 'complete',
 			);
 		}
 		return $actions;
@@ -541,19 +545,19 @@ class WC_GZDP_Contract_Helper {
 
 		global $post, $woocommerce, $the_order;
 
-        if ( empty( $the_order ) || $the_order->get_id() != $post->ID ) {
-            $the_order = wc_get_order( $post->ID );
-        }
-		
+		if ( empty( $the_order ) || (int) $the_order->get_id() !== (int) $post->ID ) {
+			$the_order = wc_get_order( $post->ID );
+		}
+
 		if ( ! wc_gzdp_order_needs_confirmation( $the_order ) || ( $the_order && $the_order->has_status( 'cancelled' ) ) ) {
 			return;
 		}
 
-        switch ( $column ) {
-            case 'order_number':
-                echo '<small class="wc-gzdp-unconfirmed">' . __( 'Unconfirmed', 'woocommerce-germanized-pro' ) . '</small>';
-                break;
-        }
+		switch ( $column ) {
+			case 'order_number':
+				echo '<small class="wc-gzdp-unconfirmed">' . esc_html__( 'Unconfirmed', 'woocommerce-germanized-pro' ) . '</small>';
+				break;
+		}
 	}
 
 	public function admin_order_confirm_button( $order ) {
@@ -561,13 +565,13 @@ class WC_GZDP_Contract_Helper {
 			return;
 		}
 
-		echo '<p class="wc-gzdp-submit-wrapper"><a href="' . $this->get_confirmation_url( $order->get_id() ) .'" id="wc-gzdp-confirm-order-button" class="button button-primary">' . __( 'Confirm Order', 'woocommerce-germanized-pro' ) . '</a></p>';
+		echo '<p class="wc-gzdp-submit-wrapper"><a href="' . esc_url( $this->get_confirmation_url( $order->get_id() ) ) . '" id="wc-gzdp-confirm-order-button" class="button button-primary">' . esc_html__( 'Confirm Order', 'woocommerce-germanized-pro' ) . '</a></p>';
 	}
 
 	public function admin_resend_order_emails( $emails ) {
 		global $theorder;
 		if ( isset( $theorder ) && wc_gzdp_order_needs_confirmation( $theorder->get_id() ) ) {
-			return array( 
+			return array(
 				'customer_processing_order',
 			);
 		} else {

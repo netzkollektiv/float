@@ -12,11 +12,11 @@ class DownloadManager {
 	 * Hook in methods.
 	 */
 	public static function init() {
-		if ( isset( $_GET['sab-document'], $_GET['_wpnonce'] ) ) { // WPCS: input var ok, CSRF ok.
+		if ( isset( $_GET['sab-document'], $_GET['_wpnonce'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			add_action( 'init', array( __CLASS__, 'download_document' ) );
 		}
 
-		if ( isset( $_GET['action'], $_GET['object_type'], $_GET['bulk_action'], $_GET['_wpnonce'] ) && 'sab-download-bulk-documents' === $_GET['action'] ) { // WPCS: input var ok, CSRF ok.
+		if ( isset( $_GET['action'], $_GET['object_type'], $_GET['bulk_action'], $_GET['_wpnonce'] ) && 'sab-download-bulk-documents' === $_GET['action'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			add_action( 'admin_init', array( __CLASS__, 'download_bulk_documents' ) );
 		}
 
@@ -27,14 +27,14 @@ class DownloadManager {
 	}
 
 	public static function download_bulk_documents() {
-		$object_type = sab_clean( $_GET['object_type'] ); // phpcs:ignore WordPress.VIP.SuperGlobalInputUsage.AccessDetected, WordPress.VIP.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotValidated
-		$bulk_action = sab_clean( $_GET['bulk_action'] );
+		$object_type = sab_clean( wp_unslash( $_GET['object_type'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotValidated
+		$bulk_action = sab_clean( wp_unslash( $_GET['bulk_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotValidated
 
 		if ( empty( $object_type ) ) {
 			self::download_error( _x( 'Invalid object type.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
 
-		if ( ! wp_verify_nonce( $_GET['_wpnonce'], 'sab-download-bulk-documents' ) ) {
+		if ( ! wp_verify_nonce( wp_unslash( $_GET['_wpnonce'] ), 'sab-download-bulk-documents' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			self::download_error( _x( 'Invalid download url.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
 
@@ -50,7 +50,7 @@ class DownloadManager {
 			self::download_error( _x( 'You are not allowed to view that file.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
 
-		$download_method = isset( $_GET['force'] ) && sab_string_to_bool( $_GET['force'] ) ? 'force' : 'inline';
+		$download_method = isset( $_GET['force'] ) && sab_string_to_bool( sab_clean( wp_unslash( $_GET['force'] ) ) ) ? 'force' : 'inline';
 		$file            = $bulk_handler->get_file();
 
 		if ( ! $file || ! file_exists( $file ) ) {
@@ -68,18 +68,18 @@ class DownloadManager {
 	 * Check if we need to download a file and check validity.
 	 */
 	public static function download_document() {
-		$document_id = absint( $_GET['sab-document'] ); // phpcs:ignore WordPress.VIP.SuperGlobalInputUsage.AccessDetected, WordPress.VIP.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotValidated
+		$document_id = absint( $_GET['sab-document'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated
 
 		if ( empty( $document_id ) ) {
 			self::download_error( _x( 'Invalid document.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
 
-		if ( ! wp_verify_nonce( $_GET['_wpnonce'], 'sab-download-document' ) ) {
+		if ( ! wp_verify_nonce( wp_unslash( $_GET['_wpnonce'] ), 'sab-download-document' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			self::download_error( _x( 'Invalid document download url.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
 
 		$document        = sab_get_document( $document_id );
-		$download_method = isset( $_GET['force'] ) && sab_string_to_bool( $_GET['force'] ) ? 'force' : 'inline';
+		$download_method = isset( $_GET['force'] ) && sab_string_to_bool( sab_clean( wp_unslash( $_GET['force'] ) ) ) ? 'force' : 'inline';
 
 		if ( ! $document ) {
 			self::download_error( _x( 'Invalid document.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
@@ -148,9 +148,10 @@ class DownloadManager {
 			str_replace( 'https:', 'http:', site_url( '/', 'http' ) ) => ABSPATH,
 		);
 
-		$file_path        = str_replace( array_keys( $replacements ), array_values( $replacements ), $file_path );
+		$count            = 0;
+		$file_path        = str_replace( array_keys( $replacements ), array_values( $replacements ), $file_path, $count );
 		$parsed_file_path = wp_parse_url( $file_path );
-		$remote_file      = true;
+		$remote_file      = null === $count || 0 === $count; // Remote file only if there were no replacements.
 
 		// Paths that begin with '//' are always remote URLs.
 		if ( '//' === substr( $file_path, 0, 2 ) ) {
@@ -367,9 +368,9 @@ class DownloadManager {
 		self::clean_buffers();
 		wc_nocache_headers();
 
-		$content_type  = self::get_download_content_type( $file_path );
+		$content_type = self::get_download_content_type( $file_path );
 
-		if ( 'inline' === $download_type && in_array( $content_type, array( 'application/pdf' ) ) ) {
+		if ( 'inline' === $download_type && in_array( $content_type, array( 'application/pdf' ), true ) ) {
 			$download_type = 'inline';
 		} else {
 			$download_type = 'attachment';
@@ -381,7 +382,7 @@ class DownloadManager {
 		header( 'Content-Disposition: ' . $download_type . '; filename="' . $filename . '";' );
 		header( 'Content-Transfer-Encoding: binary' );
 
-		$file_size = @filesize( $file_path ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+		$file_size = @filesize( $file_path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( ! $file_size ) {
 			return;
 		}
@@ -412,10 +413,10 @@ class DownloadManager {
 	private static function check_server_config() {
 		wc_set_time_limit( 0 );
 		if ( function_exists( 'apache_setenv' ) ) {
-			@apache_setenv( 'no-gzip', '1' ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_apache_setenv
+			@apache_setenv( 'no-gzip', '1' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_apache_setenv
 		}
-		@ini_set( 'zlib.output_compression', 'Off' ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_ini_set
-		@session_write_close(); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged, WordPress.VIP.SessionFunctionsUsage.session_session_write_close
+		@ini_set( 'zlib.output_compression', 'Off' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.Risky
+		@session_write_close(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 	}
 
 	/**
@@ -427,10 +428,10 @@ class DownloadManager {
 		if ( ob_get_level() ) {
 			$levels = ob_get_level();
 			for ( $i = 0; $i < $levels; $i++ ) {
-				@ob_end_clean(); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+				@ob_end_clean(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			}
 		} else {
-			@ob_end_clean(); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+			@ob_end_clean(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 	}
 
@@ -448,14 +449,14 @@ class DownloadManager {
 		if ( ! defined( 'WC_CHUNK_SIZE' ) ) {
 			define( 'WC_CHUNK_SIZE', 1024 * 1024 );
 		}
-		$handle = @fopen( $file, 'r' ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_fopen
+		$handle = @fopen( $file, 'r' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_fopen
 
 		if ( false === $handle ) {
 			return false;
 		}
 
 		if ( ! $length ) {
-			$length = @filesize( $file ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+			$length = @filesize( $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 
 		$read_length = (int) WC_CHUNK_SIZE;
@@ -463,17 +464,17 @@ class DownloadManager {
 		if ( $length ) {
 			$end = $start + $length - 1;
 
-			@fseek( $handle, $start ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
-			$p = @ftell( $handle ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+			@fseek( $handle, $start ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			$p = @ftell( $handle ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 
-			while ( ! @feof( $handle ) && $p <= $end ) { // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+			while ( ! @feof( $handle ) && $p <= $end ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 				// Don't run past the end of file.
 				if ( $p + $read_length > $end ) {
 					$read_length = $end - $p + 1;
 				}
 
-				echo @fread( $handle, $read_length ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged, WordPress.XSS.EscapeOutput.OutputNotEscaped, WordPress.WP.AlternativeFunctions.file_system_read_fread
-				$p = @ftell( $handle ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+				echo @fread( $handle, $read_length ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.XSS.EscapeOutput.OutputNotEscaped, WordPress.WP.AlternativeFunctions.file_system_read_fread
+				$p = @ftell( $handle ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 
 				if ( ob_get_length() ) {
 					ob_flush();
@@ -490,7 +491,7 @@ class DownloadManager {
 			}
 		}
 
-		return @fclose( $handle ); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_fclose
+		return @fclose( $handle ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_fclose
 	}
 
 	/**
@@ -520,6 +521,6 @@ class DownloadManager {
 		if ( ! strstr( $message, '<a ' ) ) {
 			$message .= ' <a href="' . esc_url( wc_get_page_permalink( 'shop' ) ) . '" class="wc-forward">' . esc_html_x( 'Go to shop', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</a>';
 		}
-		wp_die( $message, $title, array( 'response' => $status ) ); // WPCS: XSS ok.
+		wp_die( wp_kses_post( $message ), esc_html( $title ), array( 'response' => esc_html( $status ) ) );
 	}
 }

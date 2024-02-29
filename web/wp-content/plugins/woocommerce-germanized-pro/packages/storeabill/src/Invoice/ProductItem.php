@@ -18,18 +18,19 @@ class ProductItem extends TaxableItem implements Discountable {
 
 	protected $extra_data = array(
 		'product_id'                => 0,
-		'line_total'                => 0,
-		'total_tax'                 => 0,
+		'line_total'                => 0.0,
+		'total_tax'                 => 0.0,
 		'prices_include_tax'        => false,
 		'round_tax_at_subtotal'     => null,
-		'line_subtotal'             => 0,
-		'subtotal_tax'              => 0,
-		'price'                     => 0,
-		'price_subtotal'            => 0,
+		'line_subtotal'             => 0.0,
+		'subtotal_tax'              => 0.0,
+		'price'                     => 0.0,
+		'price_subtotal'            => 0.0,
 		'sku'                       => '',
 		'is_taxable'                => true,
 		'is_virtual'                => false,
 		'is_service'                => false,
+		'is_photovoltaic_system'    => false,
 		'has_differential_taxation' => false,
 	);
 
@@ -112,6 +113,18 @@ class ProductItem extends TaxableItem implements Discountable {
 		$this->set_prop( 'is_service', sab_string_to_bool( $is_service ) );
 	}
 
+	public function get_is_photovoltaic_system( $context = 'view' ) {
+		return $this->get_prop( 'is_photovoltaic_system', $context );
+	}
+
+	public function is_photovoltaic_system() {
+		return true === $this->get_is_photovoltaic_system();
+	}
+
+	public function set_is_photovoltaic_system( $is_photovoltaic_system ) {
+		$this->set_prop( 'is_photovoltaic_system', sab_string_to_bool( $is_photovoltaic_system ) );
+	}
+
 	public function get_has_differential_taxation( $context = 'view' ) {
 		return $this->get_prop( 'has_differential_taxation', $context );
 	}
@@ -151,7 +164,6 @@ class ProductItem extends TaxableItem implements Discountable {
 	 * @param Product $product Product instance.
 	 */
 	public function set_product( $product ) {
-
 		if ( ! is_a( $product, '\Vendidero\StoreaBill\Interfaces\Product' ) ) {
 			return;
 		}
@@ -161,16 +173,27 @@ class ProductItem extends TaxableItem implements Discountable {
 		$this->set_sku( $product->get_sku() );
 		$this->set_is_virtual( $product->is_virtual() );
 		$this->set_is_service( $product->is_service() );
+		$this->set_is_photovoltaic_system( $product->is_photovoltaic_system() );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_discount_total( $context = '' ) {
 		$discount_total = $this->get_total_before_discount() - $this->get_total();
 
-		return sab_format_decimal( $discount_total );
+		return $discount_total;
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_discount_net( $context = '' ) {
-		$discount_total = sab_format_decimal( $this->get_discount_total( $context ) - $this->get_discount_tax( $context ) );
+		$discount_total = $this->get_discount_total( $context ) - $this->get_discount_tax( $context );
 		$net_total      = $this->get_subtotal_net();
 
 		/**
@@ -183,18 +206,32 @@ class ProductItem extends TaxableItem implements Discountable {
 		return $discount_total;
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_discount_tax( $context = '' ) {
-		return sab_format_decimal( $this->get_subtotal_tax() - $this->get_total_tax() );
+		return $this->get_subtotal_tax() - $this->get_total_tax();
 	}
 
+	/**
+	 * @return float
+	 */
 	public function get_discount_percentage() {
 		return sab_calculate_discount_percentage( $this->get_total_before_discount(), $this->get_discount_total() );
 	}
 
+	/**
+	 * @return bool
+	 */
 	public function has_discount() {
 		return $this->get_discount_total() > 0;
 	}
 
+	/**
+	 * @return float
+	 */
 	public function get_total_before_discount() {
 		return $this->get_subtotal();
 	}

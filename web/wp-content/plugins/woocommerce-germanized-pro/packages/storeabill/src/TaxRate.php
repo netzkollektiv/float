@@ -32,13 +32,13 @@ class TaxRate {
 
 		if ( is_array( $args ) ) {
 			$class_args = $args;
-		} elseif( is_a( $args, 'Vendidero\StoreaBill\TaxRate' ) ) {
+		} elseif ( is_a( $args, 'Vendidero\StoreaBill\TaxRate' ) ) {
 			$class_args = $args->get_data();
 		}
 
 		$class_args = wp_parse_args( $class_args, $this->defaults );
 
-		foreach( $class_args as $key => $data ) {
+		foreach ( $class_args as $key => $data ) {
 			$setter = "set_{$key}";
 
 			if ( is_callable( array( $this, $setter ) ) ) {
@@ -163,7 +163,7 @@ class TaxRate {
 	}
 
 	public function get_data() {
-		$data = $this->data;
+		$data                              = $this->data;
 		$data['formatted_percentage']      = $this->get_formatted_percentage();
 		$data['formatted_percentage_html'] = $this->get_formatted_percentage_html();
 		$data['label']                     = $this->get_label();
@@ -172,11 +172,13 @@ class TaxRate {
 	}
 
 	public function get_merge_key() {
-		return Tax::get_tax_rate_merge_key( array(
-			'percent'     => $this->get_percent(),
-			'is_compound' => $this->get_is_compound(),
-			'is_oss'      => $this->get_is_oss(),
-		) );
+		return Tax::get_tax_rate_merge_key(
+			array(
+				'percent'     => $this->get_percent(),
+				'is_compound' => $this->get_is_compound(),
+				'is_oss'      => $this->get_is_oss(),
+			)
+		);
 	}
 
 	/**

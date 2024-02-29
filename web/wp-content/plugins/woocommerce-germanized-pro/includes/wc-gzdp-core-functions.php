@@ -1,9 +1,10 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
-include_once WC_GERMANIZED_PRO_ABSPATH . 'includes/wc-gzdp-order-functions.php';
+require_once WC_GERMANIZED_PRO_ABSPATH . 'includes/wc-gzdp-order-functions.php';
 
 function wc_gzdp_get_privacy_policy_text() {
 	$plain_text = apply_filters( 'woocommerce_germanized_pro_checkout_privacy_policy_text', get_option( 'woocommerce_gzdp_checkout_privacy_policy_text' ) );
@@ -58,7 +59,7 @@ function wc_gzdp_upload_file( $filename, $stream, $filename_exists = false, $rel
 		add_filter( 'wp_unique_filename', '_wc_gzdp_upload_file_keep_filename', 10, 1 );
 	}
 
-	$tmp = wp_upload_bits( $filename,null, $stream );
+	$tmp = wp_upload_bits( $filename, null, $stream );
 
 	if ( isset( $tmp['file'] ) ) {
 		$path = $tmp['file'];
@@ -103,7 +104,9 @@ function wc_gzdp_remove_class_filter( $tag, $class_name = '', $method_name = '',
 	global $wp_filter;
 
 	// Check that filter actually exists first
-	if ( ! isset( $wp_filter[ $tag ] ) ) return FALSE;
+	if ( ! isset( $wp_filter[ $tag ] ) ) {
+		return false;
+	}
 
 	/**
 	 * If filter config is an object, means we're using WordPress 4.7+ and the config is no longer
@@ -115,32 +118,40 @@ function wc_gzdp_remove_class_filter( $tag, $class_name = '', $method_name = '',
 	 */
 	if ( is_object( $wp_filter[ $tag ] ) && isset( $wp_filter[ $tag ]->callbacks ) ) {
 		// Create $fob object from filter tag, to use below
-		$fob = $wp_filter[ $tag ];
+		$fob       = $wp_filter[ $tag ];
 		$callbacks = &$wp_filter[ $tag ]->callbacks;
 	} else {
 		$callbacks = &$wp_filter[ $tag ];
 	}
 
 	// Exit if there aren't any callbacks for specified priority
-	if ( ! isset( $callbacks[ $priority ] ) || empty( $callbacks[ $priority ] ) ) return FALSE;
+	if ( ! isset( $callbacks[ $priority ] ) || empty( $callbacks[ $priority ] ) ) {
+		return false;
+	}
 
 	// Loop through each filter for the specified priority, looking for our class & method
-	foreach( (array) $callbacks[ $priority ] as $filter_id => $filter ) {
+	foreach ( (array) $callbacks[ $priority ] as $filter_id => $filter ) {
 
 		// Filter should always be an array - array( $this, 'method' ), if not goto next
-		if ( ! isset( $filter[ 'function' ] ) || ! is_array( $filter[ 'function' ] ) ) continue;
+		if ( ! isset( $filter['function'] ) || ! is_array( $filter['function'] ) ) {
+			continue;
+		}
 
 		// If first value in array is not an object, it can't be a class
-		if ( ! is_object( $filter[ 'function' ][ 0 ] ) ) continue;
+		if ( ! is_object( $filter['function'][0] ) ) {
+			continue;
+		}
 
 		// Method doesn't match the one we're looking for, goto next
-		if ( $filter[ 'function' ][ 1 ] !== $method_name ) continue;
+		if ( $filter['function'][1] !== $method_name ) {
+			continue;
+		}
 
 		// Method matched, now let's check the Class
-		if ( get_class( $filter[ 'function' ][ 0 ] ) === $class_name ) {
+		if ( get_class( $filter['function'][0] ) === $class_name ) {
 
 			// WordPress 4.7+ use core remove_filter() since we found the class object
-			if( isset( $fob ) ){
+			if ( isset( $fob ) ) {
 				// Handles removing filter, reseting callback priority keys mid-iteration, etc.
 				$fob->remove_filter( $tag, $filter['function'], $priority );
 
@@ -159,11 +170,11 @@ function wc_gzdp_remove_class_filter( $tag, $class_name = '', $method_name = '',
 				unset( $GLOBALS['merged_filters'][ $tag ] );
 			}
 
-			return TRUE;
+			return true;
 		}
 	}
 
-	return FALSE;
+	return false;
 }
 
 /**
@@ -203,4 +214,35 @@ function wc_gzdp_get_email_helper( $email ) {
 	}
 
 	return new WC_GZDP_Email_Helper( $email );
+}
+
+add_filter( 'storeabill_enabled_extended_log', 'wc_gzdp_is_extended_debug_mode_enabled', 5 );
+add_filter( 'woocommerce_gzd_dpd_enable_logging', 'wc_gzdp_is_extended_debug_mode_enabled', 5 );
+add_filter( 'woocommerce_gzdp_enable_logging', 'wc_gzdp_is_extended_debug_mode_enabled', 5 );
+
+function wc_gzdp_is_extended_debug_mode_enabled() {
+	return function_exists( 'wc_gzd_is_extended_debug_mode_enabled' ) ? wc_gzd_is_extended_debug_mode_enabled() : false;
+}
+
+function wc_gzdp_format_food_attribute_value( $decimal, $args = array() ) {
+	return function_exists( 'wc_gzd_format_food_attribute_value' ) ? wc_gzd_format_food_attribute_value( $decimal, $args ) : wc_format_localized_decimal( $decimal );
+}
+
+/**
+ * Given an element name, returns a class name.
+ *
+ * If the WP-related function is not defined, return empty string.
+ *
+ * @param string $element The name of the element.
+ *
+ * @return string
+ */
+function wc_gzdp_wp_theme_get_element_class_name( $element ) {
+	if ( function_exists( 'wc_gzd_wp_theme_get_element_class_name' ) ) {
+		return wc_gzd_wp_theme_get_element_class_name( $element );
+	} elseif ( function_exists( 'wp_theme_get_element_class_name' ) ) {
+		return wp_theme_get_element_class_name( $element );
+	}
+
+	return '';
 }

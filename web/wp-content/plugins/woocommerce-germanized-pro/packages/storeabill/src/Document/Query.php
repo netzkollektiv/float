@@ -29,6 +29,8 @@ abstract class Query extends WC_Object_Query {
 
 	protected $meta_query = null;
 
+	protected $search_meta_query = null;
+
 	protected $query_limit = '';
 
 	protected $query_orderby = '';
@@ -149,10 +151,10 @@ abstract class Query extends WC_Object_Query {
 
 			$this->request = "SELECT $found_rows $this->query_fields $this->query_from $this->query_where $this->query_orderby $this->query_limit";
 
-			if ( is_array( $qv['return'] ) || 'objects' == $qv['return'] ) {
-				$this->results = $wpdb->get_results( $this->request );
+			if ( is_array( $qv['return'] ) || 'objects' === $qv['return'] ) {
+				$this->results = $wpdb->get_results( $this->request ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			} else {
-				$this->results = $wpdb->get_col( $this->request );
+				$this->results = $wpdb->get_col( $this->request ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			}
 
 			$this->set_found_objects( $qv, $this->query_limit );
@@ -162,7 +164,7 @@ abstract class Query extends WC_Object_Query {
 			return;
 		}
 
-		if ( 'objects' == $qv['return'] ) {
+		if ( 'objects' === $qv['return'] ) {
 			foreach ( $this->results as $key => $document ) {
 				$this->results[ $key ] = sab_get_document( $document );
 			}
@@ -177,7 +179,7 @@ abstract class Query extends WC_Object_Query {
 		}
 
 		if ( $qv['paginate'] && ! empty( $limits ) ) {
-			$this->total_documents = $wpdb->get_var( apply_filters_ref_array( "storeabill_found_{$this->get_document_type()}_query", array( 'SELECT FOUND_ROWS()', &$this ) ) );
+			$this->total_documents = $wpdb->get_var( apply_filters_ref_array( "storeabill_found_{$this->get_document_type()}_query", array( 'SELECT FOUND_ROWS()', &$this ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		} else {
 			if ( is_array( $this->results ) ) {
 				$this->total_documents = count( $this->results );
@@ -245,7 +247,7 @@ abstract class Query extends WC_Object_Query {
 			if ( $countries && is_a( $countries, 'WC_Countries' ) ) {
 
 				// Reverse search by country name
-				if ( $key = array_search( $this->args['country'], $countries->get_countries() ) ) {
+				if ( $key = array_search( $this->args['country'], $countries->get_countries(), true ) ) {
 					$this->args['country'] = $key;
 				}
 			}
@@ -260,7 +262,7 @@ abstract class Query extends WC_Object_Query {
 		/**
 		 * Support all/any status parameter
 		 */
-		if ( in_array( 'all', $this->args['status'] ) || in_array( 'any', $this->args['status'] ) ) {
+		if ( in_array( 'all', $this->args['status'], true ) || in_array( 'any', $this->args['status'], true ) ) {
 			$this->args['status'] = array_keys( sab_get_document_statuses( $this->args['type'][0] ) );
 		}
 
@@ -276,7 +278,7 @@ abstract class Query extends WC_Object_Query {
 	}
 
 	public function maybe_prefix_column( $column ) {
-		if ( substr( $column, 0, 9 ) !== 'document_' ) {
+		if ( substr( $column, 0, 9 ) !== 'document_' && '_' !== substr( $column, 0, 1 ) ) {
 			$column = 'document_' . $column;
 		}
 
@@ -316,7 +318,7 @@ abstract class Query extends WC_Object_Query {
 
 			$this->query_fields = implode( ',', $this->query_fields );
 
-		} elseif ( 'objects' == $this->args['return'] ) {
+		} elseif ( 'objects' === $this->args['return'] ) {
 			$this->query_fields = "$wpdb->storeabill_documents.*";
 		} else {
 			$this->query_fields = "$wpdb->storeabill_documents.document_id";
@@ -337,41 +339,41 @@ abstract class Query extends WC_Object_Query {
 
 		// parent id
 		if ( isset( $this->args['parent_id'] ) ) {
-			$this->query_where .= $wpdb->prepare( " AND document_parent_id = %d", $this->args['parent_id'] );
+			$this->query_where .= $wpdb->prepare( ' AND document_parent_id = %d', $this->args['parent_id'] );
 		}
 
 		// customer id
 		if ( isset( $this->args['customer_id'] ) ) {
-			$this->query_where .= $wpdb->prepare( " AND document_customer_id = %d", $this->args['customer_id'] );
+			$this->query_where .= $wpdb->prepare( ' AND document_customer_id = %d', $this->args['customer_id'] );
 		}
 
 		// author id
 		if ( isset( $this->args['author_id'] ) ) {
-			$this->query_where .= $wpdb->prepare( " AND document_author_id = %d", $this->args['author_id'] );
+			$this->query_where .= $wpdb->prepare( ' AND document_author_id = %d', $this->args['author_id'] );
 		}
 
 		// number
 		if ( isset( $this->args['number'] ) ) {
-			$this->query_where .= $wpdb->prepare( " AND document_number IN ('%s')", $this->args['number'] );
+			$this->query_where .= $wpdb->prepare( " AND document_number IN ('%s')", $this->args['number'] ); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.QuotedSimplePlaceholder
 		}
 
 		// number
 		if ( isset( $this->args['formatted_number'] ) ) {
-			$this->query_where .= $wpdb->prepare( " AND document_formatted_number IN ('%s')", $this->args['formatted_number'] );
+			$this->query_where .= $wpdb->prepare( " AND document_formatted_number IN ('%s')", $this->args['formatted_number'] ); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.QuotedSimplePlaceholder
 		}
 
 		// country
 		if ( isset( $this->args['country'] ) ) {
-			$this->query_where .= $wpdb->prepare( " AND document_country IN ('%s')", $this->args['country'] );
+			$this->query_where .= $wpdb->prepare( " AND document_country IN ('%s')", $this->args['country'] ); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.QuotedSimplePlaceholder
 		}
 
 		// type
 		if ( isset( $this->args['type'] ) ) {
-			$types    = $this->args['type'];
-			$p_types  = array();
+			$types   = $this->args['type'];
+			$p_types = array();
 
-			foreach( $types as $type ) {
-				$p_types[] = $wpdb->prepare( "document_type = '%s'", $type );
+			foreach ( $types as $type ) {
+				$p_types[] = $wpdb->prepare( 'document_type = %s', $type );
 			}
 
 			$where_type = implode( ' OR ', $p_types );
@@ -386,8 +388,8 @@ abstract class Query extends WC_Object_Query {
 			$stati    = $this->args['status'];
 			$p_status = array();
 
-			foreach( $stati as $status ) {
-				$p_status[] = $wpdb->prepare( "document_status = '%s'", $status );
+			foreach ( $stati as $status ) {
+				$p_status[] = $wpdb->prepare( 'document_status = %s', $status );
 			}
 
 			$where_status = implode( ' OR ', $p_status );
@@ -405,9 +407,8 @@ abstract class Query extends WC_Object_Query {
 		}
 
 		if ( $search ) {
-
-			$leading_wild  = ( ltrim( $search, '*' ) != $search );
-			$trailing_wild = ( rtrim( $search, '*' ) != $search );
+			$leading_wild  = ( ltrim( $search, '*' ) !== $search );
+			$trailing_wild = ( rtrim( $search, '*' ) !== $search );
 
 			if ( $leading_wild && $trailing_wild ) {
 				$wild = 'both';
@@ -418,6 +419,7 @@ abstract class Query extends WC_Object_Query {
 			} else {
 				$wild = false;
 			}
+
 			if ( $wild ) {
 				$search = trim( $search, '*' );
 			}
@@ -425,7 +427,9 @@ abstract class Query extends WC_Object_Query {
 			$search_columns = array();
 
 			if ( $this->args['search_columns'] ) {
-				$search_columns = array_intersect( $this->args['search_columns'], array( 'document_id', 'document_number', 'document_country', 'document_formatted_number', 'document_reference_id', 'document_author_id', 'document_customer_id' ) );
+				$core_search_columns = array( 'document_id', 'document_number', 'document_country', 'document_formatted_number', 'document_reference_id', 'document_author_id', 'document_customer_id' );
+				$search_columns      = array_intersect( $this->args['search_columns'], $core_search_columns );
+				$search_meta_columns = array_diff( $this->args['search_columns'], $core_search_columns );
 			}
 
 			if ( ! $search_columns ) {
@@ -435,6 +439,49 @@ abstract class Query extends WC_Object_Query {
 					$search_columns = array( 'document_country' );
 				} else {
 					$search_columns = array( 'document_id', 'document_formatted_number' );
+				}
+			}
+
+			/**
+			 * Allow searching for meta too.
+			 */
+			if ( ! empty( $search_meta_columns ) ) {
+				$search_meta_query_args = array(
+					'relation' => 'OR',
+				);
+
+				/**
+				 * By default, WP appends both wildcards to meta LIKE queries.
+				 * Work around this issue by using a regex search in case of leading, trailing wildcards.
+				 */
+				$meta_search  = $search;
+				$meta_compare = 'LIKE';
+
+				if ( 'leading' === $wild ) {
+					$meta_compare = 'REGEXP';
+					$meta_search  = $meta_search . '$';
+				} elseif ( 'trailing' === $wild ) {
+					$meta_compare = 'REGEXP';
+					$meta_search  = '^' . $meta_search;
+				}
+
+				foreach ( $search_meta_columns as $column ) {
+					$search_meta_query_args[] = array(
+						'key'     => $column,
+						'value'   => $meta_search,
+						'compare' => $meta_compare,
+					);
+				}
+
+				if ( ! empty( $search_meta_query_args ) ) {
+					$this->search_meta_query = new WP_Meta_Query( $search_meta_query_args );
+
+					$clauses           = $this->search_meta_query->get_sql( 'storeabill_document', $wpdb->storeabill_documents, 'document_id', $this );
+					$this->query_from .= $clauses['join'];
+
+					if ( $this->search_meta_query->has_or_relation() ) {
+						$this->query_fields = 'DISTINCT ' . $this->query_fields;
+					}
 				}
 			}
 
@@ -464,7 +511,6 @@ abstract class Query extends WC_Object_Query {
 			$include = false;
 		}
 
-		// Meta query.
 		$this->meta_query = new WP_Meta_Query();
 		$this->meta_query->parse_query_vars( $this->args );
 
@@ -473,7 +519,7 @@ abstract class Query extends WC_Object_Query {
 			$this->query_from  .= $clauses['join'];
 			$this->query_where .= $clauses['where'];
 
-			if ( $this->meta_query->has_or_relation() ) {
+			if ( $this->meta_query->has_or_relation() && ! strstr( $this->query_fields, 'DISTINCT' ) ) {
 				$this->query_fields = 'DISTINCT ' . $this->query_fields;
 			}
 		}
@@ -567,19 +613,32 @@ abstract class Query extends WC_Object_Query {
 		global $wpdb;
 
 		$searches      = array();
-		$leading_wild  = ( 'leading' == $wild || 'both' == $wild ) ? '%' : '';
-		$trailing_wild = ( 'trailing' == $wild || 'both' == $wild ) ? '%' : '';
+		$leading_wild  = ( 'leading' === $wild || 'both' === $wild ) ? '%' : '';
+		$trailing_wild = ( 'trailing' === $wild || 'both' === $wild ) ? '%' : '';
 		$like          = $leading_wild . $wpdb->esc_like( $string ) . $trailing_wild;
 
 		foreach ( $cols as $col ) {
-			if ( 'ID' == $col ) {
-				$searches[] = $wpdb->prepare( "$col = %s", $string );
+			if ( 'ID' === $col ) {
+				$searches[] = $wpdb->prepare( "$col = %s", $string ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			} else {
-				$searches[] = $wpdb->prepare( "$col LIKE %s", $like );
+				$searches[] = $wpdb->prepare( "$col LIKE %s", $like ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			}
 		}
 
-		return ' AND (' . implode( ' OR ', $searches ) . ')';
+		$meta_where = '';
+
+		if ( $this->search_meta_query ) {
+			$clauses    = $this->search_meta_query->get_sql( 'storeabill_document', $wpdb->storeabill_documents, 'document_id', $this );
+			$meta_where = $clauses['where'];
+
+			if ( empty( $searches ) ) {
+				$meta_where = mb_eregi_replace( '^ AND', '', $meta_where );
+			} else {
+				$meta_where = mb_eregi_replace( '^ AND', ' OR', $meta_where );
+			}
+		}
+
+		return ' AND (' . implode( ' OR ', $searches ) . ' ' . $meta_where . ')';
 	}
 
 	/**
@@ -595,15 +654,15 @@ abstract class Query extends WC_Object_Query {
 
 		$_orderby = '';
 
-		if ( in_array( $orderby, array( 'number', 'status', 'country', 'date_created', 'date_modified', 'date_custom', 'date_custom_extra' ) ) ) {
+		if ( in_array( $orderby, array( 'number', 'status', 'country', 'date_created', 'date_modified', 'date_custom', 'date_custom_extra' ), true ) ) {
 			$_orderby = 'document_' . $orderby;
-		} elseif( 'date' == $orderby ) {
+		} elseif ( 'date' === $orderby ) {
 			$_orderby = 'document_date_created';
-		} elseif ( 'ID' == $orderby || 'id' == $orderby ) {
+		} elseif ( 'ID' === $orderby || 'id' === $orderby ) {
 			$_orderby = 'document_id';
-		} elseif ( 'meta_value' == $orderby || $this->get( 'meta_key' ) == $orderby ) {
+		} elseif ( 'meta_value' === $orderby || $this->get( 'meta_key' ) === $orderby ) {
 			$_orderby = "$wpdb->storeabill_documentmeta.meta_value";
-		} elseif ( 'meta_value_num' == $orderby ) {
+		} elseif ( 'meta_value_num' === $orderby ) {
 			$_orderby = "$wpdb->storeabill_documentmeta.meta_value+0";
 		} elseif ( 'include' === $orderby && ! empty( $this->args['include'] ) ) {
 			$include     = wp_parse_id_list( $this->args['include'] );

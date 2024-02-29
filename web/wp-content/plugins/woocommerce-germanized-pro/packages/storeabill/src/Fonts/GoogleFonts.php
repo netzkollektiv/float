@@ -75,17 +75,20 @@ final class GoogleFonts {
 		// If we got this far, cache was empty so we need to get from JSON.
 		$fonts = $this->get_array();
 
-		self::$google_fonts = [];
+		self::$google_fonts = array();
 		if ( is_array( $fonts ) ) {
 			foreach ( $fonts['items'] as $font ) {
 				$name = sanitize_key( $font['family'] );
 
-				self::$google_fonts[ $name ] = new Font( $font['family'], array(
-					'variants'       => $font['variants'],
-					'category'       => $font['category'],
-					'name'           => $name,
-					'is_google_font' => true,
-				) );
+				self::$google_fonts[ $name ] = new Font(
+					$font['family'],
+					array(
+						'variants'       => $font['variants'],
+						'category'       => $font['category'],
+						'name'           => $name,
+						'is_google_font' => true,
+					)
+				);
 			}
 		}
 
@@ -105,7 +108,7 @@ final class GoogleFonts {
 	 * @param  array $args The arguments.
 	 * @return array
 	 */
-	public function get_google_fonts_by_args( $args = [] ) {
+	public function get_google_fonts_by_args( $args = array() ) {
 		$cache_name = 'storeabill_googlefonts_' . md5( wp_json_encode( $args ) );
 		$cache      = get_site_transient( $cache_name );
 

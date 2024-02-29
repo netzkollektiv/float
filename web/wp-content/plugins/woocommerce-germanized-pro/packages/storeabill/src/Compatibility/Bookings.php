@@ -39,14 +39,14 @@ class Bookings implements Compatibility {
 				'booking_summary',
 			);
 
-			if ( in_array( $atts['data'], $meta_types ) ) {
+			if ( in_array( $atts['data'], $meta_types, true ) ) {
 				$bookings = self::get_bookings_by_item( $item );
 
 				if ( ! empty( $bookings ) ) {
 					$result = '';
 					$count  = 0;
 
-					foreach( $bookings as $booking ) {
+					foreach ( $bookings as $booking ) {
 						$booking_html = self::format_booking_data( $booking, $atts['data'] );
 						$separator    = 'booking_summary' === $atts['data'] ? '' : ', ';
 
@@ -70,27 +70,27 @@ class Bookings implements Compatibility {
 	protected static function format_booking_data( $booking, $data_type ) {
 		$data = '';
 
-		switch( $data_type ) {
-			case "booking_start_date":
+		switch ( $data_type ) {
+			case 'booking_start_date':
 				$data = $booking->get_start_date();
 				break;
-			case "booking_end_date":
+			case 'booking_end_date':
 				$data = $booking->get_end_date();
 				break;
-			case "booking_date_period":
+			case 'booking_date_period':
 				if ( strtotime( 'midnight', $booking->get_start() ) === strtotime( 'midnight', $booking->get_end() ) ) {
 					$data = sprintf( '%1$s', $booking->get_start_date() );
 				} else {
 					$data = sprintf( '%1$s / %2$s', $booking->get_start_date(), $booking->get_end_date() );
 				}
 				break;
-			case "booking_id":
+			case 'booking_id':
 				$data = $booking->get_id();
 				break;
-			case "booking_person_num":
+			case 'booking_person_num':
 				$data = $booking->has_persons() ? $booking->get_persons_total() : '';
 				break;
-			case "booking_summary":
+			case 'booking_summary':
 				if ( function_exists( 'wc_bookings_get_summary_list' ) ) {
 					ob_start();
 					wc_bookings_get_summary_list( $booking );
@@ -116,44 +116,47 @@ class Bookings implements Compatibility {
 		$date_range_formatted = $date_start->format( sab_date_format() ) . ' / ' . $date_end->format( sab_date_format() );
 		$persons_formatted    = '2';
 
-		$meta = array_merge( $meta, array(
+		$meta = array_merge(
+			$meta,
 			array(
-				'title'   => _x( 'Booking Start Date', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'preview' => $date_start->format( sab_date_format() ),
-				'icon'    => '',
-				'type'    => 'booking_start_date'
-			),
-			array(
-				'title'   => _x( 'Booking End Date', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'preview' => $date_end->format( sab_date_format() ),
-				'icon'    => '',
-				'type'    => 'booking_end_date'
-			),
-			array(
-				'title'   => _x( 'Booking Date Period', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'preview' => $date_range_formatted,
-				'icon'    => '',
-				'type'    => 'booking_date_period'
-			),
-			array(
-				'title'   => _x( 'Booking Number of Persons', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'preview' => $persons_formatted,
-				'icon'    => '',
-				'type'    => 'booking_person_num'
-			),
-			array(
-				'title'   => _x( 'Booking Id', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'preview' => '5675',
-				'icon'    => '',
-				'type'    => 'booking_id'
-			),
-			array(
-				'title'   => _x( 'Booking Summary', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'preview' => _x( 'Booking Summary List', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'icon'    => '',
-				'type'    => 'booking_summary'
-			),
-		) );
+				array(
+					'title'   => _x( 'Booking Start Date', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'preview' => $date_start->format( sab_date_format() ),
+					'icon'    => '',
+					'type'    => 'booking_start_date',
+				),
+				array(
+					'title'   => _x( 'Booking End Date', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'preview' => $date_end->format( sab_date_format() ),
+					'icon'    => '',
+					'type'    => 'booking_end_date',
+				),
+				array(
+					'title'   => _x( 'Booking Date Period', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'preview' => $date_range_formatted,
+					'icon'    => '',
+					'type'    => 'booking_date_period',
+				),
+				array(
+					'title'   => _x( 'Booking Number of Persons', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'preview' => $persons_formatted,
+					'icon'    => '',
+					'type'    => 'booking_person_num',
+				),
+				array(
+					'title'   => _x( 'Booking Id', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'preview' => '5675',
+					'icon'    => '',
+					'type'    => 'booking_id',
+				),
+				array(
+					'title'   => _x( 'Booking Summary', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'preview' => _x( 'Booking Summary List', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'icon'    => '',
+					'type'    => 'booking_summary',
+				),
+			)
+		);
 
 		return $meta;
 	}

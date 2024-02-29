@@ -3,6 +3,7 @@
 namespace Vendidero\StoreaBill\DataStores;
 
 use Exception;
+use Vendidero\StoreaBill\Package;
 use WC_Data_Store_WP;
 use WC_Object_Data_Store_Interface;
 
@@ -37,7 +38,8 @@ class DocumentTemplate extends WC_Data_Store_WP implements WC_Object_Data_Store_
 		'_fonts',
 		'_font_size',
 		'_color',
-		'_line_item_types'
+		'_line_item_types',
+		'_version',
 	);
 
 	/*
@@ -58,6 +60,8 @@ class DocumentTemplate extends WC_Data_Store_WP implements WC_Object_Data_Store_
 		if ( empty( $template->get_margins() ) ) {
 			$template->set_margins( $template->get_default_margins() );
 		}
+
+		$template->set_version( Package::get_version() );
 
 		/**
 		 * Note: addslashes() is needed if storing the data with wp_insert_post()
@@ -108,8 +112,8 @@ class DocumentTemplate extends WC_Data_Store_WP implements WC_Object_Data_Store_
 
 		$template->set_props(
 			array(
-				'date_created'  => '0000-00-00 00:00:00' !== $post_object->post_date_gmt ? wc_string_to_timestamp( $post_object->post_date_gmt ) : null,
-				'date_modified' => '0000-00-00 00:00:00' !== $post_object->post_modified_gmt ? wc_string_to_timestamp( $post_object->post_modified_gmt ) : null,
+				'date_created'  => sab_is_valid_mysql_datetime( $post_object->post_date_gmt ) ? wc_string_to_timestamp( $post_object->post_date_gmt ) : null,
+				'date_modified' => sab_is_valid_mysql_datetime( $post_object->post_modified_gmt ) ? wc_string_to_timestamp( $post_object->post_modified_gmt ) : null,
 				'status'        => $post_object->post_status,
 				'content'       => $post_object->post_content,
 				'title'         => $post_object->post_title,
@@ -282,7 +286,8 @@ class DocumentTemplate extends WC_Data_Store_WP implements WC_Object_Data_Store_
 			'_font_size'       => 'font_size',
 			'_color'           => 'color',
 			'_line_item_types' => 'line_item_types',
-			'_template_name'   => 'template_name'
+			'_template_name'   => 'template_name',
+			'_version'         => 'version',
 		);
 
 		$props_to_update = $this->get_props_to_update( $template, $meta_key_to_props );
@@ -330,12 +335,14 @@ class DocumentTemplate extends WC_Data_Store_WP implements WC_Object_Data_Store_
 		if ( $template->is_first_page() ) {
 			return $template;
 		} else {
-			$children = get_posts( array(
-				'post_parent' => $template->get_id(),
-				'post_type'   => $template->get_type(),
-				'post_status' => 'any',
-				'numberposts' => 1,
-			) );
+			$children = get_posts(
+				array(
+					'post_parent' => $template->get_id(),
+					'post_type'   => $template->get_type(),
+					'post_status' => 'any',
+					'numberposts' => 1,
+				)
+			);
 
 			if ( ! empty( $children ) ) {
 				return sab_get_document_template( $children[0], true );

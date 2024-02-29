@@ -6,11 +6,6 @@ import { address } from '@storeabill/icons';
 import edit from './edit';
 import save from './save';
 
-/**
- * Internal dependencies
- */
-import './editor.scss';
-
 const settings = {
     title: _x( 'Address', 'storeabill-core', 'storeabill' ),
     description: _x( 'Inserts the document address.', 'storeabill-core', 'storeabill' ),

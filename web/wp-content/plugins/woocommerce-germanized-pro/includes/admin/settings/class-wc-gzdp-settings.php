@@ -1,23 +1,23 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 class WC_GZDP_Settings {
 
 	protected static $_instance = null;
 
 	public static function instance() {
-
-	    if ( is_null( self::$_instance ) ) {
+		if ( is_null( self::$_instance ) ) {
 			self::$_instance = new self();
 		}
 
-	    return self::$_instance;
+		return self::$_instance;
 	}
 
 	public function __construct() {
-	    add_filter( 'woocommerce_gzd_admin_settings_tabs', array( $this, 'register_tabs' ) );
+		add_filter( 'woocommerce_gzd_admin_settings_tabs', array( $this, 'register_tabs' ) );
 	}
 
 	public function register_tabs( $tabs ) {
@@ -52,7 +52,7 @@ class WC_GZDP_Settings {
 		}
 
 		return $tabs;
-    }
+	}
 }
 
 return WC_GZDP_Settings::instance();

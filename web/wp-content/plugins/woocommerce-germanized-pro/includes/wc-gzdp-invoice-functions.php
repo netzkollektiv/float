@@ -1,7 +1,8 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) )
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
 
 function wc_gzdp_get_invoice_tax_share( $items, $type = 'shipping' ) {
 	wc_deprecated_function( 'wc_gzdp_get_invoice_tax_share', '3.0.0' );
@@ -35,11 +36,13 @@ function wc_gzdp_get_packing_slip_by_shipment( $shipment_id ) {
 	$packing_slip = false;
 
 	if ( $shipment = wc_gzd_get_shipment( $shipment_id ) ) {
-		$packing_slips = wc_gzdp_get_packing_slips( array(
-			'reference_id'   => $shipment->get_id(),
-			'reference_type' => 'germanized',
-			'limit'          => 1,
-		) );
+		$packing_slips = wc_gzdp_get_packing_slips(
+			array(
+				'reference_id'   => $shipment->get_id(),
+				'reference_type' => 'germanized',
+				'limit'          => 1,
+			)
+		);
 
 		if ( ! empty( $packing_slips ) ) {
 			return wc_gzdp_get_packing_slip( $packing_slips[0] );
@@ -105,7 +108,7 @@ function wc_gzdp_get_invoices_by_order( $order, $type = false ) {
 		} else {
 			if ( 'simple' === $type ) {
 				$type = 'invoice';
-			} elseif( 'cancellation' === $type ) {
+			} elseif ( 'cancellation' === $type ) {
 				$type = 'invoice_cancellation';
 			}
 
@@ -113,7 +116,7 @@ function wc_gzdp_get_invoices_by_order( $order, $type = false ) {
 		}
 	}
 
-	foreach( $return as $key => $document ) {
+	foreach ( $return as $key => $document ) {
 		$return[ $key ] = wc_gzdp_get_invoice( $document, $document->get_invoice_type() );
 	}
 

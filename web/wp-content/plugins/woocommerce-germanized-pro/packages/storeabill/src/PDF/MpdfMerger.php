@@ -28,15 +28,17 @@ class MpdfMerger implements PDFMerge {
 	public function __construct() {
 		$font_data = $this->get_font_data();
 
-		$this->_pdf = new Mpdf( array(
-			'tempDir'      => $this->get_tmp_directory(),
-			'default_font' => Fonts::get_default_font()->get_name(),
-			'mode'         => 'utf-8',
-			'fontDir'      => $font_data['dir'],
-			'fontdata'     => $font_data['data'],
-			'fonttrans'    => $font_data['translations'],
-			'debug'        => defined( 'SAB_PDF_DEBUG_MODE' ) ? SAB_PDF_DEBUG_MODE : false,
-		) );
+		$this->_pdf = new Mpdf(
+			array(
+				'tempDir'      => $this->get_tmp_directory(),
+				'default_font' => Fonts::get_default_font()->get_name(),
+				'mode'         => 'utf-8',
+				'fontDir'      => $font_data['dir'],
+				'fontdata'     => $font_data['data'],
+				'fonttrans'    => $font_data['translations'],
+				'debug'        => defined( 'SAB_PDF_DEBUG_MODE' ) ? SAB_PDF_DEBUG_MODE : false,
+			)
+		);
 	}
 
 	public static function get_version() {
@@ -51,9 +53,12 @@ class MpdfMerger implements PDFMerge {
 		$font_translations = $defaultFontConfig['fonttrans'];
 
 		$result = array(
-			'dir'          => array_merge( $font_dirs, array(
-				UploadManager::get_font_path(),
-			) ),
+			'dir'          => array_merge(
+				$font_dirs,
+				array(
+					UploadManager::get_font_path(),
+				)
+			),
 			'data'         => array(),
 			'translations' => $font_translations,
 		);
@@ -62,7 +67,7 @@ class MpdfMerger implements PDFMerge {
 		 * Include standard fonts as fallback
 		 */
 		if ( $default_font = Fonts::get_default_font() ) {
-			foreach( $default_font->get_files( 'pdf' ) as $variant => $file_name ) {
+			foreach ( $default_font->get_files( 'pdf' ) as $variant => $file_name ) {
 				$path = $default_font->get_local_file( $variant, 'pdf' );
 
 				if ( file_exists( $path ) ) {
@@ -75,7 +80,7 @@ class MpdfMerger implements PDFMerge {
 			}
 
 			$result['translations'] += array(
-				Fonts::clean_font_family( $default_font->get_family() ) => $default_font->get_name()
+				Fonts::clean_font_family( $default_font->get_family() ) => $default_font->get_name(),
 			);
 		}
 
@@ -87,7 +92,7 @@ class MpdfMerger implements PDFMerge {
 			'regular'     => 'R',
 			'bold'        => 'B',
 			'italic'      => 'I',
-			'bold_italic' => 'BI'
+			'bold_italic' => 'BI',
 		);
 
 		return array_key_exists( $variant, $mappings ) ? $mappings[ $variant ] : 'R';
@@ -178,13 +183,13 @@ class MpdfMerger implements PDFMerge {
 	 *
 	 * @return bool
 	 */
-	private function _isPageInRange( $pageNumber, $pages = [] ) {
+	private function _isPageInRange( $pageNumber, $pages = array() ) {
 		if ( empty( $pages ) ) {
 			return true;
 		}
 
 		foreach ( $pages as $range ) {
-			if ( in_array( $pageNumber, $this->_getRange( $range ) ) ) {
+			if ( in_array( (int) $pageNumber, $this->_getRange( $range ), true ) ) {
 				return true;
 			}
 		}
@@ -203,12 +208,13 @@ class MpdfMerger implements PDFMerge {
 	private function _getRange( $value = null ) {
 		$value = preg_replace( '/[^0-9\-.]/is', '', $value );
 
-		if ( $value == '' ) {
+		if ( '' === $value ) {
 			return false;
 		}
 
 		$value = explode( '-', $value );
-		if ( count( $value ) == 1 ) {
+
+		if ( 1 === count( $value ) ) {
 			return $value;
 		}
 

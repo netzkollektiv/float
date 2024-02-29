@@ -2,35 +2,40 @@
 
 namespace Vendidero\StoreaBill\Editor\Templates;
 
-use Vendidero\StoreaBill\Countries;use Vendidero\StoreaBill\Package;
+use Vendidero\StoreaBill\Countries;
+use Vendidero\StoreaBill\Package;
 
 defined( 'ABSPATH' ) || exit;
 
 abstract class Template {
 
 	public static function get_template_data() {
-	    return array();
-    }
+		return array();
+	}
 
 	public static function get_screenshot_url() {
-	    return '';
-    }
+		return '';
+	}
 
 	public static function get_tags() {
-	    return array();
-    }
+		return array();
+	}
 
 	public static function get_title() {
-	    return '';
-    }
+		return '';
+	}
 
 	public static function get_document_type() {
-	    return 'invoice';
-    }
+		return 'invoice';
+	}
+
+	public static function get_document_type_object() {
+		return sab_get_document_type( self::get_document_type() );
+	}
 
 	public static function get_name() {
-	    return '';
-    }
+		return '';
+	}
 
 	/**
 	 * This method should return the HTML result produced by the current template.
@@ -40,8 +45,8 @@ abstract class Template {
 	 * @return string
 	 */
 	public static function get_html() {
-	    return '';
-    }
+		return '';
+	}
 
 	protected static function get_hook_prefix() {
 		return 'storeabill_' . static::get_document_type() . '_' . static::get_name() . '_template_';
@@ -59,13 +64,13 @@ abstract class Template {
 	}
 
 	public static function has_dense_layout() {
-	    return apply_filters( self::get_hook_prefix() . 'has_dense_layout', false );
+		return apply_filters( self::get_hook_prefix() . 'has_dense_layout', false );
 	}
 
 	public static function get_default_header() {
-	    if ( ! apply_filters( self::get_hook_prefix() . 'show_header', true ) ) {
-	        return '';
-        }
+		if ( ! apply_filters( self::get_hook_prefix() . 'show_header', true ) ) {
+			return '';
+		}
 		ob_start();
 		?>
 		<!-- wp:storeabill/header -->
@@ -75,15 +80,15 @@ abstract class Template {
 				<div class="wp-block-columns">
 					<!-- wp:column {"width":66.66} -->
 					<div class="wp-block-column" style="flex-basis:66.66%">
-                        <?php if ( apply_filters( self::get_hook_prefix() . 'show_logo', true ) ) : ?>
-                            <!-- wp:storeabill/logo {"width":215,"height":null,"sizeSlug":"large"} -->
-                            <figure class="wp-block-storeabill-logo size-large is-resized"><img src="<?php echo esc_url( apply_filters( self::get_hook_prefix() . 'logo', trailingslashit( Package::get_assets_url() ) . 'images/logo.svg' ) ); ?>" alt="" width="<?php echo apply_filters( self::get_hook_prefix() . 'logo_width', 215 ); ?>"/></figure>
-                            <!-- /wp:storeabill/logo -->
-                        <?php else: ?>
-                            <!-- wp:paragraph {"style":{"typography":{"fontSize":30},"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
-                            <p class="has-text-color" style="font-size:30px;color:<?php echo esc_attr( self::get_light_color() ); ?>"><strong><?php echo Countries::get_base_company_name(); ?></strong></p>
-                            <!-- /wp:paragraph -->
-                        <?php endif; ?>
+						<?php if ( apply_filters( self::get_hook_prefix() . 'show_logo', true ) ) : ?>
+							<!-- wp:storeabill/logo {"width":215,"height":null,"sizeSlug":"large"} -->
+							<figure class="wp-block-storeabill-logo size-large is-resized"><img src="<?php echo esc_url( apply_filters( self::get_hook_prefix() . 'logo', trailingslashit( Package::get_assets_url() ) . 'images/logo.svg' ) ); ?>" alt="" width="<?php echo esc_attr( apply_filters( self::get_hook_prefix() . 'logo_width', 215 ) ); ?>"/></figure>
+							<!-- /wp:storeabill/logo -->
+						<?php else : ?>
+							<!-- wp:paragraph {"style":{"typography":{"fontSize":30},"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
+							<p class="has-text-color" style="font-size:30px;color:<?php echo esc_attr( self::get_light_color() ); ?>"><strong><?php echo wp_kses_post( Countries::get_base_company_name() ); ?></strong></p>
+							<!-- /wp:paragraph -->
+						<?php endif; ?>
 					</div>
 					<!-- /wp:column -->
 
@@ -91,13 +96,13 @@ abstract class Template {
 					<div class="wp-block-column" style="flex-basis:33.33%">
 						<!-- wp:paragraph {"align":"right","fontSize":"small","style":{"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
 						<p class="has-text-align-right has-text-color has-small-font-size" style="color:<?php echo esc_attr( self::get_light_color() ); ?>">
-							<?php echo apply_filters( self::get_hook_prefix() . 'company_formatted_address', Countries::get_formatted_base_address() ); ?><br>
+							<?php echo apply_filters( self::get_hook_prefix() . 'company_formatted_address', wp_kses_post( Countries::get_formatted_base_address() ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><br>
 							<?php do_action( self::get_hook_prefix() . 'after_company_address_header' ); ?><br>
 						</p>
 						<!-- /wp:paragraph -->
 						<!-- wp:paragraph {"align":"right","fontSize":"small","style":{"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
 						<p class="has-text-align-right has-text-color has-small-font-size" style="color:<?php echo esc_attr( self::get_light_color() ); ?>">
-							<?php echo sprintf( esc_html_x( 'Email: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), Countries::get_base_email() ); ?><br>
+							<?php echo sprintf( esc_html_x( 'Email: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_html( Countries::get_base_email() ) ); ?><br>
 							<?php do_action( self::get_hook_prefix() . 'after_company_contact_header' ); ?><br>
 						</p>
 						<!-- /wp:paragraph -->
@@ -145,9 +150,9 @@ abstract class Template {
 
 						<!-- wp:paragraph {"fontSize":"small","style":{"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
 						<p class="has-text-color has-small-font-size" style="color:<?php echo esc_attr( self::get_light_color() ); ?>">
-							<?php printf( esc_html_x( 'Holder:', 'storeabill-bank-account', 'woocommerce-germanized-pro' ) ); ?> <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'Bank account holder', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>" data-shortcode="setting?data=bank_account_holder"><span class="editor-placeholder"></span><?php echo sab_get_base_bank_account_data( 'holder' ); ?></span><br>
-							<?php printf( esc_html_x( 'IBAN:', 'storeabill-bank-account', 'woocommerce-germanized-pro' ) ); ?> <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'IBAN', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>" data-shortcode="setting?data=bank_account_iban"><span class="editor-placeholder"></span><?php echo sab_get_base_bank_account_data( 'iban' ); ?></span><br>
-							<?php printf( esc_html_x( 'BIC:', 'storeabill-bank-account', 'woocommerce-germanized-pro' ) ); ?> <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'BIC', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>" data-shortcode="setting?data=bank_account_bic"><span class="editor-placeholder"></span><?php echo sab_get_base_bank_account_data( 'bic' ); ?></span><br>
+							<?php printf( esc_html_x( 'Holder:', 'storeabill-bank-account', 'woocommerce-germanized-pro' ) ); ?> <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'Bank account holder', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>" data-shortcode="setting?data=bank_account_holder"><span class="editor-placeholder"></span><?php echo esc_html( sab_get_base_bank_account_data( 'holder' ) ); ?></span><br>
+							<?php printf( esc_html_x( 'IBAN:', 'storeabill-bank-account', 'woocommerce-germanized-pro' ) ); ?> <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'IBAN', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>" data-shortcode="setting?data=bank_account_iban"><span class="editor-placeholder"></span><?php echo esc_html( sab_get_base_bank_account_data( 'iban' ) ); ?></span><br>
+							<?php printf( esc_html_x( 'BIC:', 'storeabill-bank-account', 'woocommerce-germanized-pro' ) ); ?> <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'BIC', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>" data-shortcode="setting?data=bank_account_bic"><span class="editor-placeholder"></span><?php echo esc_html( sab_get_base_bank_account_data( 'bic' ) ); ?></span><br>
 						</p>
 						<!-- /wp:paragraph -->
 					</div>
@@ -161,7 +166,7 @@ abstract class Template {
 
 						<!-- wp:paragraph {"align":"left","fontSize":"small","style":{"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
 						<p class="has-text-align-left has-text-color has-small-font-size" style="color:<?php echo esc_attr( self::get_light_color() ); ?>">
-							<?php echo sprintf( esc_html_x( 'Email: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), Countries::get_base_email() ); ?><br>
+							<?php echo sprintf( esc_html_x( 'Email: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), esc_html( Countries::get_base_email() ) ); ?><br>
 
 							<?php do_action( self::get_hook_prefix() . 'after_company_contact_footer' ); ?><br>
 						</p>
@@ -172,12 +177,12 @@ abstract class Template {
 					<!-- wp:column -->
 					<div class="wp-block-column">
 						<!-- wp:paragraph {"align":"right","fontSize":"small","style":{"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
-						<p class="has-text-align-right has-text-color has-small-font-size" style="color:<?php echo esc_attr( self::get_light_color() ); ?>"><strong><?php echo Countries::get_base_company_name(); ?></strong></p>
+						<p class="has-text-align-right has-text-color has-small-font-size" style="color:<?php echo esc_attr( self::get_light_color() ); ?>"><strong><?php echo wp_kses_post( Countries::get_base_company_name() ); ?></strong></p>
 						<!-- /wp:paragraph -->
 
 						<!-- wp:paragraph {"align":"right","fontSize":"small","style":{"color":{"text":"<?php echo esc_attr( self::get_light_color() ); ?>"}}} -->
 						<p class="has-text-align-right has-text-color has-small-font-size" style="color:<?php echo esc_attr( self::get_light_color() ); ?>">
-							<?php echo Countries::get_formatted_base_address( '<br/>', false ); ?><br>
+							<?php echo wp_kses_post( Countries::get_formatted_base_address( '<br/>', false ) ); ?><br>
 
 							<?php do_action( self::get_hook_prefix() . 'after_company_address_footer' ); ?><br>
 						</p>

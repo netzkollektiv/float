@@ -22,10 +22,13 @@ class PlaceholderBlock extends DynamicBlock {
 	public function __construct( $block_name, $args ) {
 		$this->block_name = $block_name;
 
-		$args = wp_parse_args( $args, array(
-			'render_callback' => null,
-			'block_title'     => $this->block_name,
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'render_callback' => null,
+				'block_title'     => $this->block_name,
+			)
+		);
 
 		$this->block_title     = $args['block_title'];
 		$this->render_callback = $args['render_callback'];

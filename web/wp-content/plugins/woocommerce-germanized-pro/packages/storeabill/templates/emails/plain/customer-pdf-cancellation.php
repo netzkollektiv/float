@@ -11,8 +11,8 @@ echo esc_html( wp_strip_all_tags( $email_heading ) );
 echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /* translators: %s: Customer first name */
-echo sprintf( esc_html_x( 'Hi %s,', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_salutation( $document ) ) . "\n\n";
-echo sprintf( esc_html_x( '%s has been attached to this email. Find details below for your reference:', 'storeabill-core', 'woocommerce-germanized-pro' ), $document->get_title() ) . "\n\n";
+echo sprintf( esc_html( apply_filters( 'storeabill_email_document_customer_salutation', sprintf( esc_html_x( 'Hi %s,', 'storeabill-core', 'woocommerce-germanized-pro' ), sab_get_document_salutation( $document ) ), $document, $email ) ) ) . "\n\n";
+echo sprintf( esc_html_x( '%s has been attached to this email. Find details below for your reference:', 'storeabill-core', 'woocommerce-germanized-pro' ), wp_kses_post( $document->get_title() ) ) . "\n\n";
 
 do_action( 'storeabill_email_document_details', $document, $sent_to_admin, $plain_text, $email );
 

@@ -18,9 +18,12 @@ class CancellationPreview extends Cancellation implements Previewable {
 	public function __construct( $args = array() ) {
 		parent::__construct( 0 );
 
-		$args = wp_parse_args( $args, array(
-			'is_editor_preview' => false,
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'is_editor_preview' => false,
+			)
+		);
 
 		$this->parent = new SimplePreview( $args );
 
@@ -35,14 +38,14 @@ class CancellationPreview extends Cancellation implements Previewable {
 		$this->set_parent_formatted_number( $this->parent->get_formatted_number() );
 		$this->set_reason( _x( 'Preview refund message', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 
-		foreach( $this->parent->get_items( $this->parent->get_item_types_cancelable() ) as $item ) {
+		foreach ( $this->parent->get_items( $this->parent->get_item_types_cancelable() ) as $item ) {
 			$new_item = clone $item;
 			$new_item->set_id( 0 );
 
 			$this->add_item( $new_item );
 		}
 
-		foreach( $this->parent->get_meta_data() as $meta ) {
+		foreach ( $this->parent->get_meta_data() as $meta ) {
 			$this->update_meta_data( $meta->key, $meta->value );
 		}
 
@@ -55,6 +58,10 @@ class CancellationPreview extends Cancellation implements Previewable {
 		return $meta_fields;
 	}
 
+	public function get_parent() {
+		return $this->parent;
+	}
+
 	public function get_item_preview_meta( $item_type, $item = false ) {
 		$meta_fields = apply_filters( "storeabill_{$this->get_type()}_preview_{$item_type}_item_meta_types", array(), $item, $this );
 
@@ -62,7 +69,7 @@ class CancellationPreview extends Cancellation implements Previewable {
 	}
 
 	public function is_editor_preview() {
-		return $this->editor_preview === true;
+		return true === $this->editor_preview;
 	}
 
 	public function set_is_editor_preview( $is_editor ) {
@@ -74,7 +81,7 @@ class CancellationPreview extends Cancellation implements Previewable {
 	}
 
 	public function save() {
-		foreach( $this->get_items() as $item ) {
+		foreach ( $this->get_items() as $item ) {
 			$item->apply_changes();
 		}
 

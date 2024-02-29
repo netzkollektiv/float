@@ -34,9 +34,9 @@ class Styles extends \WP_Styles {
 	 *
 	 * @return string Style's fully-qualified URL.
 	 */
-	public function _css_href( $src, $ver, $handle ) {
+	public function _css_href( $src, $ver, $handle ) { // phpcs:ignore PSR2.Methods.MethodDeclaration.Underscore
 		$src = parent::_css_href( $src, $ver, $handle );
 
 		return sab_get_asset_path_by_url( $src );
- 	}
+	}
 }

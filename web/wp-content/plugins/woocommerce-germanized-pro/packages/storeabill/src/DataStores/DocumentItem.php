@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\StoreaBill\DataStores;
+
 use WC_Data;
 use Exception;
 use WC_Data_Store_WP;
@@ -32,7 +33,7 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 		'reference_id',
 		'name',
 		'parent_id',
-		'quantity'
+		'quantity',
 	);
 
 	/**
@@ -55,7 +56,8 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 		global $wpdb;
 
 		$wpdb->insert(
-			$wpdb->storeabill_document_items, array(
+			$wpdb->storeabill_document_items,
+			array(
 				'document_id'                => $item->get_document_id( 'edit' ),
 				'document_item_reference_id' => $item->get_reference_id( 'edit' ),
 				'document_item_parent_id'    => $item->get_parent_id( 'edit' ),
@@ -101,13 +103,15 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 
 		if ( array_intersect( $this->core_props, array_keys( $changes ) ) ) {
 			$wpdb->update(
-				$wpdb->storeabill_document_items, array(
-				'document_id'                => $item->get_document_id( 'edit' ),
-				'document_item_reference_id' => $item->get_reference_id( 'edit' ),
-				'document_item_parent_id'    => $item->get_parent_id('edit' ),
-				'document_item_name'         => $item->get_name( 'edit' ),
-				'document_item_quantity'     => $item->get_quantity( 'edit' ),
-			), array( 'document_item_id' => $item->get_id() )
+				$wpdb->storeabill_document_items,
+				array(
+					'document_id'                => $item->get_document_id( 'edit' ),
+					'document_item_reference_id' => $item->get_reference_id( 'edit' ),
+					'document_item_parent_id'    => $item->get_parent_id( 'edit' ),
+					'document_item_name'         => $item->get_name( 'edit' ),
+					'document_item_quantity'     => $item->get_quantity( 'edit' ),
+				),
+				array( 'document_item_id' => $item->get_id() )
 			);
 		}
 
@@ -202,7 +206,7 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 				'reference_id' => $data->document_item_reference_id,
 				'parent_id'    => $data->document_item_parent_id,
 				'name'         => $data->document_item_name,
-				'quantity'     => $data->document_item_quantity
+				'quantity'     => $data->document_item_quantity,
 			)
 		);
 
@@ -221,7 +225,7 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 	protected function read_item_data( &$item ) {
 		$props = array();
 
-		foreach( array_merge( $this->internal_meta_keys, $this->core_meta_keys ) as $meta_key ) {
+		foreach ( array_merge( $this->internal_meta_keys, $this->core_meta_keys ) as $meta_key ) {
 			$props[ substr( $meta_key, 1 ) ] = get_metadata( 'storeabill_document_item', $item->get_id(), $meta_key, true );
 		}
 
@@ -267,11 +271,11 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 		$updated_props     = array();
 		$meta_key_to_props = array();
 
-		foreach( array_merge( $this->internal_meta_keys, $this->core_meta_keys ) as $meta_key ) {
+		foreach ( array_merge( $this->internal_meta_keys, $this->core_meta_keys ) as $meta_key ) {
 
 			$prop_name = substr( $meta_key, 1 );
 
-			if ( in_array( $prop_name, $this->core_props ) ) {
+			if ( in_array( $prop_name, $this->core_props, true ) ) {
 				continue;
 			}
 
@@ -316,9 +320,12 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 		 * Convert attributes to their array rep
 		 */
 		if ( 'attributes' === $prop ) {
-			$value = array_map( function( $attribute ) {
-				return $attribute->toArray();
-			}, (array) $value );
+			$value = array_map(
+				function( $attribute ) {
+					return $attribute->toArray();
+				},
+				(array) $value
+			);
 		}
 
 		return $value;
@@ -340,7 +347,7 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 			global $wpdb;
 
 			$get_items_sql = $wpdb->prepare( "SELECT * FROM {$wpdb->storeabill_document_items} WHERE document_item_parent_id = %d ORDER BY document_item_id;", $item->get_id() );
-			$items         = $wpdb->get_results( $get_items_sql );
+			$items         = $wpdb->get_results( $get_items_sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 			foreach ( $items as $child ) {
 				wp_cache_set( 'item-' . $child->document_item_id, $child, 'document-items' );
@@ -350,9 +357,12 @@ class DocumentItem extends WC_Data_Store_WP implements WC_Object_Data_Store_Inte
 		}
 
 		if ( ! empty( $items ) ) {
-			$items = array_map( function( $item ) {
-				return sab_get_document_item( $item->document_item_id, $item->document_item_type );
-			}, $items );
+			$items = array_map(
+				function( $item ) {
+					return sab_get_document_item( $item->document_item_id, $item->document_item_type );
+				},
+				$items
+			);
 		} else {
 			$items = array();
 		}

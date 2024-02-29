@@ -44,18 +44,18 @@ class ItemTaxRate extends ItemTableColumnBlock {
 		$attributes    = $this->parse_attributes( $attributes );
 
 		if ( is_a( $document_item, '\Vendidero\StoreaBill\Interfaces\Taxable' ) ) {
-			$output    = '';
-			$count     = 0;
+			$output = '';
+			$count  = 0;
 
 			if ( $document_item->has_taxes() ) {
-				foreach( $document_item->get_tax_rates() as $tax_rate ) {
+				foreach ( $document_item->get_tax_rates() as $tax_rate ) {
 					$output .= ( $count > 1 ? apply_filters( 'storeabill_tax_rate_separator', ' | ' ) : '' ) . $tax_rate->get_formatted_percentage_html();
 				}
 			} else {
 				$output = sab_format_tax_rate_percentage( 0, array( 'html' => true ) );
 			}
 
-			return $this->wrap( $this->replace_placeholder( $content, $output ), $attributes );
+			return $this->wrap( $this->replace_placeholder( $content, wp_kses_post( $output ) ), $attributes );
 		}
 
 		return $content;

@@ -61,12 +61,15 @@ class SimpleTable extends Table {
 	 * @return array
 	 */
 	protected function get_sortable_columns() {
-		return array(
-			'date'     => array( 'date_created', false ),
-			'title'    => array( 'number' ),
-			'total'    => array( 'total' ),
-			'order'    => array( 'order_id' ),
-			'date_due' => array( 'date_due', false ),
+		return apply_filters(
+			"{$this->get_hook_prefix()}sortable_columns",
+			array(
+				'date'     => array( 'date_created', false ),
+				'title'    => array( 'number' ),
+				'total'    => array( 'total' ),
+				'order'    => array( 'order_id' ),
+				'date_due' => array( 'date_due', false ),
+			)
 		);
 	}
 
@@ -76,7 +79,7 @@ class SimpleTable extends Table {
 	 * @param Simple $document The current document object.
 	 */
 	public function column_total( $document ) {
-		echo $document->get_formatted_price( $document->get_total() );
+		echo wp_kses_post( $document->get_formatted_price( $document->get_total() ) );
 	}
 
 	/**
@@ -88,9 +91,9 @@ class SimpleTable extends Table {
 		$title = $document->get_title();
 
 		if ( $url = $document->get_edit_url() ) {
-			echo '<a href="' . esc_url( $url ) . '">' . $title . '</a> ';
+			echo '<a href="' . esc_url( $url ) . '">' . wp_kses_post( $title ) . '</a> ';
 		} else {
-			echo $title . ' ';
+			echo wp_kses_post( $title ) . ' ';
 		}
 	}
 
@@ -100,7 +103,7 @@ class SimpleTable extends Table {
 	 * @param Simple $document The current document object.
 	 */
 	public function column_payment( $document ) {
-		echo '<span class="sab-status sab-payment-status sab-invoice-type-' . esc_attr( $document->get_invoice_type() ) . '-payment-status sab-payment-status-' . esc_attr( $document->get_payment_status() ) . '">' . sab_get_invoice_payment_status_name( $document->get_payment_status() ) .'</span>';
+		echo '<span class="sab-status sab-payment-status sab-invoice-type-' . esc_attr( $document->get_invoice_type() ) . '-payment-status sab-payment-status-' . esc_attr( $document->get_payment_status() ) . '">' . esc_html( sab_get_invoice_payment_status_name( $document->get_payment_status() ) ) . '</span>';
 	}
 
 	/**
@@ -138,7 +141,7 @@ class SimpleTable extends Table {
 			'<time datetime="%1$s" title="%2$s" class="%3$s">%4$s</time>',
 			esc_attr( $document->get_date_due()->date( 'c' ) ),
 			esc_html( $document->get_date_due()->date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
-			$classes,
+			esc_attr( $classes ),
 			esc_html( $show_date )
 		);
 	}
@@ -150,9 +153,9 @@ class SimpleTable extends Table {
 	 */
 	public function column_order( $document ) {
 		if ( ( $order = $document->get_order() ) ) {
-			echo '<a href="' . $order->get_edit_url() . '">' . $order->get_formatted_number() . '</a>';
+			echo '<a href="' . esc_url( $order->get_edit_url() ) . '">' . wp_kses_post( $order->get_formatted_number() ) . '</a>';
 		} else {
-			echo $document->get_order_number();
+			echo wp_kses_post( $document->get_order_number() );
 		}
 	}
 
@@ -170,12 +173,12 @@ class SimpleTable extends Table {
 			return;
 		}
 
-		echo '<div class="sab-payment-views"><span class="payment-title">' . _x( 'Payment:', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</span>';
+		echo '<div class="sab-payment-views"><span class="payment-title">' . esc_html_x( 'Payment:', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</span>';
 		echo "<ul class='subsubsub'>\n";
 		foreach ( $views as $class => $view ) {
 			$views[ $class ] = "\t<li class='$class'>$view";
 		}
-		echo implode( " |</li>\n", $views ) . "</li>\n";
+		echo wp_kses_post( implode( " |</li>\n", $views ) . "</li>\n" );
 		echo '</ul>';
 		echo '</div>';
 	}
@@ -184,19 +187,19 @@ class SimpleTable extends Table {
 		$views         = array();
 		$num_documents = sab_get_invoice_payment_statuses_counts();
 
-		foreach( sab_get_invoice_payment_statuses() as $status => $title ) {
+		foreach ( sab_get_invoice_payment_statuses() as $status => $title ) {
 			$class = '';
 
 			if ( empty( $num_documents[ $status ] ) ) {
 				continue;
 			}
 
-			if ( isset( $_REQUEST['document_payment_status'] ) && $status === $_REQUEST['document_payment_status'] ) {
+			if ( isset( $_REQUEST['document_payment_status'] ) && $status === $_REQUEST['document_payment_status'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				$class = 'current';
 			}
 
 			$status_label = sprintf(
-				translate_nooped_plural( _nx_noop( $title . ' <span class="count">(%s)</span>', $title . ' <span class="count">(%s)</span>', 'storeabill-core', 'woocommerce-germanized-pro' ), $num_documents[ $status ] ),
+				translate_nooped_plural( _nx_noop( ( $title . ' <span class="count">(%s)</span>' ), ( $title . ' <span class="count">(%s)</span>' ), 'storeabill-core', 'woocommerce-germanized-pro' ), $num_documents[ $status ] ), // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralSingle, WordPress.WP.I18n.NonSingularStringLiteralPlural
 				number_format_i18n( $num_documents[ $status ] )
 			);
 
@@ -222,7 +225,7 @@ class SimpleTable extends Table {
 				$status_label
 			);
 
-			$views['payment_status_' . $status ] = $status_link;
+			$views[ 'payment_status_' . $status ] = $status_link;
 		}
 
 		return $views;

@@ -25,7 +25,8 @@ class ReverseChargeNotice extends DynamicBlock {
 
 	public function get_attributes() {
 		return array(
-			'align' => $this->get_schema_align(),
+			'align'         => $this->get_schema_align(),
+			'virtualNotice' => $this->get_schema_string( _x( 'Tax liability of the recipient of the services.', 'storeabill-core', 'woocommerce-germanized-pro' ) ),
 		);
 	}
 
@@ -52,7 +53,29 @@ class ReverseChargeNotice extends DynamicBlock {
 
 		if ( is_a( $document, 'Vendidero\StoreaBill\Invoice\Invoice' ) ) {
 			if ( $document->is_reverse_charge() ) {
-				$this->content = $content;
+				/**
+				 * Special case for virtual invoices: Use a separate notice from the block settings.
+				 */
+				if ( $document->is_virtual() ) {
+					$has_updated_dom = false;
+
+					if ( $dom = sab_load_html_dom( $content ) ) {
+						$main_node = $dom->getElementsByTagName( 'p' );
+
+						if ( count( $main_node ) > 0 ) {
+							$main_node->item( 0 )->nodeValue = wp_kses_post( $this->attributes['virtualNotice'] );
+
+							$content         = $dom->saveXML( $main_node->item( 0 ) );
+							$has_updated_dom = true;
+						}
+					}
+
+					if ( ! $has_updated_dom ) {
+						$content = wp_kses_post( $this->attributes['virtualNotice'] );
+					}
+				}
+
+				$this->content = apply_filters( 'storeabill_invoice_reverse_charge_notice', $content, $document );
 			}
 		}
 

@@ -109,7 +109,7 @@ class Resources extends REST {
 	public function is_404( $result ) {
 		$allowed_codes = array( 404, 403 );
 
-		return ( is_wp_error( $result ) && in_array( $result->get_error_code(), $allowed_codes ) );
+		return ( is_wp_error( $result ) && in_array( (int) $result->get_error_code(), $allowed_codes, true ) );
 	}
 
 	public function update_voucher( $id, $data ) {
@@ -118,6 +118,18 @@ class Resources extends REST {
 
 	public function create_voucher( $data ) {
 		return $this->get_sync_helper()->parse_response( $this->post( 'vouchers', $data ) );
+	}
+
+	public function create_voucher_transaction_hint( $id, $payment_transaction_id ) {
+		return $this->get_sync_helper()->parse_response(
+			$this->post(
+				'transaction-assignment-hint',
+				array(
+					'voucherId'         => $id,
+					'externalReference' => $payment_transaction_id,
+				)
+			)
+		);
 	}
 
 	public function update_voucher_file( $id, $file ) {
@@ -131,7 +143,14 @@ class Resources extends REST {
 			 */
 			$callback = function( $handle ) use ( $curl_file ) {
 				if ( function_exists( 'curl_init' ) && function_exists( 'curl_exec' ) ) {
-					curl_setopt( $handle, CURLOPT_POSTFIELDS, array( 'file' => $curl_file, 'type' => 'voucher' ) );
+					curl_setopt( // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+						$handle,
+						CURLOPT_POSTFIELDS,
+						array(
+							'file' => $curl_file,
+							'type' => 'voucher',
+						)
+					);
 				}
 			};
 
@@ -140,7 +159,8 @@ class Resources extends REST {
 			remove_action( 'http_api_curl', $callback, 10 );
 
 			return $result;
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 
 		return new \WP_Error( 'api-error', _x( 'Error while uploading file to voucher', 'lexoffice', 'woocommerce-germanized-pro' ) );
 	}
@@ -157,15 +177,25 @@ class Resources extends REST {
 
 	public function search_contacts( $term ) {
 		if ( is_numeric( $term ) ) {
-			$result = $this->get_sync_helper()->parse_response( $this->get( 'contacts', array(
-				'customer' => true,
-				'number'   => $term,
-			) ) );
+			$result = $this->get_sync_helper()->parse_response(
+				$this->get(
+					'contacts',
+					array(
+						'customer' => true,
+						'number'   => $term,
+					)
+				)
+			);
 		} else {
-			$result = $this->get_sync_helper()->parse_response( $this->get( 'contacts', array(
-				'customer' => true,
-				'name'     => $term,
-			) ) );
+			$result = $this->get_sync_helper()->parse_response(
+				$this->get(
+					'contacts',
+					array(
+						'customer' => true,
+						'name'     => $term,
+					)
+				)
+			);
 		}
 
 		if ( ! is_wp_error( $result ) ) {

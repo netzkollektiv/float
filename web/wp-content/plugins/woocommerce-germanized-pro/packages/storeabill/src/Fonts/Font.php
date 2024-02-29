@@ -33,7 +33,7 @@ class Font {
 
 		if ( is_array( $args ) ) {
 			$class_args = $args;
-		} elseif( is_a( $args, 'Vendidero\StoreaBill\Fonts\Font' ) ) {
+		} elseif ( is_a( $args, 'Vendidero\StoreaBill\Fonts\Font' ) ) {
 			$class_args = $args->get_data();
 		}
 
@@ -50,12 +50,12 @@ class Font {
 		}
 
 		if ( empty( $this->data['name'] ) ) {
-			$this->set_name( str_replace( '_', '', sanitize_key( $this->get_label() ) ) );
+			$this->set_name( Fonts::clean_font_name( $this->get_label() ) );
 		}
 	}
 
 	public function set_props( $props ) {
-		foreach( $props as $key => $data ) {
+		foreach ( $props as $key => $data ) {
 			$setter = "set_{$key}";
 
 			if ( is_callable( array( $this, $setter ) ) ) {
@@ -65,7 +65,7 @@ class Font {
 	}
 
 	public function get_name() {
-		return $this->data['name'];
+		return Fonts::clean_font_name( $this->data['name'] );
 	}
 
 	public function set_name( $name ) {
@@ -113,7 +113,7 @@ class Font {
 	public function get_variant_mapping( $variant = 'regular' ) {
 		$variants = $this->get_variant_mappings();
 
-		if ( ! in_array( $variant, $this->get_variant_types() ) ) {
+		if ( ! in_array( $variant, $this->get_variant_types(), true ) ) {
 			$variant = 'regular';
 		}
 
@@ -145,7 +145,7 @@ class Font {
 	public function get_files( $type = '' ) {
 		if ( empty( $type ) ) {
 			return $this->data['files'];
-		} elseif( array_key_exists( $type, $this->data['files'] ) ) {
+		} elseif ( array_key_exists( $type, $this->data['files'] ) ) {
 			return $this->data['files'][ $type ];
 		} else {
 			return array();
@@ -187,12 +187,15 @@ class Font {
 	}
 
 	public function set_files( $files ) {
-		$files = wp_parse_args( $files, array(
-			'pdf'  => array(),
-			'html' => array(),
-		) );
+		$files = wp_parse_args(
+			$files,
+			array(
+				'pdf'  => array(),
+				'html' => array(),
+			)
+		);
 
-		foreach( $this->get_variant_types() as $variant ) {
+		foreach ( $this->get_variant_types() as $variant ) {
 			if ( ! array_key_exists( $variant, $files['html'] ) ) {
 				$files['html'][ $variant ] = '';
 			}

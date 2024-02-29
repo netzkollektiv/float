@@ -3,6 +3,7 @@
  * Singleton class trait.
  */
 namespace Vendidero\StoreaBill\Utilities;
+
 /**
  * Singleton trait.
  */

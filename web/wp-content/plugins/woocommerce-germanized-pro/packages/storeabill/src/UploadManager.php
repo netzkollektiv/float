@@ -18,32 +18,12 @@ class UploadManager {
 	public static function maybe_set_upload_dir() {
 		if ( is_null( self::$upload_dir_folder ) ) {
 			if ( ! get_option( 'storeabill_upload_dir_folder', false ) ) {
-				self::$upload_dir_folder = 'storeabill-' . substr( self::generate_key(), 0, 10 );
-				update_option( 'storeabill_upload_dir_folder', self::$upload_dir_folder );
+				self::$upload_dir_folder = 'storeabill-' . sab_get_random_key( 10 );
+				update_option( 'storeabill_upload_dir_folder', self::$upload_dir_folder, false );
 			} else {
 				self::$upload_dir_folder = get_option( 'storeabill_upload_dir_folder' );
 			}
 		}
-	}
-
-	/**
-	 * Generate a unique key.
-	 *
-	 * @return string
-	 */
-	protected static function generate_key() {
-		$key       = array( ABSPATH, time() );
-		$constants = array( 'AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY', 'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT', 'SECRET_KEY' );
-
-		foreach ( $constants as $constant ) {
-			if ( defined( $constant ) ) {
-				$key[] = constant( $constant );
-			}
-		}
-
-		shuffle( $key );
-
-		return md5( serialize( $key ) );
 	}
 
 	public static function get_upload_dir_folder() {
@@ -98,11 +78,11 @@ class UploadManager {
 	}
 
 	public static function set_upload_dir_filter() {
-		add_filter( 'upload_dir', array( __CLASS__, "filter_upload_dir" ), 150, 1 );
+		add_filter( 'upload_dir', array( __CLASS__, 'filter_upload_dir' ), 150, 1 );
 	}
 
 	public static function unset_upload_dir_filter() {
-		remove_filter( 'upload_dir', array( __CLASS__, "filter_upload_dir" ), 150 );
+		remove_filter( 'upload_dir', array( __CLASS__, 'filter_upload_dir' ), 150 );
 	}
 
 	public static function filter_upload_dir( $args ) {

@@ -11,14 +11,17 @@ defined( 'ABSPATH' ) || exit;
 class DefaultTemplate extends Template {
 
 	public static function get_template_data() {
-		return apply_filters( self::get_hook_prefix() . 'data', array(
-			'margins' => array(
-				'top'    => '1',
-				'left'   => '1',
-				'right'  => '1',
-				'bottom' => '1',
+		return apply_filters(
+			self::get_hook_prefix() . 'data',
+			array(
+				'margins' => array(
+					'top'    => '1',
+					'left'   => '1',
+					'right'  => '1',
+					'bottom' => '1',
+				),
 			)
-		) );
+		);
 	}
 
 	public static function get_screenshot_url() {
@@ -49,13 +52,13 @@ class DefaultTemplate extends Template {
 		ob_start();
 		?>
 		<!-- wp:storeabill/document-styles /-->
-		<?php echo self::get_default_header(); ?>
+		<?php echo self::get_default_header(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
-        <!-- wp:storeabill/post-title {"fontSize":"large"} /-->
+		<!-- wp:storeabill/post-title {"fontSize":"large"} /-->
 
-        <!-- wp:storeabill/post-content /-->
+		<!-- wp:storeabill/post-content /-->
 
-		<?php echo self::get_default_footer(); ?>
+		<?php echo self::get_default_footer(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		<?php
 		$html = ob_get_clean();
 

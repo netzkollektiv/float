@@ -14,9 +14,12 @@ class Preview extends PostDocument implements Previewable {
 	public function __construct( $args = array() ) {
 		parent::__construct( 0 );
 
-		$args = wp_parse_args( $args, array(
-			'is_editor_preview' => false,
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'is_editor_preview' => false,
+			)
+		);
 
 		$post_id = wc_get_page_id( 'terms' );
 
@@ -37,7 +40,7 @@ class Preview extends PostDocument implements Previewable {
 	}
 
 	public function is_editor_preview() {
-		return $this->editor_preview === true;
+		return true === $this->editor_preview;
 	}
 
 	public function set_is_editor_preview( $is_editor ) {

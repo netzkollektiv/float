@@ -38,7 +38,6 @@ class Loco_gettext_Extraction {
 
     /**
      * Initialize extractor for a given bundle
-     * @param Loco_package_Bundle
      */
     public function __construct( Loco_package_Bundle $bundle ){
         loco_check_extension('ctype');
@@ -48,7 +47,7 @@ class Loco_gettext_Extraction {
         $this->bundle = $bundle;
         $this->extracted = new LocoExtracted;
         $this->extracted->setDomain('default');
-        $this->extras = array();
+        $this->extras = [];
         $default = $bundle->getDefaultProject();
         if( $default instanceof Loco_package_Project ){
             $domain = $default->getDomain()->getName();
@@ -59,13 +58,12 @@ class Loco_gettext_Extraction {
                 $this->extracted->setDomain('');
             }
             // pull bundle's default metadata. these are translations that may not be encountered in files
-            $extras = array();
+            $extras = [];
             $header = $bundle->getHeaderInfo();
             foreach( $bundle->getMetaTranslatable() as $prop => $notes ){
-                if( $source = $header->__get($prop) ){
-                    if( is_string($source) ){
-                        $extras[] = array( $source, $notes );
-                    }
+                $source = $header->__get($prop);
+                if( is_string($source) && '' !== $source ){
+                    $extras[] = [ $source, $notes ];
                 }
             }
             if( $extras ){
@@ -76,8 +74,7 @@ class Loco_gettext_Extraction {
 
 
     /**
-     * @param Loco_package_Project
-     * @return Loco_gettext_Extraction
+     * @return self
      */
     public function addProject( Loco_package_Project $project ){
         $base = $this->bundle->getDirectoryPath();
@@ -105,9 +102,9 @@ class Loco_gettext_Extraction {
                 }
                 // extract headers from theme PHP files in
                 if( $project->getBundle()->isTheme() ){
-                    $extr->headerize( array (
+                    $extr->headerize(  [
                         'Template Name' => 'Name of the template',
-                    ), (string) $project->getDomain() );
+                    ], (string) $project->getDomain() );
                 }
             }
             $this->extracted->extractSource( $extr, $file->getContents(), $file->getRelativePath( $base ) );
@@ -118,7 +115,7 @@ class Loco_gettext_Extraction {
 
     /**
      * Add metadata strings deferred from construction. Note this will alter domain counts
-     * @return Loco_gettext_Extraction
+     * @return self
      */
     public function includeMeta(){
         foreach( $this->extras as $domain => $extras ){
@@ -126,16 +123,16 @@ class Loco_gettext_Extraction {
                 $this->extracted->pushMeta( $args[0], $args[1], $domain );
             }
         }
-        $this->extras = array();
+        $this->extras = [];
         return $this;
     }
 
 
     /**
      * Add a custom source string constructed from `new Loco_gettext_String(msgid,[msgctxt])`
-     * @param Loco_gettext_String
-     * @param string optional domain, if not current bundle's default
-     * @return Loco_gettext_Extraction
+     * @param Loco_gettext_String $string
+     * @param string $domain Optional text domain, if not current bundle's default
+     * @return self
      */
     public function addString( Loco_gettext_String $string, $domain = '' ){
         if( ! $domain ) {
@@ -162,7 +159,7 @@ class Loco_gettext_Extraction {
 
     /**
      * Pull extracted data into POT, filtering out any unwanted domains 
-     * @param string
+     * @param string $domain
      * @return Loco_gettext_Data
      */
     public function getTemplate( $domain ){
@@ -183,7 +180,7 @@ class Loco_gettext_Extraction {
 
     /**
      * Get list of files skipped, or null if none were skipped
-     * @return Loco_fs_FileList | null
+     * @return Loco_fs_FileList|null
      */
     public function getSkipped(){
         return $this->skipped;

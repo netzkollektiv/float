@@ -7,9 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Adds Germanized Multistep Checkout settings.
  *
- * @class 		WC_GZDP_Settings_Tab_Multistep_Checkout
- * @version		3.0.0
- * @author 		Vendidero
+ * @class       WC_GZDP_Settings_Tab_Multistep_Checkout
+ * @version     3.0.0
+ * @author      Vendidero
  */
 class WC_GZDP_Settings_Tab_Emails extends WC_GZD_Settings_Tab_Emails {
 

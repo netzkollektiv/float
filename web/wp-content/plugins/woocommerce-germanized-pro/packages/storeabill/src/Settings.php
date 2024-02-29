@@ -38,7 +38,7 @@ trait Settings {
 	public function print_admin_settings() {
 		$helper = $this->get_settings_helper();
 
-		echo '<div class="sab-admin-settings wc-gzd-admin-settings"><table class="form-table">' . $helper->generate_settings_html( $this->get_setting_fields( 'edit' ), false ) . '</table></div>'; // WPCS: XSS ok.
+		echo '<div class="sab-admin-settings wc-gzd-admin-settings"><table class="form-table">' . $helper->generate_settings_html( $this->get_setting_fields( 'edit' ), false ) . '</table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 
 	public function get_setting_errors() {
@@ -158,7 +158,7 @@ trait Settings {
 			return $this->setting_data;
 		}
 
-		return $_POST; // WPCS: CSRF ok, input var ok.
+		return $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 	}
 
 	/**

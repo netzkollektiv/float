@@ -28,6 +28,7 @@ class ShippingAddress extends DynamicBlock {
 		return array(
 			'align'               => $this->get_schema_align(),
 			'hideIfEqualsBilling' => $this->get_schema_boolean( false ),
+			'heading'             => $this->get_schema_string(),
 		);
 	}
 
@@ -60,8 +61,7 @@ class ShippingAddress extends DynamicBlock {
 		$this->attributes = $this->parse_attributes( $attributes );
 		$this->content    = $content;
 
-		if ( is_a( $document, '\Vendidero\StoreaBill\Invoice\Invoice' ) ) {
-
+		if ( is_callable( array( $document, 'has_differing_shipping_address' ) ) ) {
 			if ( $this->attributes['hideIfEqualsBilling'] && ! $document->has_differing_shipping_address() ) {
 				return '';
 			}

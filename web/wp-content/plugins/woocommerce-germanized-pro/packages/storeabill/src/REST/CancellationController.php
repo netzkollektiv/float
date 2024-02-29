@@ -57,36 +57,39 @@ class CancellationController extends InvoiceController {
 
 		unset( $schema['properties']['sync'] );
 
-		$schema['properties'] = array_merge( $schema['properties'], array(
-			'parent_number'   => array(
-				'description' => _x( 'Parent invoice number.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'label'       => _x( 'Parent number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'type'        => 'string',
-				'context'     => array( 'view', 'edit' ),
-				'readonly'    => true,
-			),
-			'parent_formatted_number' => array(
-				'description' => _x( 'Parent formatted invoice number.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'label'       => _x( 'Parent formatted number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'type'        => 'string',
-				'context'     => array( 'view', 'edit' ),
-				'readonly'    => true,
-			),
-			'refund_order_id' => array(
-				'description' => _x( 'Refund order id if available.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'type'        => 'integer',
-				'label'       => _x( 'Order refund ID', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'default'     => 0,
-				'context'     => array( 'view', 'edit' ),
-			),
-			'refund_order_number' => array(
-				'description' => _x( 'Refund order number if available.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'type'        => 'string',
-				'label'       => _x( 'Order refund number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'default'     => '',
-				'context'     => array( 'view', 'edit' ),
-			),
-		) );
+		$schema['properties'] = array_merge(
+			$schema['properties'],
+			array(
+				'parent_number'           => array(
+					'description' => _x( 'Parent invoice number.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'label'       => _x( 'Parent number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'type'        => 'string',
+					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
+				),
+				'parent_formatted_number' => array(
+					'description' => _x( 'Parent formatted invoice number.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'label'       => _x( 'Parent formatted number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'type'        => 'string',
+					'context'     => array( 'view', 'edit' ),
+					'readonly'    => true,
+				),
+				'refund_order_id'         => array(
+					'description' => _x( 'Refund order id if available.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'type'        => 'integer',
+					'label'       => _x( 'Order refund ID', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'default'     => 0,
+					'context'     => array( 'view', 'edit' ),
+				),
+				'refund_order_number'     => array(
+					'description' => _x( 'Refund order number if available.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'type'        => 'string',
+					'label'       => _x( 'Order refund number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					'default'     => '',
+					'context'     => array( 'view', 'edit' ),
+				),
+			)
+		);
 
 		return $schema;
 	}

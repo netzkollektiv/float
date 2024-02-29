@@ -1,7 +1,12 @@
 <?php
+if(!defined('ABSPATH')) {
+    die();
+}
+?>
+<?php
 $l10n = array(
-		'confirm_and_run'    => __('Confirm & Run Export', 'wp_all_export_plugin'),
-		'save_configuration' => __('Save Export Configuration', 'wp_all_export_plugin')	
+		'confirm_and_run'    => esc_html__('Confirm & Run Export', 'wp_all_export_plugin'),
+		'save_configuration' => esc_html__('Save Export Configuration', 'wp_all_export_plugin')
 	);
 ?>
 <script type="text/javascript">	
@@ -18,10 +23,10 @@ $l10n = array(
 		<div class="wpallexport-header">
 			<div class="wpallexport-logo"></div>
 			<div class="wpallexport-title">
-				<h2><?php _e('Export to XML / CSV', 'wp_all_export_plugin'); ?></h2>
+				<h2><?php esc_html_e('Export to XML / CSV', 'wp_all_export_plugin'); ?></h2>
 			</div>
 			<div class="wpallexport-links">
-				<a href="http://www.wpallimport.com/support/" target="_blank"><?php _e('Support', 'wp_all_export_plugin'); ?></a> | <a href="http://www.wpallimport.com/documentation/" target="_blank"><?php _e('Documentation', 'wp_all_export_plugin'); ?></a>
+				<a href="http://www.wpallimport.com/support/" target="_blank"><?php esc_html_e('Support', 'wp_all_export_plugin'); ?></a> | <a href="http://www.wpallimport.com/documentation/" target="_blank"><?php esc_html_e('Documentation', 'wp_all_export_plugin'); ?></a>
 			</div>
 		</div>
 		<div class="clear"></div>
@@ -52,7 +57,7 @@ $l10n = array(
 						<input type="hidden" name="is_confirmed" value="1" />
                         <input type="hidden" name="record-count" class="wpae-record-count" value="0" />
 
-                        <input type="submit" class="rad10 wp_all_export_confirm_and_run" value="<?php _e('Confirm & Run Export', 'wp_all_export_plugin') ?>" <?php if (empty(PMXE_Plugin::$session->found_posts)):?>style="display:none;"<?php endif;?>/>
+                        <input type="submit" class="rad10 wp_all_export_confirm_and_run" value="<?php esc_html_e('Confirm & Run Export', 'wp_all_export_plugin') ?>" <?php if (empty(PMXE_Plugin::$session->found_posts)):?>style="display:none;"<?php endif;?>/>
 					</form>
 
 				</div>
@@ -82,12 +87,12 @@ $l10n = array(
 					}
 					?>
 					
-					<input type="hidden" name="selected_post_type" value="<?php echo $selected_post_type; ?>"/>
-					<input type="hidden" name="export_type" value="<?php echo $post['export_type']; ?>"/>
-					<input type="hidden" name="taxonomy_to_export" value="<?php echo $post['taxonomy_to_export'];?>">
-					<input type="hidden" name="sub_post_type_to_export" value="<?php echo $post['sub_post_type_to_export'];?>">
-					<input type="hidden" name="wpml_lang" value="<?php echo $post['wpml_lang'];?>" />
-					<input type="hidden" id="export_variations" name="export_variations" value="<?php echo XmlExportEngine::getProductVariationMode();?>" />
+					<input type="hidden" name="selected_post_type" value="<?php echo esc_attr($selected_post_type); ?>"/>
+					<input type="hidden" name="export_type" value="<?php echo esc_attr($post['export_type']); ?>"/>
+					<input type="hidden" name="taxonomy_to_export" value="<?php echo esc_attr($post['taxonomy_to_export']);?>">
+					<input type="hidden" name="sub_post_type_to_export" value="<?php echo esc_attr($post['sub_post_type_to_export']);?>">
+					<input type="hidden" name="wpml_lang" value="<?php echo esc_attr($post['wpml_lang']);?>" />
+					<input type="hidden" id="export_variations" name="export_variations" value="<?php echo esc_attr(XmlExportEngine::getProductVariationMode());?>" />
                     <input type="hidden" name="record-count" class="wpae-record-count" value="0" />
 
 					<?php \Wpae\Pro\Filtering\FilteringFactory::render_filtering_block( $engine, $isWizard, $post ); ?>
@@ -99,21 +104,21 @@ $l10n = array(
 						<input type="hidden" name="is_confirmed" value="1" />
 
                         <?php if(current_user_can(PMXE_Plugin::$capabilities)) {?>
-						    <a href="<?php echo apply_filters('pmxi_options_back_link', add_query_arg('id', $item->id, add_query_arg('action', 'template', $this->baseUrl)), $isWizard); ?>" class="back rad3"><?php _e('Edit Template', 'wp_all_export_plugin') ?></a>
+						    <a href="<?php echo esc_url(apply_filters('pmxi_options_back_link', add_query_arg('id', $item->id, add_query_arg('action', 'template', $this->baseUrl)), $isWizard)); ?>" class="back rad3"><?php esc_html_e('Edit Template', 'wp_all_export_plugin') ?></a>
 						<?php } else { ?>
-                            <a href="<?php echo $this->baseUrl; ?>" class="back rad3"><?php _e('Manage Exports', 'wp_all_export_plugin') ?></a>
+                            <a href="<?php echo esc_url($this->baseUrl); ?>" class="back rad3"><?php esc_html_e('Manage Exports', 'wp_all_export_plugin'); ?></a>
 
                         <?php } ?>
                         <?php if (empty(PMXE_Plugin::$session->found_posts)):?>
-						<input type="submit" class="button button-primary button-hero wpallexport-large-button confirm_and_run_bottom" value="<?php _e('Save Export Configuration', 'wp_all_export_plugin') ?>" />								
+						<input type="submit" class="button button-primary button-hero wpallexport-large-button confirm_and_run_bottom" value="<?php esc_html_e('Save Export Configuration', 'wp_all_export_plugin') ?>" />
 						<?php else:?>
-						<input type="submit" class="button button-primary button-hero wpallexport-large-button confirm_and_run_bottom" value="<?php _e('Confirm & Run Export', 'wp_all_export_plugin') ?>" />								
+						<input type="submit" class="button button-primary button-hero wpallexport-large-button confirm_and_run_bottom" value="<?php esc_html_e('Confirm & Run Export', 'wp_all_export_plugin') ?>" />
 						<?php endif;?>
 					</p>
 
 
 				</form>
-				<a href="http://soflyy.com/" target="_blank" class="wpallexport-created-by"><?php _e('Created by', 'wp_all_export_plugin'); ?> <span></span></a>
+				<a href="http://soflyy.com/" target="_blank" class="wpallexport-created-by"><?php esc_html_e('Created by', 'wp_all_export_plugin'); ?> <span></span></a>
 					
 			</td>			
 		</tr>

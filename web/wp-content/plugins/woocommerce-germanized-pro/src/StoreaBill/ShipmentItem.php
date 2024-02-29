@@ -71,19 +71,23 @@ class ShipmentItem implements SyncableReferenceItem {
 			do_action( 'storeabill_woo_shipment_item_after_retrieve_attributes', $object, $this );
 		}
 
+		$meta = apply_filters( "{$this->get_hook_prefix()}order_item_meta_to_sync", $meta, $this, $object );
+
 		$attributes     = array();
 		$order          = 0;
 		$existing_slugs = array();
 
-		foreach( $meta as $entry ) {
+		foreach ( $meta as $entry ) {
 			$order ++;
 
-			$attributes[] = new Attribute( array(
-				'key'   => $entry->key,
-				'value' => str_replace( array( '<p>', '</p>' ), '', $entry->display_value ),
-				'label' => $entry->display_key,
-				'order' => $order,
-			) );
+			$attributes[] = new Attribute(
+				array(
+					'key'   => $entry->key,
+					'value' => str_replace( array( '<p>', '</p>' ), '', $entry->display_value ),
+					'label' => $entry->display_key,
+					'order' => $order,
+				)
+			);
 
 			$existing_slugs[] = $entry->key;
 		}
@@ -126,25 +130,26 @@ class ShipmentItem implements SyncableReferenceItem {
 	 * @param array $args
 	 */
 	public function sync( &$object, $args = array() ) {
-		do_action( "storeabill_woo_gzd_shipment_item_before_sync", $this, $object, $args );
+		do_action( 'storeabill_woo_gzd_shipment_item_before_sync', $this, $object, $args );
 
-		$props = wp_parse_args( $args, array(
-			'quantity'     => $this->get_quantity(),
-			'reference_id' => $this->get_id(),
-			'name'         => $this->get_name(),
-			'attributes'   => $this->get_attributes( $object ),
-			'sku'          => $this->get_sku(),
-			'price'        => $this->get_price(),
-			'total'        => $this->get_total(),
-		) );
+		$props = wp_parse_args(
+			$args,
+			array(
+				'quantity'     => $this->get_quantity(),
+				'reference_id' => $this->get_id(),
+				'name'         => $this->get_name(),
+				'attributes'   => $this->get_attributes( $object ),
+				'sku'          => $this->get_sku(),
+				'price'        => $this->get_price(),
+				'total'        => $this->get_total(),
+			)
+		);
 
-		$props = apply_filters( "storeabill_woo_gzd_shipment_item_sync_props", $props, $this, $args );
+		$props = apply_filters( 'storeabill_woo_gzd_shipment_item_sync_props', $props, $this, $args );
 
 		$object->set_props( $props );
 
-		do_action( "storeabill_woo_gzd_shipment_item_synced", $this, $object, $args );
-
-		$object->set_props( $props );
+		do_action( 'storeabill_woo_gzd_shipment_item_synced', $this, $object, $args );
 	}
 
 	public function get_meta( $key, $single = true, $context = 'view' ) {
@@ -154,7 +159,7 @@ class ShipmentItem implements SyncableReferenceItem {
 	public function is_callable( $method ) {
 		if ( method_exists( $this, $method ) ) {
 			return true;
-		} elseif( is_callable( array( $this->get_item(), $method ) ) ) {
+		} elseif ( is_callable( array( $this->get_item(), $method ) ) ) {
 			return true;
 		}
 

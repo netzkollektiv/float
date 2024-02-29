@@ -62,7 +62,7 @@ class Install {
 	}
 
 	public static function create_default_templates() {
-		foreach( sab_get_document_types() as $document_type ) {
+		foreach ( sab_get_document_types() as $document_type ) {
 			$existing = Package::get_setting( $document_type . '_default_template' );
 
 			if ( ! $existing || ! sab_get_document_template( $existing ) ) {
@@ -71,12 +71,12 @@ class Install {
 				if ( $template && $template->get_id() > 0 ) {
 					update_option( 'storeabill_' . $document_type . '_default_template', $template->get_id() );
 				}
- 			}
+			}
 		}
 	}
 
 	public static function create_journals() {
-		foreach( sab_get_document_types() as $document_type ) {
+		foreach ( sab_get_document_types() as $document_type ) {
 			if ( ! $journal = sab_get_journal( $document_type ) ) {
 				sab_create_journal( $document_type );
 			}
@@ -88,7 +88,49 @@ class Install {
 
 		$wpdb->hide_errors();
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta( self::get_schema() );
+		$db_delta_result = dbDelta( self::get_schema() );
+
+		$current_db_version = get_option( 'storeabill_db_version', null );
+
+		/**
+		 * Update MySQL datetime default to NULL for MySQL 8 compatibility.
+		 */
+		if ( ! empty( $current_db_version ) && version_compare( $current_db_version, '2.1.0', '<' ) ) {
+			$date_fields = array(
+				"{$wpdb->prefix}storeabill_journals"  => array(
+					'journal_date_last_reset',
+					'journal_date_last_reset_gmt',
+				),
+				"{$wpdb->prefix}storeabill_document_notices" => array(
+					'document_notice_date_created',
+					'document_notice_date_created_gmt',
+				),
+				"{$wpdb->prefix}storeabill_documents" => array(
+					'document_date_created',
+					'document_date_created_gmt',
+					'document_date_modified',
+					'document_date_modified_gmt',
+					'document_date_sent',
+					'document_date_sent_gmt',
+					'document_date_custom',
+					'document_date_custom_gmt',
+					'document_date_custom_extra',
+					'document_date_custom_extra_gmt',
+				),
+			);
+
+			foreach ( $date_fields as $table => $columns ) {
+				foreach ( $columns as $column ) {
+					$result = $wpdb->query( "ALTER TABLE `$table` CHANGE $column $column datetime DEFAULT NULL;" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+					if ( true !== $result ) {
+						Package::log( sprintf( 'Error while updating datetime field in %s for column %s', $table, $column ), 'error', 'update' );
+					}
+				}
+			}
+		}
+
+		return $db_delta_result;
 	}
 
 	/**
@@ -106,7 +148,7 @@ class Install {
 		$capability_types = array(
 			'invoice',
 			'invoice_cancellation',
-			'document_template'
+			'document_template',
 		);
 
 		foreach ( $capability_types as $capability_type ) {
@@ -151,44 +193,44 @@ class Install {
 		$dir      = UploadManager::get_upload_dir();
 		$font_dir = UploadManager::get_font_path();
 
-		if ( ! @is_dir( $dir['basedir'] ) ) {
-			@mkdir( $dir['basedir'] );
+		if ( ! @is_dir( $dir['basedir'] ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			@mkdir( $dir['basedir'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 
-		if ( ! @file_exists( trailingslashit( $dir['basedir'] ) . '.htaccess' ) ) {
+		if ( ! @file_exists( trailingslashit( $dir['basedir'] ) . '.htaccess' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			$content  = 'deny from all' . "\n";
 			$content .= '<FilesMatch "\.(?:ttf|woff)$">' . "\n";
 			$content .= 'Order deny,allow' . "\n";
 			$content .= 'Allow from all' . "\n";
 			$content .= '</FilesMatch>';
 
-			@file_put_contents( trailingslashit( $dir['basedir'] ) . '.htaccess', $content );
+			@file_put_contents( trailingslashit( $dir['basedir'] ) . '.htaccess', $content ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
 		}
 
-		if ( ! @file_exists( trailingslashit( $dir['basedir'] ) . 'index.php' ) ) {
-			@touch( trailingslashit( $dir['basedir'] ) . 'index.php' );
+		if ( ! @file_exists( trailingslashit( $dir['basedir'] ) . 'index.php' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			@touch( trailingslashit( $dir['basedir'] ) . 'index.php' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 
 		/**
 		 * Fonts
 		 */
-		if ( ! @is_dir( $font_dir ) ) {
-			@mkdir( $font_dir );
+		if ( ! @is_dir( $font_dir ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			@mkdir( $font_dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 
 		/**
 		 * Copy default PublicSans fonts into font dir
 		 */
-		if ( ! @file_exists( trailingslashit( $font_dir ) . 'PublicSans.ttf' ) ) {
+		if ( ! @file_exists( trailingslashit( $font_dir ) . 'PublicSans.ttf' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			$library_font_path = Package::get_path() . '/assets/fonts';
-			$files             = @glob($library_font_path . '/*.ttf' );
-			$files             = array_merge( $files, @glob($library_font_path . '/*.woff' ) );
+			$files             = @glob( $library_font_path . '/*.ttf' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			$files             = array_merge( $files, @glob( $library_font_path . '/*.woff' ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 
-			foreach( $files as $file ) {
+			foreach ( $files as $file ) {
 				$file_to_go = str_replace( trailingslashit( $library_font_path ), trailingslashit( $font_dir ), $file );
 
-				if ( ! @file_exists( trailingslashit( $font_dir ) . basename( $file ) ) ) {
-					@copy( $file, $file_to_go );
+				if ( ! @file_exists( trailingslashit( $font_dir ) . basename( $file ) ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+					@copy( $file, $file_to_go ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 				}
 			}
 		}
@@ -236,7 +278,7 @@ class Install {
 		$tables = self::get_tables();
 
 		foreach ( $tables as $table ) {
-			$wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
 	}
 
@@ -251,21 +293,21 @@ class Install {
 
 		$tables = "
 CREATE TABLE {$wpdb->prefix}storeabill_document_items (
-  document_item_id BIGINT UNSIGNED NOT NULL auto_increment,
-  document_item_name TEXT NOT NULL,
+  document_item_id bigint(20) unsigned NOT NULL auto_increment,
+  document_item_name text NOT NULL,
   document_item_type varchar(200) NOT NULL DEFAULT '',
-  document_item_parent_id BIGINT UNSIGNED NOT NULL,
-  document_item_reference_id BIGINT UNSIGNED NOT NULL,
-  document_item_quantity DECIMAL (8,3) UNSIGNED NOT NULL,
-  document_id BIGINT UNSIGNED NOT NULL,
+  document_item_parent_id bigint(20) unsigned NOT NULL,
+  document_item_reference_id bigint(20) unsigned NOT NULL,
+  document_item_quantity decimal(8,3) unsigned NOT NULL,
+  document_id bigint(20) unsigned NOT NULL,
   PRIMARY KEY  (document_item_id),
   KEY document_id (document_id),
   KEY document_item_reference_id (document_item_reference_id),
   KEY document_item_parent_id (document_item_parent_id)
 ) $collate;
 CREATE TABLE {$wpdb->prefix}storeabill_document_itemmeta (
-  meta_id BIGINT UNSIGNED NOT NULL auto_increment,
-  storeabill_document_item_id BIGINT UNSIGNED NOT NULL,
+  meta_id bigint(20) unsigned NOT NULL auto_increment,
+  storeabill_document_item_id bigint(20) unsigned NOT NULL,
   meta_key varchar(255) default NULL,
   meta_value longtext NULL,
   PRIMARY KEY  (meta_id),
@@ -273,32 +315,32 @@ CREATE TABLE {$wpdb->prefix}storeabill_document_itemmeta (
   KEY meta_key (meta_key(32))
 ) $collate;
 CREATE TABLE {$wpdb->prefix}storeabill_journals (
-  journal_id BIGINT UNSIGNED NOT NULL auto_increment,
+  journal_id bigint(20) unsigned NOT NULL auto_increment,
   journal_type varchar(70) NOT NULL DEFAULT '',
   journal_name varchar(200) NOT NULL,
   journal_is_archived varchar(10) NOT NULL DEFAULT '',
   journal_number_format varchar(200) NOT NULL,
-  journal_number_min_size TINYINT NOT NULL DEFAULT 0,
-  journal_last_number bigint unsigned NOT NULL,
-  journal_date_last_reset datetime NOT NULL default '0000-00-00 00:00:00',
-  journal_date_last_reset_gmt datetime NOT NULL default '0000-00-00 00:00:00',
+  journal_number_min_size tinyint(4) NOT NULL DEFAULT 0,
+  journal_last_number bigint(20) unsigned NOT NULL,
+  journal_date_last_reset datetime NULL default NULL,
+  journal_date_last_reset_gmt datetime NULL default NULL,
   journal_reset_interval varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY  (journal_id),
   UNIQUE KEY journal_type (journal_type)
 ) $collate;
 CREATE TABLE {$wpdb->prefix}storeabill_document_notices (
-  document_notice_id BIGINT UNSIGNED NOT NULL auto_increment,
+  document_notice_id bigint(20) unsigned NOT NULL auto_increment,
   document_notice_type varchar(200) NOT NULL DEFAULT '',
-  document_notice_date_created datetime NOT NULL default '0000-00-00 00:00:00',
-  document_notice_date_created_gmt datetime NOT NULL default '0000-00-00 00:00:00',
+  document_notice_date_created datetime default NULL,
+  document_notice_date_created_gmt datetime default NULL,
   document_notice_text longtext NULL,
-  document_id BIGINT UNSIGNED NOT NULL,
+  document_id bigint(20) unsigned NOT NULL,
   PRIMARY KEY  (document_notice_id),
   KEY document_id (document_id)
 ) $collate;
 CREATE TABLE {$wpdb->prefix}storeabill_document_noticemeta (
-  meta_id BIGINT UNSIGNED NOT NULL auto_increment,
-  storeabill_document_notice_id BIGINT UNSIGNED NOT NULL,
+  meta_id bigint(20) unsigned NOT NULL auto_increment,
+  storeabill_document_notice_id bigint(20) unsigned NOT NULL,
   meta_key varchar(255) default NULL,
   meta_value longtext NULL,
   PRIMARY KEY  (meta_id),
@@ -306,28 +348,28 @@ CREATE TABLE {$wpdb->prefix}storeabill_document_noticemeta (
   KEY meta_key (meta_key(32))
 ) $collate;
 CREATE TABLE {$wpdb->prefix}storeabill_documents (
-  document_id BIGINT UNSIGNED NOT NULL auto_increment,
-  document_date_created datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_created_gmt datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_modified datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_modified_gmt datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_sent datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_sent_gmt datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_custom datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_custom_gmt datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_custom_extra datetime NOT NULL default '0000-00-00 00:00:00',
-  document_date_custom_extra_gmt datetime NOT NULL default '0000-00-00 00:00:00',
+  document_id bigint(20) unsigned NOT NULL auto_increment,
+  document_date_created datetime default NULL,
+  document_date_created_gmt datetime default NULL,
+  document_date_modified datetime default NULL,
+  document_date_modified_gmt datetime default NULL,
+  document_date_sent datetime default NULL,
+  document_date_sent_gmt datetime default NULL,
+  document_date_custom datetime default NULL,
+  document_date_custom_gmt datetime default NULL,
+  document_date_custom_extra datetime default NULL,
+  document_date_custom_extra_gmt datetime default NULL,
   document_status varchar(20) NOT NULL default 'draft',
   document_number varchar(200) NOT NULL DEFAULT '',
   document_formatted_number varchar(200) NOT NULL DEFAULT '',
-  document_customer_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
-  document_author_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  document_customer_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  document_author_id bigint(20) unsigned NOT NULL DEFAULT 0,
   document_country varchar(2) NOT NULL DEFAULT '',
   document_index longtext NOT NULL DEFAULT '',
   document_relative_path varchar(260) NOT NULL DEFAULT '',
-  document_reference_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  document_reference_id bigint(20) unsigned NOT NULL DEFAULT 0,
   document_reference_type varchar(200) NOT NULL DEFAULT '',
-  document_parent_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  document_parent_id bigint(20) unsigned NOT NULL DEFAULT 0,
   document_type varchar(200) NOT NULL DEFAULT '',
   document_journal_type varchar(200) NOT NULL DEFAULT '',
   PRIMARY KEY  (document_id),
@@ -337,8 +379,8 @@ CREATE TABLE {$wpdb->prefix}storeabill_documents (
   KEY document_parent_id (document_parent_id)
 ) $collate;
 CREATE TABLE {$wpdb->prefix}storeabill_documentmeta (
-  meta_id BIGINT UNSIGNED NOT NULL auto_increment,
-  storeabill_document_id BIGINT UNSIGNED NOT NULL,
+  meta_id bigint(20) unsigned NOT NULL auto_increment,
+  storeabill_document_id bigint(20) unsigned NOT NULL,
   meta_key varchar(255) default NULL,
   meta_value longtext NULL,
   PRIMARY KEY  (meta_id),
@@ -410,6 +452,8 @@ CREATE TABLE {$wpdb->prefix}storeabill_documentmeta (
 		foreach ( self::get_db_update_callbacks() as $version => $update_callbacks ) {
 			if ( version_compare( $current_db_version, $version, '<' ) ) {
 				foreach ( $update_callbacks as $update_callback ) {
+					call_user_func_array( $update_callback, array() );
+
 					WC()->queue()->schedule_single(
 						time() + $loop,
 						'storeabill_run_update_callback',

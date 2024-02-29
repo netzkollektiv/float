@@ -12,7 +12,7 @@
  *
  * @see https://vendidero.de/dokument/template-struktur-templates-im-theme-ueberschreiben
  * @package Germanized/Pro/Templates
- * @version 1.1.0
+ * @version 1.2.0
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -22,7 +22,7 @@ echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
 echo esc_html( wp_strip_all_tags( $email_heading ) );
 echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-echo WC_GZDP_Contract_Helper::instance()->get_processing_order_email_text( $order ) . "\n\n";
+echo wp_kses_post( WC_GZDP_Contract_Helper::instance()->get_processing_order_email_text( $order ) ) . "\n\n";
 
 echo "\n----------------------------------------\n\n";
 
@@ -57,4 +57,4 @@ if ( $additional_content ) {
 	echo "\n\n----------------------------------------\n\n";
 }
 
-echo apply_filters( 'woocommerce_email_footer_text', get_option( 'woocommerce_email_footer_text' ) );
+echo wp_kses_post( apply_filters( 'woocommerce_email_footer_text', get_option( 'woocommerce_email_footer_text' ) ) );

@@ -18,26 +18,24 @@ if ( ! class_exists( 'WC_CSV_Exporter', false ) ) {
 }
 
 abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
-    use ExporterTrait;
+	use ExporterTrait;
 
-    protected $filename = 'sab-export.csv';
+	protected $filename = 'sab-export.csv';
 
 	protected $excluded_column_names = array(
 		'formatted_address',
-		'formatted_shipping_address',
 		'meta_data',
-        'shipping_address'
 	);
 
 	protected $spreadable_column_names = array(
-		'address'
+		'address',
 	);
 
 	protected $date_column_names = array(
-        'date_created',
-        'date_modified',
-        'date_sent'
-    );
+		'date_created',
+		'date_modified',
+		'date_sent',
+	);
 
 	/**
 	 * Columns ids and names.
@@ -118,11 +116,11 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 		);
 
 		if ( $start_date = $this->get_start_date() ) {
-			$query_args['after'] = $start_date->format( 'Y-m-d' );
+			$query_args['after'] = $this->get_gm_date( $start_date );
 		}
 
 		if ( $end_date = $this->get_end_date() ) {
-			$query_args['before'] = $end_date->format( 'Y-m-d' );
+			$query_args['before'] = $this->get_gm_date( $end_date );
 		}
 
 		$query_args = array_replace( $query_args, $this->get_additional_query_args() );
@@ -141,11 +139,11 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 	}
 
 	protected function include_column( $prop ) {
-		return in_array( $prop, $this->get_excluded_column_names() ) ? false : true;
+		return in_array( $prop, $this->get_excluded_column_names(), true ) ? false : true;
 	}
 
 	protected function spread_column( $prop ) {
-		return in_array( $prop, $this->get_spreadable_column_names() ) ? true : false;
+		return in_array( $prop, $this->get_spreadable_column_names(), true ) ? true : false;
 	}
 
 	/**
@@ -155,33 +153,33 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 	 * @return array
 	 */
 	public function get_columns_to_export() {
-	    $filter = (array) $this->get_filter( 'columns' );
+		$filter = (array) $this->get_filter( 'columns' );
 
 		if ( $filter && ! empty( $filter ) ) {
-		    return $filter;
-        }
+			return $filter;
+		}
 
 		return array();
 	}
 
 	protected function get_schema_label( $prop, $fallback ) {
-	    $label       = isset( $prop['label'] ) ? $prop['label'] : '';
+		$label       = isset( $prop['label'] ) ? $prop['label'] : '';
 		$description = isset( $prop['description'] ) ? $prop['description'] : '';
 
 		if ( empty( $label ) ) {
-		    $label = $description;
-        }
+			$label = $description;
+		}
 
 		if ( empty( $label ) ) {
-		    $label = $fallback;
-        }
+			$label = $fallback;
+		}
 
 		if ( ! empty( $label ) && substr( $label, -1 ) === '.' ) {
 			$label = substr( $label, 0, -1 );
 		}
 
 		return $label;
-    }
+	}
 
 	public function get_default_column_names() {
 		$columns = array();
@@ -190,18 +188,18 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 			$schema  = $controller->get_item_schema()['properties'];
 			$columns = array();
 
-			foreach( $schema as $prop => $args ) {
+			foreach ( $schema as $prop => $args ) {
 				if ( ! $this->include_column( $prop ) ) {
 					continue;
 				}
 
 				if ( 'object' === $args['type'] && is_array( $args['properties'] ) && $this->spread_column( $prop ) ) {
-					foreach( $args['properties'] as $inner_prop => $inner_args ) {
+					foreach ( $args['properties'] as $inner_prop => $inner_args ) {
 						$columns[ $prop . '_' . $inner_prop ] = $this->get_schema_label( $inner_args, $inner_prop );
 					}
 				} else {
 					$columns[ $prop ] = $this->get_schema_label( $args, $prop );
-                }
+				}
 			}
 		}
 
@@ -211,8 +209,8 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 	}
 
 	protected function get_additional_default_column_names() {
-	    return array();
-    }
+		return array();
+	}
 
 	/**
 	 * Prepare data for export.
@@ -232,10 +230,10 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 		/**
 		 * Remove columns with extra handling from header.
 		 */
-		foreach( $this->get_column_names() as $column_id => $name ) {
+		foreach ( $this->get_column_names() as $column_id => $name ) {
 			if ( $this->column_needs_extra_handling( $column_id ) ) {
-			    unset( $this->column_names[ $column_id ] );
-            }
+				unset( $this->column_names[ $column_id ] );
+			}
 		}
 	}
 
@@ -272,10 +270,10 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 			<td>
 				<select id="sab-exporter-columns" name="columns[]" class="sab-exporter-columns sab-enhanced-select" style="width:100%;" multiple data-placeholder="<?php echo esc_html_x( 'Export all columns', 'storeabill-core', 'woocommerce-germanized-pro' ); ?>">
 					<?php
-                    $default_columns = $this->get_default_filter_setting( 'columns', array() );
+					$default_columns = $this->get_default_filter_setting( 'columns', array() );
 
 					foreach ( $this->get_default_column_names() as $column_id => $column_name ) {
-						echo '<option value="' . esc_attr( $column_id ) . '" ' . selected( $column_id, in_array( $column_id, $default_columns ) ? $column_id : '', false ) . '>' . esc_html( $column_name ) . '</option>';
+						echo '<option value="' . esc_attr( $column_id ) . '" ' . selected( $column_id, in_array( $column_id, $default_columns, true ) ? $column_id : '', false ) . '>' . esc_html( $column_name ) . '</option>';
 					}
 					?>
 				</select>
@@ -294,15 +292,15 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 	}
 
 	protected function get_columns_with_extra_handling() {
-	    return array( 'meta', 'address', 'shipping_address' );
+		return array( 'meta', 'address' );
 	}
 
 	protected function column_needs_extra_handling( $column_id ) {
-	    return apply_filters( "{$this->get_hook_prefix()}column_needs_extra_handling", in_array( $column_id, $this->get_columns_with_extra_handling(), true ), $column_id );
+		return apply_filters( "{$this->get_hook_prefix()}column_needs_extra_handling", in_array( $column_id, $this->get_columns_with_extra_handling(), true ), $column_id );
 	}
 
 	protected function is_date_column( $column_id ) {
-	    $column_id = str_replace( '_gmt', '', $column_id );
+		$column_id = str_replace( '_gmt', '', $column_id );
 
 		return apply_filters( "{$this->get_hook_prefix()}is_date_column", in_array( $column_id, $this->date_column_names, true ), $column_id );
 	}
@@ -340,8 +338,12 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 				$value = $document[ $column_id ];
 
 				if ( $this->is_date_column( $column_id ) ) {
-				    $value = $this->format_date_time( $value );
+					$value = $this->format_date_time( $value );
 				}
+			}
+
+			if ( ! empty( $value ) && is_numeric( $value ) ) {
+				$value = $this->format_localized_decimal( $value );
 			}
 
 			$row[ $column_id ] = $value;
@@ -354,14 +356,23 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 		return apply_filters( "{$this->get_hook_prefix()}row_data", $row, $document );
 	}
 
-	protected function format_date_time( $value ) {
-	    if ( ! empty( $value ) ) {
-	        try {
-		        $value = sab_string_to_datetime( $value );
-	        } catch( \Exception $e ) {}
-	    }
+	protected function format_localized_decimal( $value ) {
+		if ( is_numeric( $value ) && apply_filters( 'storeabill_csv_export_localize_decimals', true ) ) {
+			$value = sab_format_localized_decimal( $value );
+		}
 
-	    return $value;
+		return $value;
+	}
+
+	protected function format_date_time( $value ) {
+		if ( ! empty( $value ) ) {
+			try {
+				$value = sab_string_to_datetime( $value );
+			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			}
+		}
+
+		return $value;
 	}
 
 	protected function prepare_extra_data_for_export( $document, &$row ) {
@@ -369,7 +380,7 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 	}
 
 	protected function prepare_address_for_export( $document, &$row ) {
-		foreach( $document['address'] as $address_prop => $value ) {
+		foreach ( $document['address'] as $address_prop => $value ) {
 			if ( $this->is_column_exporting( 'address_' . $address_prop ) ) {
 				$row[ 'address_' . $address_prop ] = $value;
 			}
@@ -377,9 +388,9 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 	}
 
 	protected function has_meta_support() {
-	    $has_meta_support = $this->get_filter( 'enable_meta' ) ? sab_string_to_bool( $this->get_filter( 'enable_meta' ) ) : false;
+		$has_meta_support = $this->get_filter( 'enable_meta' ) ? sab_string_to_bool( $this->get_filter( 'enable_meta' ) ) : false;
 
-	    return $has_meta_support;
+		return $has_meta_support;
 	}
 
 	/**
@@ -396,10 +407,9 @@ abstract class CsvExporter extends \WC_CSV_Batch_Exporter implements Exporter {
 
 			if ( count( $meta_data ) ) {
 				$meta_keys_to_skip = apply_filters( "{$this->get_hook_prefix()}skip_meta_keys", array(), $document );
+				$i                 = 1;
 
-				$i = 1;
 				foreach ( $meta_data as $meta ) {
-
 					if ( in_array( $meta->key, $meta_keys_to_skip, true ) ) {
 						continue;
 					}

@@ -7,9 +7,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Shipment Order
  *
- * @class 		WC_GZD_Shipment_Order
- * @version		1.0.0
- * @author 		Vendidero
+ * @class       WC_GZD_Shipment_Order
+ * @version     1.0.0
+ * @author      Vendidero
  */
 class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 
@@ -42,7 +42,7 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 	}
 
 	protected function get_file_option_name() {
-		return "_sab_packing_slip_bulk_merge_path";
+		return '_sab_packing_slip_bulk_merge_path';
 	}
 
 	protected function get_files_option_name() {
@@ -90,12 +90,15 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 
 		if ( ( $path = $this->get_file() ) && file_exists( $path ) ) {
 
-			$download_url = add_query_arg( array(
-				'action'        => 'wc-gzdp-download-packing-slip-export',
-				'force'         => 'no'
-			), wp_nonce_url( admin_url(), 'wc-gzdp-download-packing-slips' ) );
+			$download_url = add_query_arg(
+				array(
+					'action' => 'wc-gzdp-download-packing-slip-export',
+					'force'  => 'no',
+				),
+				wp_nonce_url( admin_url(), 'wc-gzdp-download-packing-slips' )
+			);
 
-			$download_button = '<a class="button button-primary bulk-download-button" style="margin-left: 1em;" href="' . $download_url . '" target="_blank">' . __( 'Download packing slips', 'woocommerce-germanized-pro' ) . '</a>';
+			$download_button = '<a class="button button-primary bulk-download-button" style="margin-left: 1em;" href="' . esc_url( $download_url ) . '" target="_blank">' . __( 'Download packing slips', 'woocommerce-germanized-pro' ) . '</a>';
 		}
 
 		return $download_button;
@@ -111,7 +114,7 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 		$download_button = $this->get_download_button();
 
 		if ( ! empty( $download_button ) ) {
-			echo '<div class="notice"><p>' . sprintf( __( 'Packing slips partially generated. %s', 'woocommerce-germanized-pro' ), $download_button ) . '</p></div>';
+			echo '<div class="notice"><p>' . sprintf( esc_html__( 'Packing slips partially generated. %s', 'woocommerce-germanized-pro' ), wp_kses_post( $download_button ) ) . '</p></div>';
 		}
 	}
 
@@ -130,7 +133,7 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 		$current = $this->get_current_ids();
 
 		if ( ! empty( $current ) ) {
-			foreach( $current as $shipment_id ) {
+			foreach ( $current as $shipment_id ) {
 				$packing_slip = wc_gzdp_get_packing_slip_by_shipment( $shipment_id );
 
 				if ( ! $packing_slip ) {
@@ -142,12 +145,12 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 							if ( ! is_wp_error( $result ) ) {
 								$packing_slip = \Vendidero\Germanized\Pro\StoreaBill\PackingSlips::get_packing_slip( $shipment );
 							} else {
-								foreach( $result->get_error_messages() as $message ) {
-									$this->add_notice( sprintf( __( 'An error occurred while creating packing slip for %1$s: %2$s.', 'woocommerce-germanized-pro' ), '<a href="' . $shipment->get_edit_shipment_url() .'" target="_blank">' . sprintf( __( 'shipment #%d', 'woocommerce-germanized-pro' ), $shipment_id ) . '</a>', $message ), 'error' );
+								foreach ( $result->get_error_messages() as $message ) {
+									$this->add_notice( sprintf( __( 'An error occurred while creating packing slip for %1$s: %2$s.', 'woocommerce-germanized-pro' ), '<a href="' . esc_url( $shipment->get_edit_shipment_url() ) . '" target="_blank">' . sprintf( __( 'shipment #%d', 'woocommerce-germanized-pro' ), $shipment_id ) . '</a>', $message ), 'error' );
 								}
 							}
-						} catch( Exception $e ) {
-							$this->add_notice( sprintf( __( 'Error while creating packing slip for %s.', 'woocommerce-germanized-pro' ), '<a href="' . $shipment->get_edit_shipment_url() .'" target="_blank">' . sprintf( __( 'shipment #%d', 'woocommerce-germanized-pro' ), $shipment_id ) . '</a>' ), 'error' );
+						} catch ( Exception $e ) {
+							$this->add_notice( sprintf( __( 'Error while creating packing slip for %s.', 'woocommerce-germanized-pro' ), '<a href="' . esc_url( $shipment->get_edit_shipment_url() ) . '" target="_blank">' . sprintf( __( 'shipment #%d', 'woocommerce-germanized-pro' ), $shipment_id ) . '</a>' ), 'error' );
 						}
 					}
 				}
@@ -164,7 +167,7 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 				$merger   = sab_get_pdf_merger();
 				$filename = apply_filters( 'woocommerce_gzdp_packing_slip_bulk_filename', 'packing-slip-export.pdf', $this );
 
-				foreach( $this->get_files() as $file ) {
+				foreach ( $this->get_files() as $file ) {
 					if ( ! file_exists( $file ) ) {
 						continue;
 					}
@@ -177,7 +180,8 @@ class WC_GZDP_Admin_Packing_Slip_Bulk_Handler extends BulkActionHandler {
 				if ( $new_file_path = sab_upload_document( $filename, $new_file_stream, true, true ) ) {
 					$this->update_file( $new_file_path );
 				}
-			} catch( Exception $e ) {}
+			} catch ( Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			}
 		}
 
 		$this->update_notices();

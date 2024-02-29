@@ -12,9 +12,12 @@ class RefundOrder {
 	 * @return mixed|void
 	 */
 	public static function get_references() {
-		$references = apply_filters( 'storeabill_refund_order_reference_types', array(
-			'woocommerce' => '\Vendidero\StoreaBill\WooCommerce\RefundOrder'
-		) );
+		$references = apply_filters(
+			'storeabill_refund_order_reference_types',
+			array(
+				'woocommerce' => '\Vendidero\StoreaBill\WooCommerce\RefundOrder',
+			)
+		);
 
 		return $references;
 	}
@@ -39,12 +42,14 @@ class RefundOrder {
 
 		try {
 			$obj = new $reference( $order );
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 
 		if ( ! $obj || ! is_a( $obj, '\Vendidero\StoreaBill\Interfaces\RefundOrder' ) ) {
 			try {
 				$obj = new $default_reference( $order );
-			} catch( \Exception $e ) {}
+			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			}
 		}
 
 		return $obj;

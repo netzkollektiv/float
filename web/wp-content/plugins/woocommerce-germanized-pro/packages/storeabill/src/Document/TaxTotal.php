@@ -5,6 +5,7 @@ namespace Vendidero\StoreaBill\Document;
 use Vendidero\StoreaBill\Interfaces\TaxContainable;
 use Vendidero\StoreaBill\Invoice\TaxItem;
 use Vendidero\StoreaBill\TaxRate;
+use Vendidero\StoreaBill\Utilities\Numbers;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,13 +29,13 @@ class TaxTotal {
 
 	protected $item_type_net_subtotals = null;
 
-	protected $total = 0;
+	protected $total = 0.0;
 
-	protected $total_net = 0;
+	protected $total_net = 0.0;
 
-	protected $subtotal = 0;
+	protected $subtotal = 0.0;
 
-	protected $subtotal_net = 0;
+	protected $subtotal_net = 0.0;
 
 	/**
 	 * @var null|TaxRate
@@ -43,36 +44,56 @@ class TaxTotal {
 
 	public function __construct() {}
 
+	/**
+	 * @param $round
+	 *
+	 * @return float
+	 */
 	public function get_total_tax( $round = true ) {
-		return $round ? wc_round_tax_total( $this->total ) : sab_format_decimal( $this->total );
+		return $round ? sab_round_tax_total( $this->total ) : $this->total;
 	}
 
+	/**
+	 * @param $round
+	 *
+	 * @return float
+	 */
 	public function get_total_net( $round = true ) {
-		return $round ? sab_format_decimal( $this->total_net, '' ) : sab_format_decimal( $this->total_net );
+		return $round ? Numbers::round_to_precision( $this->total_net ) : $this->total_net;
 	}
 
+	/**
+	 * @param $round
+	 *
+	 * @return float
+	 */
 	public function get_subtotal_tax( $round = true ) {
-		return $round ? wc_round_tax_total( $this->subtotal ) : sab_format_decimal( $this->subtotal );
+		return $round ? sab_round_tax_total( $this->subtotal ) : $this->subtotal;
 	}
 
+	/**
+	 * @param $round
+	 *
+	 * @return float
+	 */
 	public function get_subtotal_net( $round = true ) {
-		return $round ? sab_format_decimal( $this->subtotal_net, '' ) : sab_format_decimal( $this->subtotal_net );
+		return $round ? Numbers::round_to_precision( $this->subtotal_net ) : $this->subtotal_net;
 	}
 
 	public function set_total_tax( $total ) {
-		$this->total = $total;
+		$this->total = (float) $total;
 	}
 
 	public function set_subtotal_tax( $total ) {
-		$this->subtotal = $total;
+		$this->subtotal = (float) $total;
 	}
 
 	public function set_total_net( $total ) {
-		$this->total_net = $total;
+		$this->total_net = (float) $total;
 	}
 
 	public function set_subtotal_net( $total ) {
-		$this->subtotal_net = $total;
+		$this->subtotal_net = (float) $total;
 	}
 
 	public function get_data() {
@@ -85,7 +106,7 @@ class TaxTotal {
 			'net_totals'    => $this->get_item_type_net_totals(),
 			'tax_totals'    => $this->get_item_type_totals(),
 			'net_subtotals' => $this->get_item_type_net_subtotals(),
-			'tax_subtotals' => $this->get_item_type_subtotals()
+			'tax_subtotals' => $this->get_item_type_subtotals(),
 		);
 	}
 
@@ -109,7 +130,7 @@ class TaxTotal {
 	 * @param float[] $totals Array containing item_type => value tax totals.
 	 */
 	public function set_item_type_totals( $totals ) {
-		$this->item_type_totals = array_map( 'sab_format_decimal', $totals );
+		$this->item_type_totals = $totals;
 	}
 
 	/**
@@ -118,7 +139,7 @@ class TaxTotal {
 	 * @param float[] $totals Array containing item_type => value tax totals.
 	 */
 	public function set_item_type_net_totals( $totals ) {
-		$this->item_type_net_totals = array_map( 'sab_format_decimal', $totals );
+		$this->item_type_net_totals = $totals;
 	}
 
 	/**
@@ -127,7 +148,7 @@ class TaxTotal {
 	 * @param float[] $totals Array containing item_type => value tax totals.
 	 */
 	public function set_item_type_subtotals( $totals ) {
-		$this->item_type_subtotals = array_map( 'sab_format_decimal', $totals );
+		$this->item_type_subtotals = $totals;
 	}
 
 	/**
@@ -136,7 +157,7 @@ class TaxTotal {
 	 * @param float[] $totals Array containing item_type => value tax totals.
 	 */
 	public function set_item_type_net_subtotals( $totals ) {
-		$this->item_type_net_subtotals = array_map( 'sab_format_decimal', $totals );
+		$this->item_type_net_subtotals = $totals;
 	}
 
 	/**
@@ -199,7 +220,6 @@ class TaxTotal {
 	 * @return bool;
 	 */
 	public function add_tax( $tax ) {
-
 		if ( ! is_a( $tax, '\Vendidero\StoreaBill\Interfaces\TaxContainable' ) ) {
 			return false;
 		}
@@ -214,48 +234,48 @@ class TaxTotal {
 	 * Returns item type tax total for a specific item type e.g. shipping.
 	 *
 	 * @param $type
-	 * @return float|int
+	 * @return float
 	 */
 	public function get_item_type_total( $type ) {
 		$totals = $this->get_item_type_totals();
 
-		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0;
+		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0.0;
 	}
 
 	/**
 	 * Returns item type tax total for a specific item type e.g. shipping.
 	 *
 	 * @param $type
-	 * @return float|int
+	 * @return float
 	 */
 	public function get_item_type_net_total( $type ) {
 		$totals = $this->get_item_type_net_totals();
 
-		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0;
+		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0.0;
 	}
 
 	/**
 	 * Returns item type tax total for a specific item type e.g. shipping.
 	 *
 	 * @param $type
-	 * @return float|int
+	 * @return float
 	 */
 	public function get_item_type_subtotal( $type ) {
 		$totals = $this->get_item_type_subtotals();
 
-		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0;
+		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0.0;
 	}
 
 	/**
 	 * Returns item type tax total for a specific item type e.g. shipping.
 	 *
 	 * @param $type
-	 * @return float|int
+	 * @return float
 	 */
 	public function get_item_type_net_subtotal( $type ) {
 		$totals = $this->get_item_type_net_subtotals();
 
-		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0;
+		return isset( $totals[ $type ] ) ? ( $totals[ $type ] ) : 0.0;
 	}
 
 	/**
@@ -267,20 +287,19 @@ class TaxTotal {
 		$net_totals    = array();
 		$net_subtotals = array();
 
-		foreach( $this->taxes as $child ) {
-
+		foreach ( $this->taxes as $child ) {
 			if ( ! isset( $totals[ $child->get_tax_type() ] ) ) {
-				$totals[ $child->get_tax_type() ]     = 0;
-				$net_totals[ $child->get_tax_type() ] = 0;
+				$totals[ $child->get_tax_type() ]     = 0.0;
+				$net_totals[ $child->get_tax_type() ] = 0.0;
 			}
 
 			if ( ! isset( $subtotals[ $child->get_tax_type() ] ) ) {
-				$subtotals[ $child->get_tax_type() ]     = 0;
-				$net_subtotals[ $child->get_tax_type() ] = 0;
+				$subtotals[ $child->get_tax_type() ]     = 0.0;
+				$net_subtotals[ $child->get_tax_type() ] = 0.0;
 			}
 
-			$totals[ $child->get_tax_type() ]        += (float) $child->get_total_tax();
-			$net_totals[ $child->get_tax_type() ]    += (float) $child->get_total_net();
+			$totals[ $child->get_tax_type() ]     += (float) $child->get_total_tax();
+			$net_totals[ $child->get_tax_type() ] += (float) $child->get_total_net();
 
 			$subtotals[ $child->get_tax_type() ]     += (float) $child->get_subtotal_tax();
 			$net_subtotals[ $child->get_tax_type() ] += (float) $child->get_subtotal_net();

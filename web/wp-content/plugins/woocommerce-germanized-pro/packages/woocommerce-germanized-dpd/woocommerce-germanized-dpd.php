@@ -5,7 +5,7 @@
  * Description: The Germanized DPD integration, installed as a feature plugin for development and testing purposes.
  * Author: vendidero
  * Author URI: https://vendidero.de
- * Version: 1.0.2
+ * Version: 1.2.4
  * Requires PHP: 5.6
  * License: GPLv3
  *
@@ -37,7 +37,7 @@ if ( is_readable( $autoloader ) ) {
 		error_log(  // phpcs:ignore
 			sprintf(
 			/* translators: 1: composer command. 2: plugin directory */
-				esc_html_x(  'Your installation of the Germanized DPD feature plugin is incomplete. Please run %1$s within the %2$s directory.', 'dpd', 'woocommerce-germanized-pro' ),
+				esc_html_x( 'Your installation of the Germanized DPD feature plugin is incomplete. Please run %1$s within the %2$s directory.', 'dpd', 'woocommerce-germanized-pro' ),
 				'`composer install`',
 				'`' . esc_html( str_replace( ABSPATH, '', __DIR__ ) ) . '`'
 			)
@@ -55,7 +55,7 @@ if ( is_readable( $autoloader ) ) {
 					<?php
 					printf(
 					/* translators: 1: composer command. 2: plugin directory */
-						esc_html_x(  'Your installation of the Germanized DPD feature plugin is incomplete. Please run %1$s within the %2$s directory.', 'dpd', 'woocommerce-germanized-pro' ),
+						esc_html_x( 'Your installation of the Germanized DPD feature plugin is incomplete. Please run %1$s within the %2$s directory.', 'dpd', 'woocommerce-germanized-pro' ),
 						'<code>composer install</code>',
 						'<code>' . esc_html( str_replace( ABSPATH, '', __DIR__ ) ) . '</code>'
 					);

@@ -16,13 +16,13 @@ defined( 'ABSPATH' ) || exit;
 class Shortcodes implements ShortcodeHandleable {
 
 	public function setup() {
-		foreach( $this->get_shortcodes() as $shortcode_tag => $callback ) {
+		foreach ( $this->get_shortcodes() as $shortcode_tag => $callback ) {
 			add_shortcode( $shortcode_tag, $callback );
 		}
 	}
 
 	public function destroy() {
-		foreach( $this->get_shortcodes() as $shortcode_tag => $callback ) {
+		foreach ( $this->get_shortcodes() as $shortcode_tag => $callback ) {
 			remove_shortcode( $shortcode_tag );
 		}
 	}
@@ -40,6 +40,7 @@ class Shortcodes implements ShortcodeHandleable {
 			'document_total'                  => array( $this, 'document_total_data' ),
 			'setting'                         => array( $this, 'setting_data' ),
 			'if_document'                     => array( $this, 'if_document_data' ),
+			'if_customer'                     => array( $this, 'if_customer_data' ),
 			'if_document_reference'           => array( $this, 'if_document_reference_data' ),
 			'if_document_item'                => array( $this, 'if_document_item_data' ),
 			'if_document_item_reference'      => array( $this, 'if_document_item_reference_data' ),
@@ -170,9 +171,12 @@ class Shortcodes implements ShortcodeHandleable {
 	}
 
 	public function is_editor_preview( $atts ) {
-		$atts = wp_parse_args( $atts, array(
-			'is_editor_preview' => 'no',
-		) );
+		$atts = wp_parse_args(
+			$atts,
+			array(
+				'is_editor_preview' => 'no',
+			)
+		);
 
 		if ( 'yes' === $atts['is_editor_preview'] ) {
 			return true;
@@ -203,8 +207,8 @@ class Shortcodes implements ShortcodeHandleable {
 
 				if ( is_callable( array( $document_total, $getter ) ) ) {
 					$result = $document_total->$getter();
-				} elseif( array_key_exists( '{' . $atts['data'] . '}', $placeholders ) ) {
-					$result = $placeholders['{' . $atts['data'] . '}'];
+				} elseif ( array_key_exists( '{' . $atts['data'] . '}', $placeholders ) ) {
+					$result = $placeholders[ '{' . $atts['data'] . '}' ];
 				}
 			}
 		}
@@ -220,7 +224,7 @@ class Shortcodes implements ShortcodeHandleable {
 			$result = $this->get_document_total_data( $atts, $document_total );
 		}
 
-		return apply_filters( 'storeabill_document_total_data_shortcode_result', $this->format_result( $result, $atts ), $atts, $document_total, $this );
+		return apply_filters( 'storeabill_document_total_data_shortcode_result', $this->format_result( $result, $atts, $this->get_document_total() ), $atts, $document_total, $this );
 	}
 
 	public function parse_args( $args, $defaults = array() ) {
@@ -239,7 +243,7 @@ class Shortcodes implements ShortcodeHandleable {
 			$args['args'] = array_map( 'trim', $args['args'] );
 			$args['args'] = array_filter( $args['args'] );
 
-			foreach( $args['args'] as $key => $arg ) {
+			foreach ( $args['args'] as $key => $arg ) {
 				if ( is_string( $arg ) && 'false' === $arg ) {
 					$args['args'][ $key ] = false;
 				} elseif ( is_string( $arg ) && 'true' === $arg ) {
@@ -255,7 +259,8 @@ class Shortcodes implements ShortcodeHandleable {
 		if ( empty( $defaults ) ) {
 			$defaults = array(
 				'data'    => '',
-				'compare' => 'e',
+				// In case no value has been transmitted, assume a not empty check.
+				'compare' => isset( $args['value'] ) ? 'e' : 'nempty',
 				'value'   => '',
 				'chain'   => 'OR',
 				'format'  => '',
@@ -285,7 +290,7 @@ class Shortcodes implements ShortcodeHandleable {
 		 * Map document properties to short names.
 		 */
 		$data_mappings = array(
-			'date' => 'date_created'
+			'date' => 'date_created',
 		);
 
 		if ( array_key_exists( $atts['data'], $data_mappings ) ) {
@@ -298,7 +303,7 @@ class Shortcodes implements ShortcodeHandleable {
 			$result = $this->get_current_page_no( $atts );
 		} elseif ( 'total_pages' === $atts['data'] ) {
 			$result = $this->get_total_pages( $atts );
-		} elseif( $document ) {
+		} elseif ( $document ) {
 			if ( ! empty( $atts['data'] ) ) {
 				$result = $this->get_object_data( $document, $atts['data'], $atts['args'] );
 			}
@@ -334,7 +339,7 @@ class Shortcodes implements ShortcodeHandleable {
 			$data = $this->get_document_item_data( $atts, $item );
 		}
 
-		return apply_filters( 'storeabill_document_item_data_shortcode_result', $this->format_result( $data, $atts ), $atts, $item, $this );
+		return apply_filters( 'storeabill_document_item_data_shortcode_result', $this->format_result( $data, $atts, $this->get_document_item() ), $atts, $item, $this );
 	}
 
 	public function get_method_return( $object, $getter, $args = array() ) {
@@ -390,14 +395,36 @@ class Shortcodes implements ShortcodeHandleable {
 		} elseif ( $is_fallback_callable ) {
 			$result = $this->get_method_return( $object, $fallback_getter, $args );
 		} else {
-			$result = $object->get_meta( $field_key );
+			$result          = $object->get_meta( $field_key );
+			$original_result = $result;
 
 			if ( empty( $result ) ) {
-				$result = $object->get_meta( '_' . $field_key );
+				$prefixed_meta_result = $object->get_meta( '_' . $field_key );
+
+				if ( ! empty( $prefixed_meta_result ) ) {
+					$result = $prefixed_meta_result;
+
+					/**
+					 * Do only override empty main meta results with hidden meta fields if it is not an ACF field key
+					 * which consists of a value like field_6343bbd.
+					 */
+					if ( is_string( $prefixed_meta_result ) && 'field_' === substr( $prefixed_meta_result, 0, 6 ) ) {
+						$result = $original_result;
+					}
+				}
 			}
 		}
 
-		return $result;
+		/**
+		 * Fallback to product parent data in case result is empty string.
+		 */
+		if ( '' === $result && is_a( $object, '\Vendidero\StoreaBill\Interfaces\Product' ) ) {
+			if ( $parent = $object->get_parent() ) {
+				return $this->get_object_data( $parent, $field_key, $args );
+			}
+		}
+
+		return apply_filters( 'storeabill_shortcode_get_object_data', $result, $object, $field_key, $args );
 	}
 
 	/**
@@ -441,26 +468,26 @@ class Shortcodes implements ShortcodeHandleable {
 	public function document_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'storeabill_document_data_shortcode_result', $this->format_result( $this->get_document_data( $atts, $this->get_document() ), $atts ), $atts, $this->get_document(), $this );
+		return apply_filters( 'storeabill_document_data_shortcode_result', $this->format_result( $this->get_document_data( $atts, $this->get_document() ), $atts, $this->get_document() ), $atts, $this->get_document(), $this );
 	}
 
 	public function setting_data( $atts ) {
 		$atts           = $this->parse_args( $atts );
 		$setting_result = Package::get_setting( $atts['data'] );
 
-		return apply_filters( 'storeabill_setting_data_shortcode_result', $this->format_result( $setting_result, $atts ), $atts, $this->get_document(), $this );
+		return apply_filters( 'storeabill_setting_data_shortcode_result', $this->format_result( $setting_result, $atts, $this->get_document() ), $atts, $this->get_document(), $this );
 	}
 
 	public function customer_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'storeabill_customer_data_shortcode_result', $this->format_result( $this->get_customer_data( $atts, $this->get_customer() ), $atts ), $atts, $this->get_customer(), $this );
+		return apply_filters( 'storeabill_customer_data_shortcode_result', $this->format_result( $this->get_customer_data( $atts, $this->get_customer() ), $atts, $this->get_customer() ), $atts, $this->get_customer(), $this );
 	}
 
 	public function document_reference_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'storeabill_document_reference_data_shortcode_result', $this->format_result( $this->get_document_reference_data( $atts, $this->get_document_reference() ), $atts ), $atts, $this->get_document(), $this );
+		return apply_filters( 'storeabill_document_reference_data_shortcode_result', $this->format_result( $this->get_document_reference_data( $atts, $this->get_document_reference() ), $atts, $this->get_document_reference() ), $atts, $this->get_document(), $this );
 	}
 
 	/**
@@ -523,19 +550,19 @@ class Shortcodes implements ShortcodeHandleable {
 	public function document_item_reference_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'storeabill_document_item_reference_data_shortcode_result', $this->format_result( $this->get_document_item_reference_data( $atts, $this->get_document_item_reference() ), $atts ), $atts, $this->get_document(), $this );
+		return apply_filters( 'storeabill_document_item_reference_data_shortcode_result', $this->format_result( $this->get_document_item_reference_data( $atts, $this->get_document_item_reference() ), $atts, $this->get_document_item_reference() ), $atts, $this->get_document(), $this );
 	}
 
 	public function document_item_product_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'storeabill_document_item_product_data_shortcode_result', $this->format_result( $this->get_document_item_product_data( $atts, $this->get_document_item_product() ), $atts ), $atts, $this->get_document(), $this );
+		return apply_filters( 'storeabill_document_item_product_data_shortcode_result', $this->format_result( $this->get_document_item_product_data( $atts, $this->get_document_item_product() ), $atts, $this->get_document_item_product() ), $atts, $this->get_document(), $this );
 	}
 
 	public function document_item_product_parent_data( $atts ) {
 		$atts = $this->parse_args( $atts );
 
-		return apply_filters( 'storeabill_document_item_product_parent_data_shortcode_result', $this->format_result( $this->get_document_item_product_parent_data( $atts, $this->get_document_item_product_parent() ), $atts ), $atts, $this->get_document(), $this );
+		return apply_filters( 'storeabill_document_item_product_parent_data_shortcode_result', $this->format_result( $this->get_document_item_product_parent_data( $atts, $this->get_document_item_product_parent() ), $atts, $this->get_document_item_product_parent() ), $atts, $this->get_document(), $this );
 	}
 
 	public function document_parent_data( $atts ) {
@@ -546,7 +573,7 @@ class Shortcodes implements ShortcodeHandleable {
 			$data = $this->get_document_data( $atts, $parent );
 		}
 
-		return apply_filters( 'storeabill_document_parent_data_shortcode_result', $this->format_result( $data, $atts ), $atts, $this->get_document(), $this );
+		return apply_filters( 'storeabill_document_parent_data_shortcode_result', $this->format_result( $data, $atts, $this->get_document_parent() ), $atts, $this->get_document(), $this );
 	}
 
 	protected function compare( $types, $data, $comparison, $compare = 'OR' ) {
@@ -564,35 +591,39 @@ class Shortcodes implements ShortcodeHandleable {
 			$comparison = array( $comparison );
 		}
 
-		foreach( $types as $c ) {
+		foreach ( $types as $c ) {
 			$inner_show = false;
 
 			if ( 'e' === $c || 'equals' === $c ) {
-				$inner_show = $data == $comparison;
-			} elseif( 'ne' === $c || 'nequals' === $c ) {
-				$inner_show = $data != $comparison;
-			} elseif( 'gt' === $c || 'greater' === $c ) {
+				$inner_show = $data == $comparison; // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
+			} elseif ( 'ne' === $c || 'nequals' === $c ) {
+				$inner_show = $data != $comparison; // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
+			} elseif ( 'gt' === $c || 'greater' === $c ) {
 				$inner_show = $comparison > $data;
-			} elseif( 'gte' === $c ) {
+			} elseif ( 'gte' === $c ) {
 				$inner_show = $comparison >= $data;
-			} elseif( 'lt' === $c || 'lesser' === $c ) {
+			} elseif ( 'lt' === $c || 'lesser' === $c ) {
 				$inner_show = $comparison < $data;
-			} elseif( 'lte' === $c ) {
+			} elseif ( 'lte' === $c ) {
 				$inner_show = $comparison <= $data;
-			} elseif( 'empty' === $c ) {
+			} elseif ( 'empty' === $c ) {
 				$inner_show = empty( $data ) ? true : false;
-			} elseif( 'nempty' === $c ) {
+			} elseif ( 'nempty' === $c ) {
 				$inner_show = ! empty( $data ) ? true : false;
-			} elseif( 'true' === $c ) {
-				$inner_show = $data === true;
-			} elseif( 'false' === $c ) {
-				$inner_show = $data === false;
+			} elseif ( 'true' === $c ) {
+				$inner_show = true === $data;
+			} elseif ( 'false' === $c ) {
+				$inner_show = false === $data;
+			} elseif ( 'in' === $c && is_array( $data ) ) {
+				$inner_show = in_array( $comparison[0], $data ); // phpcs:ignore WordPress.PHP.StrictInArray.MissingTrueStrict
+			} elseif ( 'nin' === $c && is_array( $data ) ) {
+				$inner_show = ! in_array( $comparison[0], $data ); // phpcs:ignore WordPress.PHP.StrictInArray.MissingTrueStrict
 			}
 
 			if ( 'OR' === $compare && $inner_show ) {
 				$show = true;
 				break;
-			} elseif( 'AND' === $compare && ! $inner_show ) {
+			} elseif ( 'AND' === $compare && ! $inner_show ) {
 				$show = false;
 				break;
 			}
@@ -612,7 +643,7 @@ class Shortcodes implements ShortcodeHandleable {
 		} else {
 			return '';
 		}
- 	}
+	}
 
 	public function if_document_item_data( $atts, $content = '' ) {
 		$atts = $this->parse_comparison_args( $atts );
@@ -705,7 +736,7 @@ class Shortcodes implements ShortcodeHandleable {
 		}
 	}
 
-	protected function format_result( $data, $atts = array() ) {
+	protected function format_result( $data, $atts = array(), $object = false ) {
 		$return_data = $data;
 
 		/**
@@ -713,19 +744,29 @@ class Shortcodes implements ShortcodeHandleable {
 		 */
 		if ( ! empty( $atts ) && ! is_array( $atts ) ) {
 			$atts = array(
-				'format' => $atts
+				'format' => $atts,
 			);
 		}
 
-		$atts   = $this->parse_args( $atts );
-		$format = $atts['format'];
+		$atts               = $this->parse_args( $atts );
+		$format             = $atts['format'];
+		$sanitized_format   = str_replace( '-', '_', sanitize_key( $format ) );
+		$has_applied_format = false;
 
-		if ( is_a( $data, 'WC_DateTime' ) ) {
+		if ( ! empty( $sanitized_format ) && has_filter( "storeabill_format_{$sanitized_format}_shortcode" ) ) {
+			$has_applied_format = true;
+			$return_data        = apply_filters( "storeabill_format_{$sanitized_format}_shortcode", $return_data, $data, $atts, $this, $object );
+		} elseif ( is_a( $data, 'WC_DateTime' ) || is_a( $data, 'DateTime' ) ) {
 			$format = empty( $format ) ? sab_date_format() : $format;
 
+			if ( ! is_a( $data, 'WC_DateTime' ) ) {
+				$data = new \WC_DateTime( "@{$data->getTimestamp()}", new \DateTimeZone( 'UTC' ) );
+			}
+
 			try {
-				$return_data = $data->date_i18n( $format );
-			} catch( \Exception $e ) {
+				$return_data        = $data->date_i18n( $format );
+				$has_applied_format = true;
+			} catch ( \Exception $e ) {
 				$return_data = '';
 			}
 		} elseif ( is_a( $data, 'DatePeriod' ) ) {
@@ -739,19 +780,31 @@ class Shortcodes implements ShortcodeHandleable {
 
 			$format = empty( $format ) ? sab_date_format() : $format;
 
+			if ( ! is_a( $end_date, 'WC_DateTime' ) ) {
+				$end_date = new \WC_DateTime( "@{$end_date->getTimestamp()}", new \DateTimeZone( 'UTC' ) );
+			}
+
+			if ( ! is_a( $start_date, 'WC_DateTime' ) ) {
+				$start_date = new \WC_DateTime( "@{$start_date->getTimestamp()}", new \DateTimeZone( 'UTC' ) );
+			}
+
 			try {
 				if ( $is_period ) {
 					$return_data = $start_date->date_i18n( $format ) . apply_filters( 'storeabill_date_period_separator', ' - ' ) . $end_date->date_i18n( $format );
 				} else {
 					$return_data = $start_date->date_i18n( $format );
 				}
-			} catch( \Exception $e ) {
+
+				$has_applied_format = true;
+			} catch ( \Exception $e ) {
 				$return_data = '';
 			}
 		} elseif ( is_a( $data, 'WC_Order_Item' ) ) {
 			$return_data = $data->get_name();
 		} elseif ( is_a( $data, '\Vendidero\StoreaBill\Document\Item' ) ) {
 			$return_data = $data->get_name();
+		} elseif ( is_a( $data, '\Vendidero\StoreaBill\Document\Attribute' ) ) {
+			$return_data = $data->get_formatted_value();
 		} elseif ( is_a( $data, '\Vendidero\StoreaBill\Document\Total' ) ) {
 			$return_data = $data->get_formatted_label() . ': ' . $data->get_formatted_total();
 		} elseif ( is_array( $data ) ) {
@@ -759,28 +812,75 @@ class Shortcodes implements ShortcodeHandleable {
 			$filtered    = array_filter( $data );
 			$return_data = '';
 
-			foreach( $filtered as $d ) {
+			if ( ! empty( $atts['args'] ) ) {
+				foreach ( $atts['args'] as $arg ) {
+					if ( isset( $filtered[ $arg ] ) ) {
+						$filtered = $filtered[ $arg ];
+					}
+				}
+			}
+
+			if ( ! is_array( $filtered ) ) {
+				$filtered = array( $filtered );
+			}
+
+			foreach ( $filtered as $d ) {
 				$count++;
-				$return_data .= ( $count > 1 ? ', ' : '' ) . $this->format_result( $d, $atts );
+				$return_data .= ( $count > 1 ? ', ' : '' ) . $this->format_result( $d, $atts, $object );
 			}
 		} elseif ( is_string( $data ) ) {
 			$return_data = wp_kses_post( nl2br( wptexturize( $data ) ) );
 		}
 
-		if ( 'price' === $format ) {
-			if ( is_callable( array( $data, 'get_formatted_price' ) ) ) {
-				$return_data = $data->get_formatted_price( $data );
-			} elseif ( is_a( $data, '\Vendidero\StoreaBill\Interfaces\Reference' ) ) {
-				if ( $data->is_callable( 'get_currency' ) ) {
-					$currency    = $data->get_currency();
-					$return_data = sab_format_price( $return_data, array( 'currency' => $currency ) );
+		if ( ! $has_applied_format && ! empty( $format ) ) {
+			if ( 'price' === $format ) {
+				if ( is_callable( array( $object, 'get_formatted_price' ) ) ) {
+					$return_data = $object->get_formatted_price( $data );
+				} elseif ( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Reference' ) ) {
+					if ( $object->is_callable( 'get_currency' ) ) {
+						$currency    = $object->get_currency();
+						$return_data = sab_format_price( $return_data, array( 'currency' => $currency ) );
+					}
+				} else {
+					$return_data = sab_format_price( $return_data );
 				}
-			} else {
-				$return_data = sab_format_price( $return_data );
+			} elseif ( 'decimal' === $format && is_numeric( $return_data ) ) {
+				$return_data = sab_print_decimal( $return_data );
+			} elseif ( 'weight' === $format ) {
+				if ( is_callable( array( $object, 'get_formatted_weight' ) ) ) {
+					$return_data = $object->get_formatted_weight( $data );
+				} else {
+					$return_data = sab_print_decimal( $return_data );
+				}
+			} elseif ( 'country' === $format && 2 === strlen( $return_data ) ) {
+				$return_data = sab_format_country_name( $return_data );
+			} elseif ( 'date:' === substr( $format, 0, 5 ) || ( strstr( strtolower( $format ), 'm' ) && strstr( strtolower( $format ), 'y' ) && strstr( strtolower( $format ), 'd' ) ) ) {
+				$datetime = false;
+				$format   = 'date:' === substr( $format, 0, 5 ) ? substr( $format, 5 ) : $format;
+
+				// Timestamp vs formatted strings
+				if ( is_numeric( $return_data ) && (int) $return_data == $return_data ) { // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
+					$datetime = sab_string_to_datetime( $return_data );
+				} elseif ( is_string( $return_data ) && strtotime( $return_data ) ) {
+					// The date string should be in local site timezone. Convert to UTC
+					$timestamp = sab_string_to_timestamp( get_gmt_from_date( $return_data ) );
+					$datetime  = new \WC_DateTime( "@{$timestamp}", new \DateTimeZone( 'UTC' ) );
+
+					// Set local timezone or offset.
+					if ( get_option( 'timezone_string' ) ) {
+						$datetime->setTimezone( new \DateTimeZone( sab_timezone_string() ) );
+					} else {
+						$datetime->set_utc_offset( sab_timezone_string() );
+					}
+				}
+
+				if ( is_a( $datetime, 'WC_DateTime' ) ) {
+					return $this->format_result( $datetime, $atts, $object );
+				}
 			}
 		}
 
-		return apply_filters( 'storeabill_format_shortcode_result', $return_data, $format, $data, $atts, $this );
+		return apply_filters( 'storeabill_format_shortcode_result', $return_data, $format, $data, $atts, $this, $object );
 	}
 
 	protected function get_current_page_no( $atts ) {

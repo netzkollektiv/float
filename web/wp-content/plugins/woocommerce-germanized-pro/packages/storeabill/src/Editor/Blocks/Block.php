@@ -59,7 +59,7 @@ abstract class Block {
 	}
 
 	public function supports_document_type( $type ) {
-		return in_array( $type, $this->get_supported_document_types() );
+		return in_array( $type, $this->get_supported_document_types(), true );
 	}
 
 	public function get_supported_document_types() {

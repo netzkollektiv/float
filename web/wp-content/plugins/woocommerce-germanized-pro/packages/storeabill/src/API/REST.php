@@ -24,7 +24,7 @@ abstract class REST {
 
 	protected function maybe_encode_body( $body_args ) {
 		if ( 'application/json' === $this->get_content_type() ) {
-			return json_encode( $body_args, JSON_PRETTY_PRINT );
+			return wp_json_encode( $body_args, JSON_PRETTY_PRINT );
 		}
 
 		return $body_args;
@@ -34,27 +34,35 @@ abstract class REST {
 		$response = false;
 
 		if ( 'GET' === $type ) {
-			$response = wp_remote_get( $url, array(
-				'headers' => $this->get_header( $header ),
-				'timeout' => $this->get_timeout( $type )
-			) );
-		} elseif( 'POST' === $type ) {
-			$response = wp_remote_post( $url, array(
-				'headers' => $this->get_header( $header ),
-				'timeout' => $this->get_timeout( $type ),
-				'body'    => $this->maybe_encode_body( $body_args ),
-			) );
-		} elseif( 'PUT' === $type ) {
-			$response = wp_remote_request( $url, array(
-				'headers' => $this->get_header( $header ),
-				'timeout' => $this->get_timeout( $type ),
-				'body'    => $this->maybe_encode_body( $body_args ),
-				'method'  => 'PUT'
-			) );
+			$response = wp_remote_get(
+				esc_url_raw( $url ),
+				array(
+					'headers' => $this->get_header( $header ),
+					'timeout' => $this->get_timeout( $type ),
+				)
+			);
+		} elseif ( 'POST' === $type ) {
+			$response = wp_remote_post(
+				esc_url_raw( $url ),
+				array(
+					'headers' => $this->get_header( $header ),
+					'timeout' => $this->get_timeout( $type ),
+					'body'    => $this->maybe_encode_body( $body_args ),
+				)
+			);
+		} elseif ( 'PUT' === $type ) {
+			$response = wp_remote_request(
+				esc_url_raw( $url ),
+				array(
+					'headers' => $this->get_header( $header ),
+					'timeout' => $this->get_timeout( $type ),
+					'body'    => $this->maybe_encode_body( $body_args ),
+					'method'  => 'PUT',
+				)
+			);
 		}
 
 		if ( false !== $response ) {
-
 			if ( is_wp_error( $response ) ) {
 				return $response;
 			}

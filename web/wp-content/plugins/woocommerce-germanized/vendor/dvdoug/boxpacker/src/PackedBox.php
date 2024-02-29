@@ -8,11 +8,14 @@ declare(strict_types=1);
 
 namespace DVDoug\BoxPacker;
 
-use function iterator_to_array;
 use JsonSerializable;
-use function max;
 use ReturnTypeWillChange;
+
+use function iterator_to_array;
+use function max;
 use function round;
+use function array_merge;
+use function is_array;
 
 /**
  * A "box" with items.
@@ -213,15 +216,29 @@ class PackedBox implements JsonSerializable
     }
 
     #[ReturnTypeWillChange]
-    public function jsonSerialize()/*: mixed*/
+    public function jsonSerialize()/* : mixed */
     {
+        $userValues = [];
+
+        if ($this->box instanceof JsonSerializable) {
+            $userSerialisation = $this->box->jsonSerialize();
+            if (is_array($userSerialisation)) {
+                $userValues = $userSerialisation;
+            } else {
+                $userValues = ['extra' => $userSerialisation];
+            }
+        }
+
         return [
-            'box' => [
-                'reference' => $this->box->getReference(),
-                'innerWidth' => $this->box->getInnerWidth(),
-                'innerLength' => $this->box->getInnerLength(),
-                'innerDepth' => $this->box->getInnerDepth(),
-            ],
+            'box' => array_merge(
+                $userValues,
+                [
+                    'reference' => $this->box->getReference(),
+                    'innerWidth' => $this->box->getInnerWidth(),
+                    'innerLength' => $this->box->getInnerLength(),
+                    'innerDepth' => $this->box->getInnerDepth(),
+                ]
+            ),
             'items' => iterator_to_array($this->items),
         ];
     }

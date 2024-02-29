@@ -7,6 +7,7 @@ use Vendidero\StoreaBill\Interfaces\Summable;
 use Vendidero\StoreaBill\Interfaces\Taxable;
 use Vendidero\StoreaBill\Tax;
 use Vendidero\StoreaBill\TaxRate;
+use Vendidero\StoreaBill\Utilities\Numbers;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -33,64 +34,92 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 		return $data;
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_total( $context = 'view' ) {
-		return ( $this->prices_include_tax() ? $this->get_line_total() : sab_format_decimal( (float) $this->get_line_total( $context ) + (float) $this->get_total_tax( $context ) ) );
+		return ( $this->prices_include_tax() ? $this->get_line_total() : $this->get_line_total( $context ) + $this->get_total_tax( $context ) );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_subtotal( $context = 'view' ) {
-		return ( $this->prices_include_tax() ? $this->get_line_subtotal() : sab_format_decimal( (float) $this->get_line_subtotal( $context ) + (float) $this->get_subtotal_tax( $context ) ) );
+		return ( $this->prices_include_tax() ? $this->get_line_subtotal() : $this->get_line_subtotal( $context ) + $this->get_subtotal_tax( $context ) );
 	}
 
 	/**
 	 * Line total (after discounts).
 	 *
-	 * @param string $value
+	 * @return float
 	 */
 	public function get_line_total( $context = 'view' ) {
-		return $this->get_prop( 'line_total', $context );
+		return (float) $this->get_prop( 'line_total', $context );
 	}
 
 	/**
 	 * Line subtotal (before discounts).
 	 *
-	 * @param string $value
+	 * @return float
 	 */
 	public function get_line_subtotal( $context = 'view' ) {
-		return $this->get_prop( 'line_subtotal', $context );
+		return (float) $this->get_prop( 'line_subtotal', $context );
 	}
 
 	/**
 	 * Unit price (after discounts).
 	 *
-	 * @param string $value
+	 * @return float
 	 */
 	public function get_price( $context = 'view' ) {
-		return $this->get_prop( 'price', $context );
+		return (float) $this->get_prop( 'price', $context );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_price_tax( $context = 'view' ) {
-		return $this->get_quantity() > 0 ? sab_format_decimal( $this->get_total_tax( $context ) / $this->get_quantity( $context ) ) : 0;
+		return $this->get_quantity() > 0 ? $this->get_total_tax( $context ) / (float) $this->get_quantity( $context ) : 0.0;
 	}
 
+	/**
+	 * @return float
+	 */
 	public function get_price_net() {
-		return sab_format_decimal( $this->get_price() - $this->get_price_tax() );
+		return $this->get_price() - $this->get_price_tax();
 	}
 
 	/**
 	 * Unit price (before discounts).
 	 *
-	 * @param string $value
+	 * @return float
 	 */
 	public function get_price_subtotal( $context = 'view' ) {
-		return $this->get_prop( 'price_subtotal', $context );
+		return (float) $this->get_prop( 'price_subtotal', $context );
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_price_subtotal_tax( $context = 'view' ) {
-		return $this->get_quantity() > 0 ? sab_format_decimal( $this->get_subtotal_tax() / $this->get_quantity() ) : 0;
+		return $this->get_quantity() > 0 ? $this->get_subtotal_tax( $context ) / (float) $this->get_quantity( $context ) : 0.0;
 	}
 
-	public function get_price_subtotal_net() {
-		return sab_format_decimal( $this->get_price_subtotal() - $this->get_price_subtotal_tax() );
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
+	public function get_price_subtotal_net( $context = 'view' ) {
+		return $this->get_price_subtotal( $context ) - $this->get_price_subtotal_tax( $context );
 	}
 
 	/**
@@ -99,7 +128,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 * @param string $value
 	 */
 	public function set_price( $value ) {
-		$this->set_prop( 'price', sab_format_decimal( $value ) );
+		$this->set_prop( 'price', (float) sab_format_decimal( $value ) );
 	}
 
 	/**
@@ -108,7 +137,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 * @param string $value
 	 */
 	public function set_price_subtotal( $value ) {
-		$this->set_prop( 'price_subtotal', sab_format_decimal( $value ) );
+		$this->set_prop( 'price_subtotal', (float) sab_format_decimal( $value ) );
 	}
 
 	/**
@@ -117,10 +146,10 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 * @param $value
 	 */
 	public function set_line_total( $value ) {
-		$this->set_prop( 'line_total', sab_format_decimal( $value ) );
+		$this->set_prop( 'line_total', (float) sab_format_decimal( $value ) );
 
 		// Subtotal cannot be less than total (or greater in case total is smaller than 0)
-		if ( '' === $this->get_line_subtotal() || ( ( $this->get_line_total() > 0 && $this->get_line_subtotal() < $this->get_line_total() ) ) || ( $this->get_line_total() < 0 && $this->get_line_subtotal() > $this->get_line_total() ) ) {
+		if ( 0.0 === $this->get_line_subtotal() || ( ( $this->get_line_total() > 0 && $this->get_line_subtotal() < $this->get_line_total() ) ) || ( $this->get_line_total() < 0 && $this->get_line_subtotal() > $this->get_line_total() ) ) {
 			$this->set_line_subtotal( $value );
 		}
 	}
@@ -131,7 +160,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 * @param $value
 	 */
 	public function set_line_subtotal( $value ) {
-		$this->set_prop( 'line_subtotal', sab_format_decimal( $value ) );
+		$this->set_prop( 'line_subtotal', (float) sab_format_decimal( $value ) );
 	}
 
 	public function get_is_taxable( $context = 'view' ) {
@@ -145,7 +174,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	public function has_taxes() {
 		$tax_rates = $this->get_tax_rates();
 
-		return ( sizeof( $tax_rates ) > 0 && $this->is_taxable() );
+		return ( count( $tax_rates ) > 0 && $this->is_taxable() );
 	}
 
 	public function is_taxable() {
@@ -157,10 +186,10 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 *
 	 * @param string $context
 	 *
-	 * @return string
+	 * @return float
 	 */
 	public function get_subtotal_tax( $context = 'view' ) {
-		return $this->get_prop( 'subtotal_tax', $context );
+		return (float) $this->get_prop( 'subtotal_tax', $context );
 	}
 
 	/**
@@ -169,7 +198,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 * @param $value
 	 */
 	public function set_subtotal_tax( $value ) {
-		$this->set_prop( 'subtotal_tax', sab_format_decimal( $value ) );
+		$this->set_prop( 'subtotal_tax', (float) sab_format_decimal( $value ) );
 	}
 
 	/**
@@ -179,7 +208,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 		if ( is_null( $this->tax_rates ) ) {
 			$this->tax_rates = array();
 
-			foreach( $this->get_taxes() as $tax ) {
+			foreach ( $this->get_taxes() as $tax ) {
 				if ( $rate = $tax->get_tax_rate() ) {
 					if ( ! array_key_exists( $rate->get_merge_key(), $this->tax_rates ) ) {
 						$this->tax_rates[ $rate->get_merge_key() ] = $rate;
@@ -187,7 +216,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 				}
 			}
 
-			uasort( $this->tax_rates, array( '\Vendidero\StoreaBill\Tax', '_sort_tax_rates_callback' ) );
+			uasort( $this->tax_rates, array( '\Vendidero\StoreaBill\Tax', 'sort_tax_rates_callback' ) );
 		}
 
 		return $this->tax_rates;
@@ -234,8 +263,13 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 		}
 	}
 
+	/**
+	 * @param $context
+	 *
+	 * @return float
+	 */
 	public function get_total_tax( $context = '' ) {
-		return $this->get_prop( 'total_tax', $context );
+		return (float) $this->get_prop( 'total_tax', $context );
 	}
 
 	/**
@@ -244,7 +278,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 * @param $value float the amount to be set.
 	 */
 	public function set_total_tax( $value ) {
-		$this->set_prop( 'total_tax', sab_format_decimal( $value ) );
+		$this->set_prop( 'total_tax', (float) sab_format_decimal( $value ) );
 	}
 
 	/**
@@ -267,23 +301,29 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 		$this->set_prop( 'prices_include_tax', sab_string_to_bool( $value ) );
 	}
 
+	/**
+	 * @return float
+	 */
 	public function get_total_net() {
-		$total_net = ( $this->prices_include_tax() ) ? sab_format_decimal( $this->get_line_total() - $this->get_total_tax() ) : $this->get_line_total();
-		$rounded      = sab_format_decimal($total_net, '' );
+		$total_net = ( $this->prices_include_tax() ) ? $this->get_line_total() - $this->get_total_tax() : $this->get_line_total();
+		$rounded   = Numbers::round_to_precision( $total_net );
 
-		if ( $rounded == 0 ) {
-			$total_net = 0;
+		if ( 0.0 === $rounded ) {
+			$total_net = 0.0;
 		}
 
 		return $total_net;
 	}
 
+	/**
+	 * @return float
+	 */
 	public function get_subtotal_net() {
-		$subtotal_net = ( $this->prices_include_tax() ) ? sab_format_decimal( $this->get_line_subtotal() - $this->get_subtotal_tax() ) : $this->get_line_subtotal();
-		$rounded      = sab_format_decimal( $subtotal_net, '' );
+		$subtotal_net = ( $this->prices_include_tax() ) ? $this->get_line_subtotal() - $this->get_subtotal_tax() : $this->get_line_subtotal();
+		$rounded      = Numbers::round_to_precision( $subtotal_net );
 
-		if ( $rounded == 0 ) {
-			$subtotal_net = 0;
+		if ( 0.0 === $rounded ) {
+			$subtotal_net = 0.0;
 		}
 
 		return $subtotal_net;
@@ -311,7 +351,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	}
 
 	/**
-	 * @return TaxItem[] $taxes
+	 * @return TaxItem[]
 	 */
 	public function get_taxes() {
 		return parent::get_children();
@@ -322,7 +362,7 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	}
 
 	protected function get_tax_item_by_rate_key( $key ) {
-		foreach( $this->get_taxes() as $tax ) {
+		foreach ( $this->get_taxes() as $tax ) {
 			if ( $key === $tax->get_tax_rate_key() ) {
 				return $tax;
 			}
@@ -339,18 +379,16 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 		 * Calculate price before (subtotal) and after discounts.
 		 */
 		if ( $this->get_quantity() > 0 ) {
-			$this->set_price( $this->get_total() / $this->get_quantity() );
-			$this->set_price_subtotal( $this->get_subtotal() / $this->get_quantity() );
+			$this->set_price( $this->get_total() / (float) $this->get_quantity() );
+			$this->set_price_subtotal( $this->get_subtotal() / (float) $this->get_quantity() );
 		}
 	}
 
 	protected function has_voucher() {
 		$has_voucher = false;
 
-		if ( $document = $this->get_document() ) {
-			if ( $document->has_voucher() ) {
-				$has_voucher = true;
-			}
+		if ( ( $document = $this->get_document() ) && $document->has_voucher() ) {
+			$has_voucher = true;
 		}
 
 		return $has_voucher;
@@ -360,43 +398,52 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	 * In case the parent document includes a voucher
 	 * calculate item tax totals based on the pre-discount amount (e.g. subtotal).
 	 *
-	 * @return mixed|null
+	 * @return float
 	 */
 	protected function get_line_total_taxable() {
 		$line_total = $this->get_line_total();
 
 		if ( $this->has_voucher() ) {
-			$line_total = $this->get_line_subtotal();
+			if ( ( $document = $this->get_document() ) && $document->stores_vouchers_as_discount() ) {
+				$line_total = $this->get_line_subtotal();
+			}
 		}
 
 		return $line_total;
 	}
 
+	protected function get_tax_shares() {
+		$tax_shares = array();
+
+		if ( ( $document = $this->get_document() ) && is_a( $document, '\Vendidero\StoreaBill\Interfaces\Invoice' ) ) {
+			$tax_shares = $document->get_tax_shares( $this->get_item_type() );
+		}
+
+		return $tax_shares;
+	}
+
 	protected function calculate_split_tax_totals() {
-		$total_tax     = 0;
-		$subtotal_tax  = 0;
-		$rates         = $this->get_tax_rates();
+		$total_tax    = 0.0;
+		$subtotal_tax = 0.0;
+		$rates        = $this->get_tax_rates();
 
 		if ( $document = $this->get_document() ) {
 			if ( is_a( $document, '\Vendidero\StoreaBill\Interfaces\Invoice' ) ) {
-				$tax_shares = $document->get_tax_shares( $this->get_item_type() );
+				$tax_shares = $this->get_tax_shares();
 
-				foreach( $tax_shares as $tax_rate_key => $share ) {
-
+				foreach ( $tax_shares as $tax_rate_key => $share ) {
 					if ( isset( $rates[ $tax_rate_key ] ) ) {
-
-						$total_amount    = sab_format_decimal( $this->get_line_total_taxable() * $share );
-						$subtotal_amount = sab_format_decimal( $this->get_line_subtotal() * $share );
+						$total_amount    = $this->get_line_total_taxable() * (float) $share;
+						$subtotal_amount = $this->get_line_subtotal() * (float) $share;
 						$share_rates     = array( $rates[ $tax_rate_key ] );
 
-						$taxes           = Tax::calc_tax( $total_amount, $share_rates, $this->prices_include_tax() );
-						$subtotal_taxes  = Tax::calc_tax( $subtotal_amount, $share_rates, $this->prices_include_tax() );
+						$taxes          = Tax::calc_tax( $total_amount, $share_rates, $this->prices_include_tax() );
+						$subtotal_taxes = Tax::calc_tax( $subtotal_amount, $share_rates, $this->prices_include_tax() );
 
-						foreach( $taxes as $rate_key => $tax ) {
-
-							$rate         = $rates[ $rate_key ];
-							$subtotal     = isset( $subtotal_taxes[ $rate_key ] ) ? $subtotal_taxes[ $rate_key ] : 0;
-							$round_taxes  = apply_filters( 'storeabill_round_tax_at_subtotal_split_tax_calculation', $this->round_tax_at_subtotal(), $this );
+						foreach ( $taxes as $rate_key => $tax ) {
+							$rate        = $rates[ $rate_key ];
+							$subtotal    = isset( $subtotal_taxes[ $rate_key ] ) ? $subtotal_taxes[ $rate_key ] : 0.0;
+							$round_taxes = apply_filters( 'storeabill_round_tax_at_subtotal_split_tax_calculation', $this->round_tax_at_subtotal(), $this );
 
 							// Item does already exist - lets update
 							if ( $item = $this->get_tax_item_by_rate_key( $rate->get_merge_key() ) ) {
@@ -416,8 +463,8 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 								$this->add_tax( $item );
 							}
 
-							$item->set_total_net( $this->prices_include_tax() ? ( $total_amount - $item->get_total_tax() ) : $total_amount );
-							$item->set_subtotal_net( $this->prices_include_tax() ? ( $subtotal_amount - $item->get_subtotal_tax() ) : $subtotal_amount );
+							$item->set_total_net( $this->prices_include_tax() ? ( $total_amount - (float) $item->get_total_tax() ) : $total_amount );
+							$item->set_subtotal_net( $this->prices_include_tax() ? ( $subtotal_amount - (float) $item->get_subtotal_tax() ) : $subtotal_amount );
 
 							if ( $document = $this->get_document() ) {
 								if ( ! $document->get_item( $item->get_key() ) ) {
@@ -425,15 +472,14 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 								}
 							}
 
-							$total_tax    += $item->get_total_tax();
-							$subtotal_tax += $item->get_subtotal_tax();
+							$total_tax    += (float) $item->get_total_tax();
+							$subtotal_tax += (float) $item->get_subtotal_tax();
 						}
 					}
 				}
 
 				// Delete unused tax items
-				foreach( $this->get_taxes() as $tax ) {
-
+				foreach ( $this->get_taxes() as $tax ) {
 					if ( ! array_key_exists( $tax->get_tax_rate_key(), $tax_shares ) ) {
 						if ( $document = $this->get_document() ) {
 							$document->remove_item( $tax->get_id() );
@@ -486,7 +532,6 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 	}
 
 	public function calculate_tax_totals() {
-
 		if ( ! $this->is_taxable() ) {
 			$this->set_total_tax( 0 );
 			$this->set_subtotal_tax( 0 );
@@ -501,9 +546,9 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 		if ( is_a( $this, '\Vendidero\StoreaBill\Interfaces\SplitTaxable' ) ) {
 			if ( ( $document = $this->get_document() ) && $this->enable_split_tax() ) {
 				if ( is_a( $document, '\Vendidero\StoreaBill\Interfaces\Invoice' ) ) {
-					$tax_shares = $document->get_tax_shares();
+					$tax_shares = $this->get_tax_shares();
 
-					if ( sizeof( $tax_shares ) > 1 ) {
+					if ( count( $tax_shares ) > 1 ) {
 						$this->calculate_split_tax_totals();
 						return;
 					}
@@ -511,16 +556,16 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 			}
 		}
 
-		$total_tax      = 0;
-		$subtotal_tax   = 0;
-		$rates          = $this->get_tax_rates();
+		$total_tax    = 0.0;
+		$subtotal_tax = 0.0;
+		$rates        = $this->get_tax_rates();
 
 		$taxes          = Tax::calc_tax( $this->get_line_total_taxable(), $rates, $this->prices_include_tax() );
 		$subtotal_taxes = Tax::calc_tax( $this->get_line_subtotal(), $rates, $this->prices_include_tax() );
 
-		foreach( $taxes as $rate_key => $tax ) {
-			$rate         = $rates[ $rate_key ];
-			$subtotal     = isset( $subtotal_taxes[ $rate_key ] ) ? $subtotal_taxes[ $rate_key ] : 0;
+		foreach ( $taxes as $rate_key => $tax ) {
+			$rate     = $rates[ $rate_key ];
+			$subtotal = isset( $subtotal_taxes[ $rate_key ] ) ? $subtotal_taxes[ $rate_key ] : 0.0;
 
 			// Item does already exist - lets update
 			if ( $item = $this->get_tax_item_by_rate_key( $rate->get_merge_key() ) ) {
@@ -540,8 +585,8 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 				$this->add_tax( $item );
 			}
 
-			$item->set_total_net( $this->prices_include_tax() ? ( $this->get_line_total_taxable() - $item->get_total_tax() ) : $this->get_line_total_taxable() );
-			$item->set_subtotal_net( $this->prices_include_tax() ? ( $this->get_line_subtotal() - $item->get_subtotal_tax() ) : $this->get_line_subtotal() );
+			$item->set_total_net( $this->prices_include_tax() ? ( $this->get_line_total_taxable() - (float) $item->get_total_tax() ) : $this->get_line_total_taxable() );
+			$item->set_subtotal_net( $this->prices_include_tax() ? ( $this->get_line_subtotal() - (float) $item->get_subtotal_tax() ) : $this->get_line_subtotal() );
 
 			if ( $document = $this->get_document() ) {
 				if ( ! $document->get_item( $item->get_key() ) ) {
@@ -549,13 +594,12 @@ abstract class TaxableItem extends Item implements Taxable, Summable, Priceable 
 				}
 			}
 
-			$total_tax    += $item->get_total_tax();
-			$subtotal_tax += $item->get_subtotal_tax();
+			$total_tax    += (float) $item->get_total_tax();
+			$subtotal_tax += (float) $item->get_subtotal_tax();
 		}
 
 		// Delete unused tax items
-		foreach( $this->get_taxes() as $tax ) {
-
+		foreach ( $this->get_taxes() as $tax ) {
 			if ( ! array_key_exists( $tax->get_tax_rate_key(), $taxes ) ) {
 				if ( $document = $this->get_document() ) {
 					$document->remove_item( $tax->get_id() );

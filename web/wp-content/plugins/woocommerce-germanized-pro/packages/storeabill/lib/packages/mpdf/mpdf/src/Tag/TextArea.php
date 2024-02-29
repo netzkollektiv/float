@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -70,7 +70,7 @@ class TextArea extends Tag
 		if (isset($properties['FONT-FAMILY'])) {
 			$this->mpdf->SetFont($properties['FONT-FAMILY'], '', 0, false);
 		}
-		if (isset($properties['FONT-SIZE'])) {
+		if (isset($properties['FONT-SIZE']) && $properties['FONT-SIZE'] !== 'auto') {
 			$mmsize = $this->sizeConverter->convert($properties['FONT-SIZE'], $this->mpdf->default_font_size / Mpdf::SCALE);
 			$this->mpdf->SetFontSize($mmsize * Mpdf::SCALE, false);
 		}
@@ -148,6 +148,10 @@ class TextArea extends Tag
 
 		$objattr['rows'] = $rowsize;
 		$objattr['cols'] = $colsize;
+
+		if ($properties['FONT-SIZE'] === 'auto' && $this->mpdf->useActiveForms) {
+			$objattr['use_auto_fontsize'] = true;
+		}
 
 		$this->mpdf->specialcontent = serialize($objattr);
 

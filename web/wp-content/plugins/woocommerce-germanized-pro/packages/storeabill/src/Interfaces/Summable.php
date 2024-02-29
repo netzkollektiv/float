@@ -23,7 +23,7 @@ interface Summable {
 	 *
 	 * @param string $context
 	 *
-	 * @return string
+	 * @return float
 	 */
 	public function get_total( $context = '' );
 
@@ -32,7 +32,7 @@ interface Summable {
 	 *
 	 * @param string $context
 	 *
-	 * @return string
+	 * @return float
 	 */
 	public function get_subtotal();
 }

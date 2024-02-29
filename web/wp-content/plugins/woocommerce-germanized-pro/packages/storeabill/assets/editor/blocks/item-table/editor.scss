@@ -117,6 +117,7 @@
         border-width: 0;
         border-style: solid;
         padding: 0 $item-table-padding;
+        display: inline-grid; // preserves height within heading although column content has larger font sizes
         // Necessary to prevent overlapping borders
         margin-bottom: -1px;
 
@@ -197,7 +198,19 @@
     }
   }
 
-  &.is-style-odd {
+  &.is-style-even.sab-item-table-row-even {
+    > .block-editor-inner-blocks > .block-editor-block-list__layout {
+      > [data-type="storeabill/item-table-column"] {
+        > .wp-block-storeabill-item-table-column {
+          .block-editor-inner-blocks {
+            background: #EEE;
+          }
+        }
+      }
+    }
+  }
+
+  &.is-style-odd.sab-item-table-row-odd {
     > .block-editor-inner-blocks > .block-editor-block-list__layout {
       > [data-type="storeabill/item-table-column"] {
         > .wp-block-storeabill-item-table-column {
@@ -269,6 +282,12 @@
   }
 }
 
+.sab-item-table-placeholders {
+  .wp-block-storeabill-item-table.has-border-outer {
+    border-top: 0 !important;
+  }
+}
+
 /**
  * Columns act as as a "passthrough container"
  * and therefore has its vertical margins/padding removed via negative margins
@@ -315,4 +334,20 @@ div.block-core-columns.is-vertically-aligned-bottom {
 .block-core-columns > .block-editor-inner-blocks.has-overlay::after {
   left: 0;
   right: 0;
+}
+
+.sab-item-table-placeholder-wrapper {
+  opacity: .5;
+
+  .item-column-heading {
+    display: none !important;
+  }
+
+  .block-list-appender {
+    display: none !important;
+  }
+
+  p.empty-editor-block {
+    display: none;
+  }
 }

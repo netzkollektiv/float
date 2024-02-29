@@ -80,15 +80,31 @@ class DefaultTemplate extends Template {
 
 	public function get_line_item_types( $context = 'view' ) {
 		$line_item_types = $this->get_prop( 'line_item_types', $context );
+		$line_item_types = '' === $line_item_types ? array() : (array) $line_item_types;
 
-		if ( 'view' === $context && empty( $line_item_types ) ) {
-			$line_item_types = sab_get_document_type_line_item_types( $this->get_document_type() );
+		if ( 'view' === $context ) {
+			/**
+			 * The item types stored within the template reflect the additional (user-selectable) item types only.
+			 * Make sure that the main line item type is always included.
+			 */
+			if ( $document_type = sab_get_document_type( $this->get_document_type() ) ) {
+				$line_item_types = array_filter( array_unique( array_merge( $document_type->main_line_item_types, $line_item_types ) ) );
+			}
 		}
 
 		return $line_item_types;
 	}
 
 	public function set_line_item_types( $value ) {
+		$available_line_item_types = array();
+
+		if ( $document_type = sab_get_document_type( $this->get_document_type() ) ) {
+			$available_line_item_types = $document_type->additional_line_item_types;
+		}
+
+		$value = (array) $value;
+		$value = array_intersect( $value, $available_line_item_types );
+
 		$this->set_prop( 'line_item_types', $value );
 	}
 
@@ -104,7 +120,7 @@ class DefaultTemplate extends Template {
 		}
 
 		if ( 'view' === $context ) {
-			foreach( array_keys( $this->get_font_display_types() ) as $display_type ) {
+			foreach ( array_keys( $this->get_font_display_types() ) as $display_type ) {
 				if ( ! array_key_exists( $display_type, $fonts ) || empty( $fonts[ $display_type ] ) ) {
 					$fonts[ $display_type ] = $this->get_default_font();
 				}
@@ -121,8 +137,8 @@ class DefaultTemplate extends Template {
 	public function get_font_display_types() {
 		return array(
 			'default' => array(
-				'title' => _x( 'Default', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'name'  => 'default',
+				'title'     => _x( 'Default', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'name'      => 'default',
 				'selectors' => array(
 					'pdf'  => 'body',
 					'html' => '.block-editor .editor-styles-wrapper',
@@ -138,16 +154,22 @@ class DefaultTemplate extends Template {
 
 		$types = $this->get_font_display_types();
 		$type  = array_key_exists( $type_name, $types ) ? $types[ $type_name ] : $types['default'];
-		$type  = wp_parse_args( $type, array(
-			'title'     => '',
-			'selectors' => array(),
-			'name'      => $type_name,
-		) );
+		$type  = wp_parse_args(
+			$type,
+			array(
+				'title'     => '',
+				'selectors' => array(),
+				'name'      => $type_name,
+			)
+		);
 
-		$type['selectors']  = wp_parse_args( $type['selectors'], array(
-			'editor'   => '.editor-styles-wrapper',
-			'document' => 'body'
-		) );
+		$type['selectors'] = wp_parse_args(
+			$type['selectors'],
+			array(
+				'editor'   => '.editor-styles-wrapper',
+				'document' => 'body',
+			)
+		);
 
 		return $type;
 	}
@@ -159,7 +181,7 @@ class DefaultTemplate extends Template {
 				'regular'     => apply_filters( "{$this->get_hook_prefix()}default_font_variant_regular", Fonts::get_default_font()->get_variant_mapping( 'regular' ), $this ),
 				'bold'        => apply_filters( "{$this->get_hook_prefix()}default_font_variant_bold", Fonts::get_default_font()->get_variant_mapping( 'bold' ), $this ),
 				'italic'      => apply_filters( "{$this->get_hook_prefix()}default_font_variant_italic", Fonts::get_default_font()->get_variant_mapping( 'italic' ), $this ),
-				'bold_italic' => apply_filters( "{$this->get_hook_prefix()}default_font_variant_bold_italic", Fonts::get_default_font()->get_variant_mapping( 'bold_italic' ), $this )
+				'bold_italic' => apply_filters( "{$this->get_hook_prefix()}default_font_variant_bold_italic", Fonts::get_default_font()->get_variant_mapping( 'bold_italic' ), $this ),
 			),
 		);
 
@@ -172,17 +194,23 @@ class DefaultTemplate extends Template {
 
 		if ( array_key_exists( $display_type, $fonts ) ) {
 
-			$font = wp_parse_args( $fonts[ $display_type ], array(
-				'name'     => '',
-				'variants' => array(),
-			) );
+			$font = wp_parse_args(
+				$fonts[ $display_type ],
+				array(
+					'name'     => '',
+					'variants' => array(),
+				)
+			);
 
-			$fonts['variants'] = wp_parse_args( $fonts['variants'], array(
-				'regular'     => 'regular',
-				'bold'        => 'regular',
-				'italic'      => 'regular',
-				'bold_italic' => 'regular'
-			) );
+			$fonts['variants'] = wp_parse_args(
+				$fonts['variants'],
+				array(
+					'regular'     => 'regular',
+					'bold'        => 'regular',
+					'italic'      => 'regular',
+					'bold_italic' => 'regular',
+				)
+			);
 
 			return $font;
 		}

@@ -60,18 +60,44 @@ class Internetmarke {
 		$this->partner = new ImPartnerInformation( Package::get_internetmarke_partner_id(), Package::get_internetmarke_key_phase(), Package::get_internetmarke_token() );
 		$this->errors  = new \WP_Error();
 
-		try {
-			if ( ! Package::has_load_dependencies() ) {
-				throw new \Exception( sprintf( _x( 'To enable communication between your shop and DHL, the PHP <a href="%s">SOAPClient</a> is required. Please contact your host and make sure that SOAPClient is <a href="%s">installed</a>.', 'dhl', 'woocommerce-germanize-dhl' ), 'https://www.php.net/manual/class.soapclient.php', admin_url( 'admin.php?page=wc-status' ) ) );
-			}
-
-			$this->api = new Service( $this->partner, array(), Package::get_wsdl_file( Package::get_internetmarke_main_url() ) );
-		} catch( \Exception $e ) {
-			$this->errors->add( 'startup', sprintf( _x( 'Error while instantiating main Internetmarke API: %s', 'dhl', 'woocommerce-germanized' ), $e->getMessage() ) );
-		}
-
 		if ( ! Package::is_deutsche_post_enabled() ) {
 			$this->errors->add( 'startup', _x( 'Internetmarke is disabled. Please enable Internetmarke.', 'dhl', 'woocommerce-germanized' ) );
+		}
+	}
+
+	public function get_api( $auth = false ) {
+		if ( is_null( $this->api ) ) {
+			try {
+				if ( ! Package::has_load_dependencies() ) {
+					throw new \Exception( sprintf( _x( 'To enable communication between your shop and DHL, the PHP <a href="%1$s">SOAPClient</a> is required. Please contact your host and make sure that SOAPClient is <a href="%2$s">installed</a>.', 'dhl', 'woocommerce-germanized' ), 'https://www.php.net/manual/class.soapclient.php', esc_url( admin_url( 'admin.php?page=wc-status' ) ) ) );
+				}
+
+				$this->api = new Service( $this->partner, array(), Package::get_wsdl_file( Package::get_internetmarke_main_url() ) );
+			} catch ( \Exception $e ) {
+				$this->api = null;
+				$this->errors->add( 'startup', sprintf( _x( 'Error while instantiating main Internetmarke API: %s', 'dhl', 'woocommerce-germanized' ), $e->getMessage() ) );
+			}
+		}
+
+		if ( $auth ) {
+			if ( is_null( $this->user ) && $this->api && $this->is_configured() ) {
+				try {
+					$this->errors->remove( 'authentication' );
+
+					$this->user = $this->api->authenticateUser( Package::get_internetmarke_username(), Package::get_internetmarke_password() );
+				} catch ( \Exception $e ) {
+					$this->user = null;
+					$this->errors->add( 'authentication', _x( 'Wrong username or password', 'dhl', 'woocommerce-germanized' ) );
+				}
+			}
+
+			if ( ! $this->has_authentication_error() && $this->user ) {
+				return $this->api;
+			} else {
+				return false;
+			}
+		} else {
+			return $this->api ? $this->api : false;
 		}
 	}
 
@@ -80,21 +106,7 @@ class Internetmarke {
 	}
 
 	public function auth() {
-		if ( $this->is_configured() && ! $this->has_startup_error() ) {
-			try {
-				$this->errors->remove( 'authentication' );
-
-				$this->user = $this->api->authenticateUser( Package::get_internetmarke_username(), Package::get_internetmarke_password() );
-			} catch( \Exception $e ) {
-				$this->errors->add( 'authentication', _x( 'Wrong username or password', 'dhl', 'woocommerce-germanized' ) );
-			}
-		}
-
-		if ( ! $this->has_authentication_error() && $this->user ) {
-			return true;
-		} else {
-			return false;
-		}
+		return $this->get_api( true );
 	}
 
 	public function has_authentication_error() {
@@ -121,6 +133,14 @@ class Internetmarke {
 		return $error;
 	}
 
+	public function get_error_message() {
+		if ( $this->has_errors() ) {
+			return $this->get_startup_error() ? $this->get_startup_error() : $this->get_authentication_error();
+		}
+
+		return false;
+	}
+
 	public function has_errors() {
 		return wc_gzd_dhl_wp_error_has_errors( $this->errors ) ? true : false;
 	}
@@ -130,7 +150,7 @@ class Internetmarke {
 	}
 
 	public function is_available() {
-		return ! $this->has_authentication_error() && ! $this->has_startup_error() && is_a( $this->api, '\baltpeter\Internetmarke\Service' );
+		return $this->get_api( true );
 	}
 
 	public function get_user() {
@@ -171,7 +191,7 @@ class Internetmarke {
 
 	protected function load_products() {
 		if ( is_null( $this->products ) ) {
-			$this->products = new ImProductList();
+			$this->products = new ImProductList( $this );
 		}
 
 		$transient = get_transient( 'wc_gzd_dhl_im_products_expire' );
@@ -186,7 +206,7 @@ class Internetmarke {
 			/**
 			 * Refresh product data once per day.
 			 */
-			set_transient( 'wc_gzd_dhl_im_products_expire', DAY_IN_SECONDS );
+			set_transient( 'wc_gzd_dhl_im_products_expire', 'yes', DAY_IN_SECONDS );
 		}
 	}
 
@@ -203,9 +223,21 @@ class Internetmarke {
 	}
 
 	public function get_default_available_products() {
-		$this->load_products();
-
-		return $this->products->get_default_available_products();
+		return array(
+			'11',
+			'21',
+			'31',
+			'282',
+			'290',
+			'10246',
+			'10247',
+			'10248',
+			'10249',
+			'10254',
+			'10255',
+			'10256',
+			'10257',
+		);
 	}
 
 	public function get_available_products( $filters = array() ) {
@@ -224,7 +256,7 @@ class Internetmarke {
 		$is_wp_int = false;
 
 		if ( $product_data = $this->get_product_data_by_code( $im_product_code ) ) {
-			if ( 1 == $product_data->product_is_wp_int ) {
+			if ( 1 === (int) $product_data->product_is_wp_int ) {
 				return true;
 			}
 		}
@@ -236,7 +268,7 @@ class Internetmarke {
 		$is_wp_int = false;
 
 		if ( $product_data = $this->get_product_data_by_code( $im_product_code ) ) {
-			if ( 1 == $product_data->product_is_wp_int && 'eu' === $product_data->product_destination ) {
+			if ( 1 === (int) $product_data->product_is_wp_int && 'eu' === $product_data->product_destination ) {
 				return true;
 			}
 		}
@@ -253,7 +285,7 @@ class Internetmarke {
 			if ( ! empty( $product->{"product_{$type}_max"} ) ) {
 				$dimension .= '-' . $product->{"product_{$type}_max"};
 			}
-		} elseif( 0 == $product->{"product_{$type}_min"} ) {
+		} elseif ( 0 === (int) $product->{"product_{$type}_min"} ) {
 			$dimension = sprintf( _x( 'until %s', 'dhl', 'woocommerce-germanized' ), $product->{"product_{$type}_max"} );
 		}
 
@@ -327,7 +359,7 @@ class Internetmarke {
 	public function get_available_products_printable() {
 		$printable = array();
 
-		foreach( $this->get_available_products() as $product ) {
+		foreach ( $this->get_available_products() as $product ) {
 			$printable[ $product->product_code ] = $this->get_product_preview_data( $product );
 		}
 
@@ -335,13 +367,13 @@ class Internetmarke {
 	}
 
 	public function get_product_preview_data( $im_product_id ) {
-		$product           = is_numeric( $im_product_id ) ? $this->get_product_data_by_code( $im_product_id ) : $im_product_id;
-		$formatted         = array(
-			'title_formatted'             => '',
-			'price_formatted'             => '',
-			'description_formatted'       => '',
-			'information_text_formatted'  => '',
-			'dimensions_formatted'        => '',
+		$product   = is_numeric( $im_product_id ) ? $this->get_product_data_by_code( $im_product_id ) : $im_product_id;
+		$formatted = array(
+			'title_formatted'            => '',
+			'price_formatted'            => '',
+			'description_formatted'      => '',
+			'information_text_formatted' => '',
+			'dimensions_formatted'       => '',
 		);
 
 		if ( ! $product || ! isset( $product->product_id ) ) {
@@ -370,13 +402,16 @@ class Internetmarke {
 			$dimensions[] = sprintf( _x( 'Weight: %s', 'dhl', 'woocommerce-germanized' ), $formatted_weight );
 		}
 
-		$formatted = array_merge( (array) $product, array(
-			'title_formatted'             => wc_gzd_dhl_get_im_product_title( $product->product_name ),
-			'price_formatted'             => wc_price( Package::cents_to_eur( $product->product_price ), array( 'currency' => 'EUR' ) ) . ' <span class="price-suffix">' . _x( 'Total', 'dhl', 'woocommerce-germanized' ) . '</span>',
-			'description_formatted'       => ! empty( $product->product_annotation ) ? $product->product_annotation : $product->product_description,
-			'information_text_formatted'  => $product->product_information_text,
-			'dimensions_formatted'        => implode( '<br/>', $dimensions ),
-		) );
+		$formatted = array_merge(
+			(array) $product,
+			array(
+				'title_formatted'            => wc_gzd_dhl_get_im_product_title( $product->product_name ),
+				'price_formatted'            => wc_price( Package::cents_to_eur( $product->product_price ), array( 'currency' => 'EUR' ) ) . ' <span class="price-suffix">' . _x( 'Total', 'dhl', 'woocommerce-germanized' ) . '</span>',
+				'description_formatted'      => ! empty( $product->product_annotation ) ? $product->product_annotation : $product->product_description,
+				'information_text_formatted' => $product->product_information_text,
+				'dimensions_formatted'       => implode( '<br/>', $dimensions ),
+			)
+		);
 
 		return $formatted;
 	}
@@ -389,10 +424,14 @@ class Internetmarke {
 				$this->page_formats = array();
 
 				try {
-					$this->page_formats = $this->api->retrievePageFormats();
+					if ( ! $api = $this->get_api() ) {
+						throw new \Exception( $this->get_error_message() );
+					}
+
+					$this->page_formats = $api->retrievePageFormats();
 
 					set_transient( 'wc_gzd_dhl_im_page_formats', $this->page_formats, DAY_IN_SECONDS );
-				} catch( \Exception $e ) {
+				} catch ( \Exception $e ) {
 					Package::log( 'Error while refreshing Internetmarke page formats: ' . $e->getMessage() );
 				}
 
@@ -411,7 +450,7 @@ class Internetmarke {
 		$formats = $this->get_page_formats();
 		$options = array();
 
-		foreach( $formats as $format ) {
+		foreach ( $formats as $format ) {
 			if ( apply_filters( 'woocommerce_gzd_deutsche_post_exclude_page_format', ! $format->isIsAddressPossible(), $format ) ) {
 				continue;
 			}
@@ -456,16 +495,19 @@ class Internetmarke {
 		$preview_url = false;
 
 		try {
-			if ( $this->is_warenpost_international( $product_id ) ) {
-				if ( $this->is_warenpost_international_eu( $product_id ) ) {
-					$preview_url = trailingslashit( Package::get_assets_url() ) . 'img/wp-int-eu-preview.png';
+			if ( $api = $this->get_api( true ) ) {
+				if ( $this->is_warenpost_international( $product_id ) ) {
+					if ( $this->is_warenpost_international_eu( $product_id ) ) {
+						$preview_url = trailingslashit( Package::get_assets_url() ) . 'img/wp-int-eu-preview.png';
+					} else {
+						$preview_url = trailingslashit( Package::get_assets_url() ) . 'img/wp-int-preview.png';
+					}
 				} else {
-					$preview_url = trailingslashit( Package::get_assets_url() ) . 'img/wp-int-preview.png';
+					$preview_url = $api->retrievePreviewVoucherPng( $product_id, $address_type, $image_id );
 				}
-			} else {
-				$preview_url = $this->api->retrievePreviewVoucherPng( $product_id, $address_type, $image_id );
 			}
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 
 		return $preview_url;
 	}
@@ -501,20 +543,27 @@ class Internetmarke {
 	 * @return mixed
 	 */
 	protected function create_or_update_wp_int_label( &$label ) {
-		if ( empty( $label->get_wp_int_awb() ) ) {
-			return $this->get_wp_int_api()->create_label( $label );
+		$today                      = new \DateTime();
+		$discontinued_starting_from = new \DateTime( '2022-07-01' );
+
+		if ( $today >= $discontinued_starting_from ) {
+			throw new \Exception( sprintf( _x( 'The Deutsche Post WP International API was discontinued. Please use the <a href="%s">DHL API</a> for Warenpost labels instead.', 'dhl', 'woocommerce-germanized' ), esc_url( 'https://vendidero.de/dokument/dhl-integration-einrichten' ) ) );
 		} else {
-			try {
-				$pdf = $this->get_wp_int_api()->get_pdf( $label->get_wp_int_awb() );
-
-				if ( ! $pdf ) {
-					throw new \Exception( _x( 'Error while fetching label PDF', 'dhl', 'woocommerce-germanized' ) );
-				}
-			} catch( \Exception $e ) {
+			if ( empty( $label->get_wp_int_awb() ) ) {
 				return $this->get_wp_int_api()->create_label( $label );
-			}
+			} else {
+				try {
+					$pdf = $this->get_wp_int_api()->get_pdf( $label->get_wp_int_awb() );
 
-			return true;
+					if ( ! $pdf ) {
+						throw new \Exception( _x( 'Error while fetching label PDF', 'dhl', 'woocommerce-germanized' ) );
+					}
+				} catch ( \Exception $e ) {
+					return $this->get_wp_int_api()->create_label( $label );
+				}
+
+				return true;
+			}
 		}
 	}
 
@@ -527,13 +576,13 @@ class Internetmarke {
 		if ( empty( $label->get_shop_order_id() ) ) {
 			return $this->create_default_label( $label );
 		} else {
-			if ( ! $this->auth() ) {
+			if ( ! $api = $this->get_api( true ) ) {
 				throw new \Exception( $this->get_authentication_error() );
 			}
 
 			try {
-				$stamp = $this->api->retrieveOrder( $this->get_user()->getUserToken(), $label->get_shop_order_id() );
-			} catch( \Exception $e ) {
+				$stamp = $api->retrieveOrder( $this->get_user()->getUserToken(), $label->get_shop_order_id() );
+			} catch ( \Exception $e ) {
 				return $this->create_default_label( $label );
 			}
 
@@ -561,7 +610,7 @@ class Internetmarke {
 			} else {
 				return $this->refund_default_label( $label );
 			}
-		} catch( \Exception $e ) {
+		} catch ( \Exception $e ) {
 			throw new \Exception( sprintf( _x( 'Could not refund post label: %s', 'dhl', 'woocommerce-germanized' ), $e->getMessage() ) );
 		}
 	}
@@ -674,7 +723,7 @@ class Internetmarke {
 		$additional = $this->get_shipment_address_prop( $shipment, 'address_2', $address_type );
 
 		if ( 'simple' === $shipment->get_type() && $shipment->send_to_external_pickup( 'packstation' ) ) {
-			$additional = ParcelLocator::get_postnumber_by_shipment( $shipment );
+			$additional = ( empty( $additional ) ? '' : $additional . ' ' ) . ParcelLocator::get_postnumber_by_shipment( $shipment );
 		}
 
 		$address = new Address(
@@ -691,22 +740,6 @@ class Internetmarke {
 		return $named_address;
 	}
 
-	protected function get_setting_address_data() {
-		$person_name    = new PersonName( '', '', Package::get_setting( 'shipper_first_name' ), Package::get_setting( 'shipper_last_name' ) );
-		$sender_country = Package::get_country_iso_alpha3( Package::get_setting( 'shipper_country' ) );
-
-		if ( Package::get_setting( 'shipper_company' ) ) {
-			$name = new Name( null, new CompanyName( Package::get_setting( 'shipper_company' ), $person_name ) );
-		} else {
-			$name = new Name( $person_name, null );
-		}
-
-		$address = new Address( '', Package::get_setting( 'shipper_street' ), Package::get_setting( 'shipper_street_number' ), Package::get_setting( 'shipper_postcode' ), Package::get_setting( 'shipper_city' ), $sender_country );
-		$sender  = new \baltpeter\Internetmarke\NamedAddress( $name, $address );
-
-		return $sender;
-	}
-
 	/**
 	 * @param DeutschePost|DeutschePostReturn $label
 	 */
@@ -717,24 +750,16 @@ class Internetmarke {
 			throw new \Exception( sprintf( _x( 'Could not fetch shipment %d.', 'dhl', 'woocommerce-germanized' ), $label->get_shipment_id() ) );
 		}
 
-		if ( 'return' === $label->get_type() ) {
-			$sender   = $this->get_shipment_address_data( $shipment, 'sender' );
-			$receiver = $this->get_setting_address_data();
+		$sender          = $this->get_shipment_address_data( $shipment, 'sender' );
+		$receiver        = $this->get_shipment_address_data( $shipment );
+		$address_binding = new \baltpeter\Internetmarke\AddressBinding( $sender, $receiver );
 
-			$address_binding  = new \baltpeter\Internetmarke\AddressBinding( $sender, $receiver );
-		} else {
-			$sender   = $this->get_setting_address_data();
-			$receiver = $this->get_shipment_address_data( $shipment );
-
-			$address_binding  = new \baltpeter\Internetmarke\AddressBinding( $sender, $receiver );
-		}
-
-		if ( ! $this->auth() ) {
-			throw new \Exception( $this->get_authentication_error() );
+		if ( ! $api = $this->get_api( true ) ) {
+			throw new \Exception( $this->get_error_message() );
 		}
 
 		try {
-			$shop_order_id = $this->api->createShopOrderId( $this->get_user()->getUserToken() );
+			$shop_order_id = $api->createShopOrderId( $this->get_user()->getUserToken() );
 
 			if ( ! $shop_order_id ) {
 				throw new \Exception( _x( 'Error while generating shop order id.', 'dhl', 'woocommerce-germanized' ) );
@@ -769,11 +794,11 @@ class Internetmarke {
 			);
 
 			$order_item = new \baltpeter\Internetmarke\OrderItem( $label->get_product_id(), null, $address_binding, $position, 'AddressZone' );
-			$stamp      = $this->api->checkoutShoppingCartPdf( $this->get_user()->getUserToken(), $label->get_page_format(), array( $order_item ), $label->get_stamp_total(), $shop_order_id, null, true, 2 );
+			$stamp      = $api->checkoutShoppingCartPdf( $this->get_user()->getUserToken(), $label->get_page_format(), array( $order_item ), $label->get_stamp_total(), $shop_order_id, null, true, 2 );
 
 			return $this->update_default_label( $label, $stamp );
-		} catch( \Exception $e ) {
-			throw new \Exception( sprintf( _x( 'Error while trying to purchase the stamp. Please manually <a href="%s">refresh</a> your product database and try again.', 'dhl', 'woocommerce-germanized' ), Package::get_deutsche_post_shipping_provider()->get_edit_link( 'label' ) ) );
+		} catch ( \Exception $e ) {
+			throw new \Exception( sprintf( _x( 'Error while trying to purchase the stamp. Please manually <a href="%s">refresh</a> your product database and try again.', 'dhl', 'woocommerce-germanized' ), esc_url( Package::get_deutsche_post_shipping_provider()->get_edit_link( 'label' ) ) ) );
 		}
 	}
 
@@ -788,23 +813,23 @@ class Internetmarke {
 		if ( isset( $stamp->link ) ) {
 
 			$label->set_original_url( $stamp->link );
-			$voucher_list = $stamp->shoppingCart->voucherList;
+			$voucher_list = $stamp->shoppingCart->voucherList; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 			if ( ! empty( $voucher_list->voucher ) ) {
 				foreach ( $voucher_list->voucher as $i => $voucher ) {
 
-					if ( isset( $voucher->trackId ) ) {
-						$label->set_number( $voucher->trackId );
+					if ( isset( $voucher->trackId ) ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+						$label->set_number( $voucher->trackId ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 					} else {
-						$label->set_number( $voucher->voucherId );
+						$label->set_number( $voucher->voucherId ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 					}
 
-					$label->set_voucher_id( $voucher->voucherId );
+					$label->set_voucher_id( $voucher->voucherId ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 				}
 			}
 
-			if ( isset( $stamp->manifestLink ) ) {
-				$label->set_manifest_url( $stamp->manifestLink );
+			if ( isset( $stamp->manifestLink ) ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+				$label->set_manifest_url( $stamp->manifestLink ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 			}
 
 			$label->save();

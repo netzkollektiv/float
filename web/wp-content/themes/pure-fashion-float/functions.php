@@ -146,3 +146,8 @@ function float_text_strings( $translated_text, $text, $domain ) {
     return $translated_text;
 }
 add_filter( 'gettext', 'float_text_strings', 20, 3 );
+
+add_action( 'http_api_curl', function( $handle ) {
+	    curl_setopt( $handle, CURLOPT_SSL_VERIFYPEER, false );
+	        curl_setopt( $handle, CURLOPT_SSL_VERIFYHOST, false );
+});

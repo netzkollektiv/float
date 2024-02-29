@@ -30,24 +30,24 @@ class WC_GZDP_Admin_Note_Generator_Versions extends WC_GZD_Admin_Note {
 		$suffix        = '';
 
 		if ( ! empty( $outdated_data ) ) {
-		    foreach( $outdated_data as $data ) {
-		        $suffix .= '_' . $data['new_version'];
-            }
-        }
+			foreach ( $outdated_data as $data ) {
+				$suffix .= '_' . $data['new_version'];
+			}
+		}
 
 		return 'generator_versions' . $suffix;
 	}
 
 	public function get_title() {
-		return __( 'Generator update recommended', 'woocommerce-germanized-pro'  );
+		return __( 'Generator update recommended', 'woocommerce-germanized-pro' );
 	}
 
 	public function get_content() {
 		$outdated_data = get_option( 'woocommerce_gzdp_generator_outdated_data' );
 		ob_start();
 		?>
-		<?php foreach( $outdated_data as $generator => $generator_data ) : ?>
-			<p><?php printf( __( 'A new generator version for your <a href="%1$s">%2$s</a> has been released. Please consider refreshing the <a href="%3$s">generator</a> to make sure your legal content is up to date.', 'woocommerce-germanized-pro' ), get_edit_post_link( $generator_data['page_id'] ), get_the_title( $generator_data['page_id'] ), esc_url( $this->get_generator_admin_url( $generator ) ) ); ?></p>
+		<?php foreach ( $outdated_data as $generator => $generator_data ) : ?>
+			<p><?php echo wp_kses_post( sprintf( __( 'A new generator version for your <a href="%1$s">%2$s</a> has been released. Please consider refreshing the <a href="%3$s">generator</a> to make sure your legal content is up to date.', 'woocommerce-germanized-pro' ), esc_url( get_edit_post_link( $generator_data['page_id'] ) ), get_the_title( $generator_data['page_id'] ), esc_url( $this->get_generator_admin_url( $generator ) ) ) ); ?></p>
 		<?php endforeach; ?>
 		<?php
 		return ob_get_clean();
@@ -70,7 +70,7 @@ class WC_GZDP_Admin_Note_Generator_Versions extends WC_GZD_Admin_Note {
 		$outdated_data = get_option( 'woocommerce_gzdp_generator_outdated_data' );
 		$actions       = array();
 
-		foreach( $outdated_data as $generator => $generator_data ) {
+		foreach ( $outdated_data as $generator => $generator_data ) {
 			$actions[] = array(
 				'url'        => $this->get_generator_admin_url( $generator ),
 				'title'      => sprintf( __( 'Rerun %s now', 'woocommerce-germanized-pro' ), $this->get_generator_title( $generator ) ),

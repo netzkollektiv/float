@@ -21,7 +21,10 @@ class Notices {
 
 		$screen_id = self::format_screen_id( $screen_id );
 		$notices   = self::get( $screen_id, false, $is_global );
-		$notices[] = array( 'type' => $type, 'message' => $message );
+		$notices[] = array(
+			'type'    => $type,
+			'message' => $message,
+		);
 
 		self::update( $notices, $screen_id, $is_global );
 	}
@@ -37,15 +40,18 @@ class Notices {
 		$notices = self::get( $screen_id, $type, $is_global );
 
 		if ( ! empty( $notices ) ) {
-			foreach( $notices as $notice ) {
-				$notice = wp_parse_args( $notice, array(
-					'type'    => 'error',
-					'message' => ''
-				) );
+			foreach ( $notices as $notice ) {
+				$notice = wp_parse_args(
+					$notice,
+					array(
+						'type'    => 'error',
+						'message' => '',
+					)
+				);
 
 				if ( ! empty( $notice ) ) {
 					$notice_type = ( 'success' === $notice['type'] ? 'updated' : $notice['type'] );
-					echo '<div id="message" class="' . $notice_type . ' notice is-dismissible sab-notice">' . wpautop( $notice['message'] ) . ' <button type="button" class="notice-dismiss"></button></div>';
+					echo '<div id="message" class="' . esc_attr( $notice_type ) . ' notice is-dismissible sab-notice">' . wp_kses_post( wpautop( $notice['message'] ) ) . ' <button type="button" class="notice-dismiss"></button></div>';
 				}
 			}
 
@@ -93,7 +99,7 @@ class Notices {
 		$notices   = self::fetch( $screen_id, $is_global );
 
 		if ( $type ) {
-			foreach( $notices as $key => $notice ) {
+			foreach ( $notices as $key => $notice ) {
 				$notice = wp_parse_args( $notice, array( 'type' => 'error' ) );
 
 				if ( $type !== $notice['type'] ) {
@@ -124,7 +130,7 @@ class Notices {
 		if ( $type ) {
 			$notices = self::get( $screen_id, false, $is_global );
 
-			foreach( $notices as $key => $notice ) {
+			foreach ( $notices as $key => $notice ) {
 				$notice = wp_parse_args( $notice, array( 'type' => 'error' ) );
 
 				if ( $type === $notice['type'] ) {

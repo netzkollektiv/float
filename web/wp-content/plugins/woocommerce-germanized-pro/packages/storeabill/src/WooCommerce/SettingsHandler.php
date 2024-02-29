@@ -11,9 +11,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Shipment Order
  *
- * @class 		WC_GZD_Shipment_Order
- * @version		1.0.0
- * @author 		Vendidero
+ * @class       WC_GZD_Shipment_Order
+ * @version     1.0.0
+ * @author      Vendidero
  */
 class SettingsHandler extends \WC_Settings_API {
 
@@ -31,7 +31,7 @@ class SettingsHandler extends \WC_Settings_API {
 
 	public function __construct( $instance, $id = '' ) {
 		$this->instance = $instance;
-		$this->id = $id;
+		$this->id       = $id;
 	}
 
 	public function get_option( $key, $empty_value = null ) {
@@ -81,7 +81,7 @@ class SettingsHandler extends \WC_Settings_API {
 		}
 
 		if ( $echo ) {
-			echo $html; // WPCS: XSS ok.
+			echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		} else {
 			return $html;
 		}
@@ -101,12 +101,15 @@ class SettingsHandler extends \WC_Settings_API {
 		);
 
 		$data = wp_parse_args( $data, $defaults );
-		$data = array_merge( $data, array(
-			'id'       => $this->get_field_key( $key ),
-			'value'    => $this->get_option( $key ),
-			'suffix'   => '',
-			'desc'     => $data['description']
-		) );
+		$data = array_merge(
+			$data,
+			array(
+				'id'     => $this->get_field_key( $key ),
+				'value'  => $this->get_option( $key ),
+				'suffix' => '',
+				'desc'   => $data['description'],
+			)
+		);
 
 		return $data;
 	}

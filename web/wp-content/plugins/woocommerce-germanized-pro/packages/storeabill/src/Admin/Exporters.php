@@ -39,10 +39,10 @@ class Exporters {
 	public static function setup_export() {
 		global $current_document_type, $current_document_type_object, $exporter;
 
-		$current_document_type = isset( $_GET['document_type'] ) ? sab_clean( wp_unslash( $_GET['document_type'] ) ) : 'invoice';
-		$export_type           = isset( $_GET['export_type'] ) ? sab_clean( wp_unslash( $_GET['export_type'] ) ) : 'csv';
+		$current_document_type = isset( $_GET['document_type'] ) ? sab_clean( wp_unslash( $_GET['document_type'] ) ) : 'invoice'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$export_type           = isset( $_GET['export_type'] ) ? sab_clean( wp_unslash( $_GET['export_type'] ) ) : 'csv'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		if ( ! in_array( $export_type, array_keys( sab_get_export_types() ) ) ) {
+		if ( ! in_array( $export_type, array_keys( sab_get_export_types() ), true ) ) {
 			$export_type = 'csv';
 		}
 
@@ -53,7 +53,7 @@ class Exporters {
 		$current_document_type_object = sab_get_document_type( $current_document_type );
 
 		if ( ! $exporter = sab_get_document_type_exporter( $current_document_type, $export_type ) ) {
-			wp_die( _x( 'This exporter does not exist', 'storeabill-core', 'woocommerce-germanized-pro' ) );
+			wp_die( esc_html_x( 'This exporter does not exist', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
 	}
 
@@ -67,7 +67,7 @@ class Exporters {
 	public static function render_page() {
 		global $exporter, $current_document_type;
 
-		include_once( Package::get_path() . '/includes/admin/views/html-export.php' );
+		include_once Package::get_path() . '/includes/admin/views/html-export.php';
 	}
 
 	/**
@@ -92,11 +92,11 @@ class Exporters {
 		$document_type = isset( $_GET['document_type'] ) ? sab_clean( wp_unslash( $_GET['document_type'] ) ) : 'invoice';
 		$export_type   = isset( $_GET['export_type'] ) ? sab_clean( wp_unslash( $_GET['export_type'] ) ) : 'csv';
 
-		if ( isset( $_GET['action'], $_GET['nonce'] ) && 'sab-download-export' === wp_unslash( $_GET['action'] ) && ( $exporter = sab_get_document_type_exporter( $document_type, $export_type ) ) ) {
-			if ( wp_verify_nonce( wp_unslash( $_GET['nonce'] ), $exporter->get_nonce_download_action() ) ) {
+		if ( isset( $_GET['action'], $_GET['nonce'] ) && 'sab-download-export' === sab_clean( wp_unslash( $_GET['action'] ) ) && ( $exporter = sab_get_document_type_exporter( $document_type, $export_type ) ) ) {
+			if ( wp_verify_nonce( wp_unslash( $_GET['nonce'] ), $exporter->get_nonce_download_action() ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-				if ( ! empty( $_GET['filename'] ) ) { // WPCS: input var ok.
-					$exporter->set_filename( wp_unslash( $_GET['filename'] ) ); // WPCS: input var ok, sanitization ok.
+				if ( ! empty( $_GET['filename'] ) ) {
+					$exporter->set_filename( sanitize_file_name( wp_unslash( $_GET['filename'] ) ) );
 				}
 
 				$exporter->export();
@@ -113,7 +113,7 @@ class Exporters {
 		 */
 		global $current_document_type, $exporter;
 
-		wp_register_script( 'storeabill_admin_export', Package::get_build_url() . '/admin/export.js', array( 'storeabill_admin_global', 'jquery-ui-datepicker' ), Package::get_version() );
+		wp_register_script( 'storeabill_admin_export', Package::get_build_url() . '/admin/export.js', array( 'storeabill_admin_global', 'jquery-ui-datepicker' ), Package::get_version() ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.NotInFooter
 
 		if ( $exporter ) {
 			wp_localize_script(

@@ -9,9 +9,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Shipment Order
  *
- * @class 		WC_GZD_Shipment_Order
- * @version		1.0.0
- * @author 		Vendidero
+ * @class       WC_GZD_Shipment_Order
+ * @version     1.0.0
+ * @author      Vendidero
  */
 abstract class BulkActionHandler {
 
@@ -31,15 +31,18 @@ abstract class BulkActionHandler {
 	protected $reference_type = '';
 
 	public function __construct( $args = array() ) {
-		$args = wp_parse_args( $args, array(
-			'object_type'   => 'invoice',
-			'step'          => 1,
-			'ids'           => array(),
-			'id'            => '',
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'object_type' => 'invoice',
+				'step'        => 1,
+				'ids'         => array(),
+				'id'          => '',
+			)
+		);
 
-		foreach( $args as $arg => $data ) {
-			$setter = 'set_'  .$arg;
+		foreach ( $args as $arg => $data ) {
+			$setter = 'set_' . $arg;
 
 			if ( is_callable( array( $this, $setter ) ) ) {
 				$this->$setter( $data );
@@ -128,12 +131,15 @@ abstract class BulkActionHandler {
 
 	public function get_done_redirect_url() {
 		$page = $this->get_admin_url();
-		$page = add_query_arg( array(
-			'object_type'          => $this->get_object_type(),
-			'document_type'        => $this->get_object_type(),
-			'bulk_action_handling' => 'finished',
-			'current_bulk_action'  => sanitize_key( $this->get_action() ),
-		), $page );
+		$page = add_query_arg(
+			array(
+				'object_type'          => $this->get_object_type(),
+				'document_type'        => $this->get_object_type(),
+				'bulk_action_handling' => 'finished',
+				'current_bulk_action'  => sanitize_key( $this->get_action() ),
+			),
+			$page
+		);
 
 		return html_entity_decode( wp_nonce_url( $page, $this->get_done_nonce_action() ) );
 	}
@@ -155,11 +161,11 @@ abstract class BulkActionHandler {
 	}
 
 	public function get_max_step() {
-		return (int) ceil( sizeof( $this->get_ids() ) / $this->get_limit() );
+		return (int) ceil( count( $this->get_ids() ) / $this->get_limit() );
 	}
 
 	public function get_total() {
-		return sizeof( $this->get_ids() );
+		return count( $this->get_ids() );
 	}
 
 	public function set_ids( $ids ) {

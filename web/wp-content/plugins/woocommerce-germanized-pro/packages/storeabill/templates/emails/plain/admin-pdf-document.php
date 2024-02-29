@@ -11,7 +11,7 @@ echo esc_html( wp_strip_all_tags( $email_heading ) );
 echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /* translators: %s: Document title */
-echo sprintf( esc_html_x( '%s has been created. Find the document attached to this email.', 'storeabill-core', 'woocommerce-germanized-pro' ), $document->get_title() ) . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+echo sprintf( esc_html_x( '%s has been created. Find the document attached to this email.', 'storeabill-core', 'woocommerce-germanized-pro' ), wp_kses_post( $document->get_title() ) ) . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 
 do_action( 'storeabill_email_document_details', $document, $sent_to_admin, $plain_text, $email );
 

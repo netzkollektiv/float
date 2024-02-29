@@ -92,7 +92,7 @@ class DocumentStylesEdit extends Component {
 
     applyWrapperStyles() {
         const $mainWrapper = jQuery( '.editor-styles-wrapper' );
-        const $wrapper     = $mainWrapper.find( '.block-editor-block-list__layout:first' );
+        const $wrapper     = $mainWrapper.find( '.block-editor-block-list__layout:not(.edit-post-visual-editor__post-title-wrapper):first' );
 
         const { pdfAttachment, margins, fonts, fontSize, color } = this.props;
 

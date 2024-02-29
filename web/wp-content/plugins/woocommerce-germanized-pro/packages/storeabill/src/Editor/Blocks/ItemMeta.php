@@ -26,7 +26,7 @@ class ItemMeta extends ItemTableColumnBlock {
 	protected $block_name = 'item-meta';
 
 	public function get_attributes() {
-		$attributes = parent::get_attributes();
+		$attributes                = parent::get_attributes();
 		$attributes['metaType']    = $this->get_schema_string();
 		$attributes['hideIfEmpty'] = $this->get_schema_boolean( true );
 
@@ -55,21 +55,22 @@ class ItemMeta extends ItemTableColumnBlock {
 		/**
 		 * @var Document $document
 		 */
-		$document      = $GLOBALS['document'];
+		$document = $GLOBALS['document'];
 
-		$attributes    = $this->parse_attributes( $attributes );
-		$meta_type     = $attributes['metaType'];
+		$attributes  = $this->parse_attributes( $attributes );
+		$meta_type   = $attributes['metaType'];
+		$meta_format = apply_filters( "storeabill_{$document->get_type()}_item_meta_shortcode_format", '', $meta_type, $document, $document_item );
 
 		/**
 		 * Construct a shortcode
 		 */
-		$output         = apply_filters( "storeabill_{$document->get_type()}_item_meta_shortcode", '[document_item data="' . esc_attr( $meta_type ) . '"]', $meta_type, $document, $document_item );
+		$output         = apply_filters( "storeabill_{$document->get_type()}_item_meta_shortcode", '[document_item data="' . esc_attr( $meta_type ) . '" format="' . esc_attr( $meta_format ) . '"]', $meta_type, $document, $document_item );
 		$shortcode_data = trim( do_shortcode( $output ) );
 
 		if ( empty( $shortcode_data ) && true === $attributes['hideIfEmpty'] ) {
 			return '';
 		} else {
-			return $this->wrap( $this->replace_placeholder( $content, $output ), $attributes );
+			return $this->wrap( $this->replace_placeholder( $content, wp_kses_post( $output ) ), $attributes );
 		}
 	}
 }

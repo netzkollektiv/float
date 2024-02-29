@@ -71,18 +71,25 @@ class Automation {
 			$items_to_be_packed      = $order_shipment->get_items_to_pack_left_for_shipping( $group_by_shipping_class );
 
 			if ( ! empty( $items_to_be_packed ) ) {
-				foreach( $items_to_be_packed as $shipping_class => $items ) {
-					self::log( sprintf( 'Calculate shipments for order %s. Shipping class: %s. Total items available: %s', $order_id, $shipping_class, sizeof( $items ) ) );
+				foreach ( $items_to_be_packed as $shipping_class => $items ) {
+					self::log( sprintf( 'Calculate shipments for order %s. Shipping class: %s. Total items available: %s', $order_id, $shipping_class, count( $items ) ) );
 
 					$packer = new \DVDoug\BoxPacker\InfalliblePacker();
+					/**
+					 * Make sure to not try to spread/balance weights. Instead try to pack
+					 * the first box as full as possible to make sure a smaller box can be used for a second box.
+					 */
+					$packer->setMaxBoxesToBalanceWeight( 0 );
 
-					foreach( Helper::get_available_packaging() as $packaging ) {
+					foreach ( Helper::get_available_packaging() as $packaging ) {
 						$packer->addBox( $packaging );
 					}
 
-					foreach( $items as $item ) {
+					foreach ( $items as $item ) {
 						$packer->addItem( $item );
 					}
+
+					do_action( 'woocommerce_gzdp_before_auto_pack_shipments_for_order', $packer );
 
 					$boxes = $packer->pack();
 
@@ -90,7 +97,7 @@ class Automation {
 					$items_too_large = $packer->getUnpackedItems();
 
 					if ( ! empty( $items_too_large ) ) {
-						foreach( $items_too_large as $item ) {
+						foreach ( $items_too_large as $item ) {
 							self::log( sprintf( 'Warning: Item %s is too large to fit in any of the available packaging.', $item->get_order_item()->get_name() ) );
 						}
 					}
@@ -114,13 +121,16 @@ class Automation {
 							self::log( sprintf( '- 1x Item %s', $order_item->get_order_item()->get_name() ) );
 						}
 
-						$shipment = wc_gzd_create_shipment( $order_shipment, array(
-							'items' => $shipment_items,
-							'props' => array(
-								'packaging_id' => $packaging->get_id(),
-								'status'       => $default_shipment_status
-							),
-						) );
+						$shipment = wc_gzd_create_shipment(
+							$order_shipment,
+							array(
+								'items' => $shipment_items,
+								'props' => array(
+									'packaging_id' => $packaging->get_id(),
+									'status'       => $default_shipment_status,
+								),
+							)
+						);
 
 						if ( ! is_wp_error( $shipment ) ) {
 							$order_shipment->add_shipment( $shipment );

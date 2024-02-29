@@ -21,9 +21,9 @@ class Loco_admin_bundle_SetupController extends Loco_admin_bundle_BaseController
      * {@inheritdoc}
      */
     public function getHelpTabs(){
-        return array (
+        return  [
             __('Setup tab','loco-translate') => $this->viewSnippet('tab-bundle-setup'),
-        );
+        ];
     }
 
 
@@ -136,10 +136,10 @@ class Loco_admin_bundle_SetupController extends Loco_admin_bundle_BaseController
         
         // enable form to paste JSON config (via remote lookup)
         if( $this->get('json') ){
-            $fields = new Loco_mvc_HiddenFields( array(
+            $fields = new Loco_mvc_HiddenFields( [
                 'json-content' => '',
                 'version' => $info->Version,
-            ) );
+            ] );
             $fields->setNonce( 'json-'.$action );
             $this->set('jsonFields', $fields );
             
@@ -149,20 +149,17 @@ class Loco_admin_bundle_SetupController extends Loco_admin_bundle_BaseController
             // remote config is done via JavaScript
             $this->enqueueScript('setup');
             $apiBase = apply_filters( 'loco_api_url', 'https://localise.biz/api' );
-            $this->set('js', new Loco_mvc_ViewParams( array(
+            $this->set('js', new Loco_mvc_ViewParams( [
                 'apiUrl' => $apiBase.'/wp/'.strtolower( $bundle->getType() ),
-            ) ) );
+            ] ) );
             $doconf = true;
         }
         
-        // display configurator if configurating
+        // display configurator if configuring
         if( $doconf ){
             return $this->view( 'admin/bundle/setup/conf' );
         }
-        // else set configurator links back to self with required option
-        // ...
-        
-        
+        // else set configurator links back to self with required option ...
         if( ! $configured || ! count($bundle) ){
             return $this->view( 'admin/bundle/setup/none' );
         }

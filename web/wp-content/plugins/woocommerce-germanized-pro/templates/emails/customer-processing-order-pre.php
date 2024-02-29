@@ -12,7 +12,7 @@
  *
  * @see https://vendidero.de/dokument/template-struktur-templates-im-theme-ueberschreiben
  * @package Germanized/Pro/Templates
- * @version 1.1.0
+ * @version 1.2.0
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 <?php do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
-<p><?php echo WC_GZDP_Contract_Helper::instance()->get_processing_order_email_text( $order ); ?></p>
+<p><?php echo wp_kses_post( WC_GZDP_Contract_Helper::instance()->get_processing_order_email_text( $order ) ); ?></p>
 
 <?php
 

@@ -104,6 +104,24 @@ abstract class Item extends Data {
 		}
 	}
 
+	/**
+	 * Prefix for action and filter hooks on data.
+	 *
+	 * @return string
+	 */
+	protected function get_hook_prefix() {
+		return "{$this->get_general_hook_prefix()}get_";
+	}
+
+	/**
+	 * Prefix for action and filter hooks on data.
+	 *
+	 * @return string
+	 */
+	protected function get_general_hook_prefix() {
+		return "storeabill_{$this->get_type()}_item_";
+	}
+
 	public function apply_changes() {
 		if ( function_exists( 'array_replace' ) ) {
 			$this->data = array_replace( $this->data, $this->changes ); // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.array_replaceFound
@@ -135,7 +153,7 @@ abstract class Item extends Data {
 
 		$data['attributes'] = array();
 
-		foreach( $this->get_attributes() as $attribute ) {
+		foreach ( $this->get_attributes() as $attribute ) {
 			$data['attributes'][] = $attribute->get_data();
 		}
 
@@ -213,22 +231,36 @@ abstract class Item extends Data {
 		if ( is_null( $this->attributes ) ) {
 			$this->attributes = array();
 
-			foreach( ( array) $this->get_prop( 'attributes' ) as $attribute_data ) {
+			foreach ( (array) $this->get_prop( 'attributes' ) as $attribute_data ) {
 				$this->attributes[] = new Attribute( $attribute_data );
 			}
 		}
 
-		uasort( $this->attributes, array( $this, '_sort_attributes_callback' ) );
+		uasort( $this->attributes, array( $this, 'sort_attributes_callback' ) );
 
 		return apply_filters( "{$this->get_hook_prefix()}attributes", array_values( $this->attributes ), $this );
 	}
 
-	public function get_attribute( $key ) {
+	public function remove_attribute( $key ) {
 		$attributes = $this->get_attributes();
-		$matching_attribute = false;
+		$key        = strtolower( $key );
 
-		foreach( $attributes as $attribute ) {
-			if ( $key == $attribute->get_key() ) {
+		foreach ( $attributes as $attr_key => $attribute ) {
+			if ( strtolower( $attribute->get_key() ) === $key ) {
+				unset( $attributes[ $attr_key ] );
+			}
+		}
+
+		$this->set_attributes( $attributes );
+	}
+
+	public function get_attribute( $key ) {
+		$attributes         = $this->get_attributes();
+		$matching_attribute = false;
+		$key                = strtolower( $key );
+
+		foreach ( $attributes as $attribute ) {
+			if ( strtolower( $attribute->get_key() ) === $key ) {
 				$matching_attribute = $attribute;
 				break;
 			}
@@ -253,7 +285,7 @@ abstract class Item extends Data {
 	 *
 	 * @return int
 	 */
-	public function _sort_attributes_callback( $attribute1, $attribute2 ) {
+	protected function sort_attributes_callback( $attribute1, $attribute2 ) {
 		return $attribute1->get_order() < $attribute2->get_order() ? -1 : 1;
 	}
 
@@ -349,7 +381,7 @@ abstract class Item extends Data {
 		}
 
 		return $has_document;
- 	}
+	}
 
 	/*
 	|--------------------------------------------------------------------------
@@ -400,7 +432,7 @@ abstract class Item extends Data {
 	 */
 	public function set_attributes( $attributes ) {
 		$this->attributes = null;
-		$attributes = (array) $attributes;
+		$attributes       = (array) $attributes;
 
 		$this->set_prop( 'attributes', array_filter( $attributes ) );
 	}
@@ -453,7 +485,7 @@ abstract class Item extends Data {
 			$items    = $this->get_document()->get_items();
 			$children = array();
 
-			foreach( $items as $item ) {
+			foreach ( $items as $item ) {
 
 				if ( empty( $item->get_parent_key() ) ) {
 					continue;
@@ -499,7 +531,7 @@ abstract class Item extends Data {
 			if ( $key > 0 ) {
 				$this->children[ $key ] = $item;
 			} else {
-				$key = 'new_' . $item->get_item_type() . ':' . sizeof( $this->children ) . uniqid();
+				$key = 'new_' . $item->get_item_type() . ':' . count( $this->children ) . uniqid();
 				$item->set_key( $key );
 
 				$this->children[ $key ] = $item;
@@ -531,7 +563,7 @@ abstract class Item extends Data {
 	 */
 	public function remove_children( $force = true ) {
 		if ( $this->has_document() ) {
-			foreach( $this->get_children() as $child ) {
+			foreach ( $this->get_children() as $child ) {
 				$this->remove_child( $child->get_key() );
 			}
 		} else {

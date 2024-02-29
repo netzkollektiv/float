@@ -32,7 +32,7 @@ class Ajax {
 
 	public static function suppress_errors() {
 		if ( ! WP_DEBUG || ( WP_DEBUG && ! WP_DEBUG_DISPLAY ) ) {
-			@ini_set( 'display_errors', 0 ); // Turn off display_errors during AJAX events to prevent malformed JSON.
+			@ini_set( 'display_errors', 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.display_errors_Blacklisted
 		}
 
 		$GLOBALS['wpdb']->hide_errors();
@@ -57,7 +57,7 @@ class Ajax {
 
 		$result = self::maybe_create_packing_slip( $shipment );
 
-		wp_safe_redirect( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=wc-gzd-shipments' ) );
+		wp_safe_redirect( esc_url_raw( ( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=wc-gzd-shipments' ) ) ) );
 		exit;
 	}
 
@@ -66,7 +66,8 @@ class Ajax {
 
 		try {
 			$result = PackingSlips::sync_packing_slip( $shipment, true, true );
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 
 		return $result;
 	}
@@ -86,7 +87,7 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				__( 'There was an error processing the packing slip.', 'woocommerce-germanized-pro' )
+				__( 'There was an error processing the packing slip.', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -110,10 +111,12 @@ class Ajax {
 			wp_send_json( $response );
 		} else {
 			if ( is_wp_error( $response ) ) {
-				wp_send_json( array(
-					'success'  => false,
-					'messages' => $result->get_error_messages(),
-				) );
+				wp_send_json(
+					array(
+						'success'  => false,
+						'messages' => $result->get_error_messages(),
+					)
+				);
 			} else {
 				wp_send_json( $response_error );
 			}
@@ -136,7 +139,7 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				__( 'There was an error processing the packing slip.', 'woocommerce-germanized-pro' )
+				__( 'There was an error processing the packing slip.', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -151,14 +154,15 @@ class Ajax {
 			$packing_slip->delete( true );
 
 			$response = array(
-				'success'      => true,
-				'fragments'    => array(
+				'success'   => true,
+				'fragments' => array(
 					'#shipment-' . $shipment_id . ' .wc-gzd-shipment-packing-slip' => self::refresh_packing_slip_html( $shipment ),
 				),
 			);
 
 			wp_send_json( $response );
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 
 		wp_send_json( $response_error );
 	}
@@ -168,10 +172,12 @@ class Ajax {
 
 		if ( $p_packing_slip ) {
 			$packing_slip = $p_packing_slip;
+		} else {
+			$packing_slip = false;
 		}
 
 		ob_start();
-		include_once( WC_Germanized_pro()->plugin_path() . '/includes/admin/views/html-shipment-packing-slip.php' );
+		include_once WC_Germanized_pro()->plugin_path() . '/includes/admin/views/html-shipment-packing-slip.php';
 		$html = ob_get_clean();
 
 		return $html;

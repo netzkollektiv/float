@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\StoreaBill\DataStores;
+
 use WC_Data;
 use Exception;
 use WC_Data_Store_WP;
@@ -52,9 +53,10 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 		$notice->set_date_created( time() );
 
 		$wpdb->insert(
-			$wpdb->storeabill_document_notices, array(
+			$wpdb->storeabill_document_notices,
+			array(
 				'document_id'                      => $notice->get_document_id(),
-				'document_notice_text'             => $this->get_text( $notice),
+				'document_notice_text'             => $this->get_text( $notice ),
 				'document_notice_type'             => $this->get_type( $notice ),
 				'document_notice_date_created'     => gmdate( 'Y-m-d H:i:s', $notice->get_date_created( 'edit' )->getOffsetTimestamp() ),
 				'document_notice_date_created_gmt' => gmdate( 'Y-m-d H:i:s', $notice->get_date_created( 'edit' )->getTimestamp() ),
@@ -77,7 +79,7 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 		 * @since 1.0.0
 		 * @package Vendidero/StoreaBill
 		 */
-		do_action( "storeabill_new_document_notice", $notice->get_id(), $notice, $notice->get_document_id() );
+		do_action( 'storeabill_new_document_notice', $notice->get_id(), $notice, $notice->get_document_id() );
 	}
 
 	/**
@@ -100,7 +102,7 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 		$type         = $notice->get_type( 'edit' );
 		$default_type = apply_filters( 'storeabill_default_document_notice_type', 'info' );
 
-		if ( empty( $type ) || ! in_array( $type, array_keys( sab_get_document_notice_types() ) ) ) {
+		if ( empty( $type ) || ! in_array( $type, array_keys( sab_get_document_notice_types() ), true ) ) {
 			$type = $default_type;
 		}
 
@@ -127,17 +129,17 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 				continue;
 			}
 
-			switch( $prop ) {
-				case "document_id":
+			switch ( $prop ) {
+				case 'document_id':
 					$notice_data['document_id'] = absint( $notice->get_document_id() );
 					break;
-				case "text":
+				case 'text':
 					$notice_data[ 'document_notice_' . $prop ] = $this->get_text( $notice );
 					break;
-				case "type":
+				case 'type':
 					$notice_data[ 'document_notice_' . $prop ] = $this->get_type( $notice );
 					break;
-				case "date_created":
+				case 'date_created':
 					if ( is_callable( array( $notice, 'get_' . $prop ) ) ) {
 						$notice_data[ 'document_notice_' . $prop ]          = gmdate( 'Y-m-d H:i:s', $notice->{'get_' . $prop}( 'edit' )->getOffsetTimestamp() );
 						$notice_data[ 'document_notice_' . $prop . '_gmt' ] = gmdate( 'Y-m-d H:i:s', $notice->{'get_' . $prop}( 'edit' )->getTimestamp() );
@@ -174,7 +176,7 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 		 * @since 1.0.0
 		 * @package Vendidero/StoreaBill
 		 */
-		do_action( "storeabill_document_notice_updated", $notice->get_id(), $notice, $notice->get_document_id() );
+		do_action( 'storeabill_document_notice_updated', $notice->get_id(), $notice, $notice->get_document_id() );
 	}
 
 	/**
@@ -243,10 +245,10 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 
 		$notice->set_props(
 			array(
-				'document_id'       => $data->document_id,
-				'text'              => wp_unslash( $data->document_notice_text ),
-				'type'              => $data->document_notice_type,
-				'date_created'      => '0000-00-00 00:00:00' !== $data->document_notice_date_created_gmt ? wc_string_to_timestamp( $data->document_notice_date_created_gmt ) : null,
+				'document_id'  => $data->document_id,
+				'text'         => wp_unslash( $data->document_notice_text ),
+				'type'         => $data->document_notice_type,
+				'date_created' => sab_is_valid_mysql_datetime( $data->document_notice_date_created_gmt ) ? wc_string_to_timestamp( $data->document_notice_date_created_gmt ) : null,
 			)
 		);
 
@@ -265,7 +267,7 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 	protected function read_notice_data( &$notice ) {
 		$props = array();
 
-		foreach( $this->internal_meta_keys as $meta_key ) {
+		foreach ( $this->internal_meta_keys as $meta_key ) {
 			$props[ substr( $meta_key, 1 ) ] = get_metadata( 'storeabill_document_notice', $notice->get_id(), $meta_key, true );
 		}
 
@@ -311,11 +313,11 @@ class DocumentNotice extends WC_Data_Store_WP implements WC_Object_Data_Store_In
 		$updated_props     = array();
 		$meta_key_to_props = array();
 
-		foreach( $this->internal_meta_keys as $meta_key ) {
+		foreach ( $this->internal_meta_keys as $meta_key ) {
 
 			$prop_name = substr( $meta_key, 1 );
 
-			if ( in_array( $prop_name, $this->core_props ) ) {
+			if ( in_array( $prop_name, $this->core_props, true ) ) {
 				continue;
 			}
 

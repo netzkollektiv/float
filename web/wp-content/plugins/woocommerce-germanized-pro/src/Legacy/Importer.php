@@ -111,9 +111,9 @@ class Importer {
 	protected function get_document_type() {
 		if ( 'simple' === $this->invoice_type ) {
 			return 'invoice';
-		} elseif( 'cancellation' === $this->invoice_type ) {
+		} elseif ( 'cancellation' === $this->invoice_type ) {
 			return 'invoice_cancellation';
-		} elseif( 'packing_slip' === $this->invoice_type ) {
+		} elseif ( 'packing_slip' === $this->invoice_type ) {
 			return 'packing_slip';
 		}
 
@@ -143,7 +143,7 @@ class Importer {
 		$this->invoice_type     = get_post_meta( $this->post->ID, '_type', true );
 		$this->formatted_number = get_post_meta( $this->post->ID, '_invoice_number_formatted', true );
 
-		if ( self::has_been_imported( $this->post->ID ) && self::document_exists( $this->post->ID )  ) {
+		if ( self::has_been_imported( $this->post->ID ) && self::document_exists( $this->post->ID ) ) {
 			if ( $and_children ) {
 				$this->maybe_import_children();
 			}
@@ -169,9 +169,9 @@ class Importer {
 			$this->reference_id = get_post_meta( $this->post->ID, '_invoice_order', true );
 
 			$this->import_invoice_simple();
-		} elseif( 'cancellation' === $this->invoice_type ) {
-			$this->document     = new \Vendidero\StoreaBill\Invoice\Cancellation();
-			$invoice_subtype    = get_post_meta( $this->post->ID, '_subtype', true );
+		} elseif ( 'cancellation' === $this->invoice_type ) {
+			$this->document  = new \Vendidero\StoreaBill\Invoice\Cancellation();
+			$invoice_subtype = get_post_meta( $this->post->ID, '_subtype', true );
 
 			if ( 'refund' === $invoice_subtype ) {
 				$this->refund_order_id = get_post_meta( $this->post->ID, '_invoice_order', true );
@@ -236,7 +236,7 @@ class Importer {
 
 					$this->log( sprintf( 'Successfully imported %1$s as document %2$s.', $this->formatted_number, $id ) );
 				} else {
-					$this->error( sprintf( __( 'An error occurred while saving the newly created document for %s' ), $this->formatted_number ) );
+					$this->error( sprintf( 'An error occurred while saving the newly created document for %s', $this->formatted_number ) );
 				}
 			}
 		}
@@ -264,16 +264,16 @@ class Importer {
 			if ( ! empty( $cancellations ) ) {
 				$this->log( sprintf( 'Importing cancellations linked to %s', $this->formatted_number ) );
 
-				foreach( $cancellations as $cancellation ) {
+				foreach ( $cancellations as $cancellation ) {
 					$importer            = new Importer( $cancellation->ID );
 					$cancellation_result = $importer->import();
 
-					foreach( $importer->get_logs() as $log ) {
+					foreach ( $importer->get_logs() as $log ) {
 						$this->log( $log );
 					}
 
 					if ( is_wp_error( $cancellation_result ) ) {
-						foreach( $cancellation_result->get_error_messages() as $error ) {
+						foreach ( $cancellation_result->get_error_messages() as $error ) {
 							$this->error( $error );
 						}
 					}
@@ -311,8 +311,8 @@ class Importer {
 			 */
 			if ( file_exists( $path ) ) {
 				try {
-					$relative_path  = WC_germanized_pro()->get_relative_upload_path( $path );
-					$filename       = basename( $path );
+					$relative_path = WC_germanized_pro()->get_relative_upload_path( $path );
+					$filename      = basename( $path );
 
 					$new_upload_dir  = \Vendidero\StoreaBill\UploadManager::get_upload_dir();
 					$new_upload_path = trailingslashit( $new_upload_dir['basedir'] ) . $relative_path;
@@ -325,7 +325,7 @@ class Importer {
 							$relative_path   = \Vendidero\StoreaBill\UploadManager::get_relative_upload_dir( $new_upload_path );
 						}
 
-						if ( ! @copy( $path, $new_upload_path ) ) {
+						if ( ! @copy( $path, $new_upload_path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 							$this->error( sprintf( __( 'Error copying %1$s PDF file %2$s to new folder.', 'woocommerce-germanized-pro' ), $this->formatted_number, $new_upload_path ) );
 						} else {
 							$this->log( sprintf( 'Successfully copied PDF for %s.', $this->formatted_number ) );
@@ -424,10 +424,10 @@ class Importer {
 			'post_type'        => 'invoice',
 			'suppress_filters' => true,
 			'post_status'      => array( 'wc-gzdp-pending', 'wc-gzdp-cancelled', 'wc-gzdp-paid' ),
-			'meta_query'       => array(
+			'meta_query'       => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 				array(
 					'key'     => '_is_imported',
-					'compare' => 'NOT EXISTS'
+					'compare' => 'NOT EXISTS',
 				),
 				array(
 					'key'     => '_import_skipped_due_error',
@@ -435,15 +435,15 @@ class Importer {
 				),
 				array(
 					'key'     => '_invoice_number',
-					'compare' => 'EXISTS'
+					'compare' => 'EXISTS',
 				),
-			)
+			),
 		);
 
 		if ( ! empty( $parent_id ) ) {
 			$args['meta_query'][] = array(
 				'key'   => '_invoice_parent_id',
-				'value' => $parent_id
+				'value' => $parent_id,
 			);
 
 			$args['numberposts'] = -1;
@@ -453,7 +453,7 @@ class Importer {
 			 */
 			$args['meta_query'][] = array(
 				'key'     => '_invoice_parent_id',
-				'compare' => 'NOT EXISTS'
+				'compare' => 'NOT EXISTS',
 			);
 		}
 
@@ -461,7 +461,7 @@ class Importer {
 			$args['date_query'] = array(
 				'column'    => 'post_date',
 				'after'     => $after,
-				'inclusive' => true
+				'inclusive' => true,
 			);
 		}
 
@@ -485,15 +485,17 @@ class Importer {
 
 		if ( $document->delete( true ) ) {
 			if ( strpos( $document->get_type(), 'invoice' ) !== false ) {
-				$children = sab_get_invoices( array(
-					'parent_id' => $document_id,
-					'limit'     => -1,
-				) );
+				$children = sab_get_invoices(
+					array(
+						'parent_id' => $document_id,
+						'limit'     => -1,
+					)
+				);
 
-				foreach( $children as $child ) {
+				foreach ( $children as $child ) {
 					$child_post_id = $child->get_meta( '_imported_post_id', true );
 
-					if ( ! empty( $child_post_id ) )  {
+					if ( ! empty( $child_post_id ) ) {
 						delete_post_meta( $child_post_id, '_is_imported' );
 					}
 
@@ -552,18 +554,20 @@ class Importer {
 		$existing_documents = array();
 
 		if ( is_a( $this->document, '\Vendidero\StoreaBill\Invoice\Invoice' ) ) {
-			$existing_documents = sab_get_invoices( array(
-				'type'           => $this->document->get_invoice_type(),
-				'limit'          => -1,
-				'reference_id'   => $this->reference_id,
-				'reference_type' => 'woocommerce'
-			) );
+			$existing_documents = sab_get_invoices(
+				array(
+					'type'           => $this->document->get_invoice_type(),
+					'limit'          => -1,
+					'reference_id'   => $this->reference_id,
+					'reference_type' => 'woocommerce',
+				)
+			);
 		}
 
 		/**
 		 * Check whether this order does already include invoices generated by StoreaBill
 		 */
-		foreach( $existing_documents as $existing_document ) {
+		foreach ( $existing_documents as $existing_document ) {
 			if ( 'wc_gzdp_legacy_import' !== $existing_document->get_created_via() ) {
 				return true;
 			}
@@ -574,10 +578,9 @@ class Importer {
 
 	public function has_errors( $skip_import = false ) {
 		if ( $skip_import ) {
-			foreach( $this->error->get_error_codes() as $code ) {
+			foreach ( $this->error->get_error_codes() as $code ) {
 				if ( 'skip-import-error' === $code ) {
 					return true;
-					break;
 				}
 			}
 
@@ -604,7 +607,7 @@ class Importer {
 	}
 
 	protected function has_item_data() {
-		$invoice_item_data  = get_post_meta( $this->post->ID, '_invoice_item_data', true );
+		$invoice_item_data = get_post_meta( $this->post->ID, '_invoice_item_data', true );
 
 		return ! empty( $invoice_item_data ) ? true : false;
 	}
@@ -616,8 +619,8 @@ class Importer {
 			return;
 		}
 
-		$invoice_totals     = get_post_meta( $this->post->ID, '_invoice_totals', true );
-		$reference          = $this->get_reference();
+		$invoice_totals = get_post_meta( $this->post->ID, '_invoice_totals', true );
+		$reference      = $this->get_reference();
 
 		$this->document->set_order_id( $this->reference_id );
 		$this->document->set_total( $invoice_totals['total'] );
@@ -642,7 +645,7 @@ class Importer {
 
 		if ( $this->has_item_data() ) {
 			$this->import_invoice_simple_item_data();
-		} elseif ( $reference && ( $order_total == $this->document->get_total() && $order_tax_total == $this->document->get_total_tax() ) ) {
+		} elseif ( $reference && ( $order_total == $this->document->get_total() && $order_tax_total == $this->document->get_total_tax() ) ) { // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
 			$this->import_invoice_simple_order_sync();
 		} else {
 			$this->import_invoice_simple_incomplete();
@@ -687,7 +690,7 @@ class Importer {
 		$document_total = wc_format_decimal( abs( $this->document->get_total() ), 2 );
 		$post_total     = wc_format_decimal( abs( $invoice_totals['total'] ), 2 );
 
-		if ( $document_total != $post_total ) {
+		if ( $document_total !== $post_total ) {
 			$this->version_after_save = '0.0.1-legacy-incomplete';
 		}
 
@@ -718,10 +721,10 @@ class Importer {
 			get_option( 'woocommerce_gzdp_invoice_number_format' ),
 			_x( 'Cancellation', 'invoices', 'woocommerce-germanized-pro' ),
 			_x( 'Packing Slip', 'invoices', 'woocommerce-germanized-pro' ),
-			_x( 'Invoice', 'invoices', 'woocommerce-germanized-pro' )
+			_x( 'Invoice', 'invoices', 'woocommerce-germanized-pro' ),
 		);
 
-		foreach( $legacy_invoice_types as $type ) {
+		foreach ( $legacy_invoice_types as $type ) {
 			$number = trim( str_replace( $type, '', $number ) );
 		}
 
@@ -729,16 +732,16 @@ class Importer {
 	}
 
 	protected function parse_address() {
-		$invoice_address      = get_post_meta( $this->post->ID, '_invoice_address', true );
-		$invoice_recipient    = get_post_meta( $this->post->ID, '_invoice_recipient', true );
-		$title_options        = wc_gzd_get_customer_title_options();
-		$address_data         = array(
+		$invoice_address   = get_post_meta( $this->post->ID, '_invoice_address', true );
+		$invoice_recipient = get_post_meta( $this->post->ID, '_invoice_recipient', true );
+		$title_options     = wc_gzd_get_customer_title_options();
+		$address_data      = array(
 			'first_name' => $invoice_recipient['firstname'],
 			'last_name'  => $invoice_recipient['lastname'],
-			'email'      => $invoice_recipient['mail']
+			'email'      => $invoice_recipient['mail'],
 		);
 
-		foreach( $title_options as $title_option_num => $title_option ) {
+		foreach ( $title_options as $title_option_num => $title_option ) {
 			if ( strpos( $invoice_address, $title_option ) !== false ) {
 				$address_data['title'] = $title_option_num;
 				/**
@@ -754,24 +757,24 @@ class Importer {
 		if ( ! empty( $invoice_address_data ) ) {
 			$countries   = WC()->countries->get_countries();
 			$country     = WC()->countries->get_base_country();
-			$last_part   = $invoice_address_data[ sizeof( $invoice_address_data ) - 1 ];
+			$last_part   = $invoice_address_data[ count( $invoice_address_data ) - 1 ];
 			$has_country = false;
 			$has_company = false;
 
-			if ( in_array( $last_part, $countries ) ) {
-				$country     = array_search( $last_part, $countries );
+			if ( in_array( $last_part, $countries, true ) ) {
+				$country     = array_search( $last_part, $countries, true );
 				$has_country = true;
 			}
 
 			$address_data['country'] = $country;
-			$name_data               = explode( " ", trim( $invoice_address_data[0] ) );
+			$name_data               = explode( ' ', trim( $invoice_address_data[0] ) );
 			$street_key              = 1;
 			$offset                  = 1;
 			$customer_name_key       = 0;
 			$min_size_address_2      = $has_country ? 5 : 4;
 
 			// Find customer name
-			foreach( $invoice_address_data as $k => $address_data_part ) {
+			foreach ( $invoice_address_data as $k => $address_data_part ) {
 				if ( strpos( $address_data_part, $address_data['last_name'] ) !== false ) {
 					$customer_name_key = $k;
 					break;
@@ -782,7 +785,7 @@ class Importer {
 			 * Has company
 			 */
 			if ( 1 === $customer_name_key ) {
-				$name_data               = explode( " ", trim( $invoice_address_data[1] ) );
+				$name_data               = explode( ' ', trim( $invoice_address_data[1] ) );
 				$street_key              = 2;
 				$address_data['company'] = trim( $invoice_address_data[0] );
 				$has_company             = true;
@@ -793,8 +796,8 @@ class Importer {
 			/**
 			 * Customer name
 			 */
-			$last_name  = trim( $name_data[ sizeof( $name_data ) - 1 ] );
-			$first_name = trim( implode( " ", array_slice( $name_data, 0, sizeof( $name_data ) - 1 ) ) );
+			$last_name  = trim( $name_data[ count( $name_data ) - 1 ] );
+			$first_name = trim( implode( ' ', array_slice( $name_data, 0, count( $name_data ) - 1 ) ) );
 
 			if ( ! empty( $last_name ) ) {
 				$address_data['last_name']  = $last_name;
@@ -811,23 +814,23 @@ class Importer {
 			/**
 			 * Seems to have address 2
 			 */
-			if ( sizeof( $invoice_address_data ) >= $min_size_address_2 ) {
+			if ( count( $invoice_address_data ) >= $min_size_address_2 ) {
 				$address_data['address_2'] = $invoice_address_data[ $street_key + 1 ];
 
-				$offset += 1;
+				++$offset;
 			}
 
 			$remaining_address = array_slice( $invoice_address_data, $offset );
 
-			foreach( $remaining_address as $address_part ) {
+			foreach ( $remaining_address as $address_part ) {
 				/**
 				 * Find postcode with city
 				 */
-				if ( preg_match("/^(.)*[0-9]{4,}(.)*$/", $address_part ) ) {
-					$postcode_data = explode( " ", $address_part );
+				if ( preg_match( '/^(.)*[0-9]{4,}(.)*$/', $address_part ) ) {
+					$postcode_data = explode( ' ', $address_part );
 
 					if ( ! empty( $postcode_data ) ) {
-						foreach( $postcode_data as $k => $postcode_d ) {
+						foreach ( $postcode_data as $k => $postcode_d ) {
 							if ( is_numeric( $postcode_d ) ) {
 								unset( $postcode_data[ $k ] );
 								$address_data['postcode'] = $postcode_d;
@@ -836,7 +839,7 @@ class Importer {
 						}
 
 						if ( ! empty( $address_data['postcode'] ) ) {
-							$address_data['city'] = implode( " ", $postcode_data );
+							$address_data['city'] = implode( ' ', $postcode_data );
 						}
 					}
 				}
@@ -847,8 +850,8 @@ class Importer {
 	}
 
 	protected function parse_item_data() {
-		$invoice_item_data  = get_post_meta( $this->post->ID, '_invoice_item_data', true );
-		$item_data          = array(
+		$invoice_item_data = get_post_meta( $this->post->ID, '_invoice_item_data', true );
+		$item_data         = array(
 			'product'  => array(),
 			'shipping' => array(),
 			'fee'      => array(),
@@ -856,7 +859,7 @@ class Importer {
 			'rates'    => array(),
 		);
 
-		foreach( $invoice_item_data as $item_id => $item ) {
+		foreach ( $invoice_item_data as $item_id => $item ) {
 			if ( isset( $item['product_id'] ) ) {
 				$item_data['product'][] = $item;
 			} elseif ( isset( $item['method_id'] ) ) {
@@ -868,12 +871,14 @@ class Importer {
 			}
 		}
 
-		foreach( $item_data['tax'] as $tax ) {
-			$tax_rate = new TaxRate( array(
-				'reference_id' => $tax['rate_id'],
-				'is_compound'  => $tax['compound'],
-				'percent'      => ! empty( $tax['rate_percent'] ) ? $tax['rate_percent'] : \Vendidero\StoreaBill\Tax::get_rate_percent_value( $tax['rate_id'] ),
-			) );
+		foreach ( $item_data['tax'] as $tax ) {
+			$tax_rate = new TaxRate(
+				array(
+					'reference_id' => $tax['rate_id'],
+					'is_compound'  => $tax['compound'],
+					'percent'      => ! empty( $tax['rate_percent'] ) ? $tax['rate_percent'] : \Vendidero\StoreaBill\Tax::get_rate_percent_value( $tax['rate_id'] ),
+				)
+			);
 
 			$item_data['rates'][ $tax['rate_id'] ] = $tax_rate;
 		}
@@ -905,7 +910,7 @@ class Importer {
 		 */
 		$this->version_after_save = '0.0.1-legacy-item-data';
 
-		foreach( $this->get_item_data( 'product' ) as $line_item ) {
+		foreach ( $this->get_item_data( 'product' ) as $line_item ) {
 			$item = new \Vendidero\StoreaBill\Invoice\ProductItem();
 
 			$total    = $this->document->prices_include_tax() ? ( $line_item['total'] + $line_item['total_tax'] ) : $line_item['total'];
@@ -925,7 +930,7 @@ class Importer {
 			$item->set_product_id( ! empty( $line_item['variation_id'] ) ? $line_item['variation_id'] : $line_item['product_id'] );
 
 			if ( ! empty( $line_item['taxes']['total'] ) ) {
-				foreach( $line_item['taxes']['total'] as $rate_id => $tax_total ) {
+				foreach ( $line_item['taxes']['total'] as $rate_id => $tax_total ) {
 					if ( $rate = $this->get_tax_rate_by_rate_id( $rate_id ) ) {
 						$item->add_tax_rate( $rate );
 					}
@@ -935,7 +940,7 @@ class Importer {
 			$this->document->add_item( $item );
 		}
 
-		foreach( $this->get_item_data( 'shipping' ) as $line_item ) {
+		foreach ( $this->get_item_data( 'shipping' ) as $line_item ) {
 			$item = new \Vendidero\StoreaBill\Invoice\ShippingItem();
 
 			$total    = $this->document->prices_include_tax() ? ( $line_item['total'] + $line_item['total_tax'] ) : $line_item['total'];
@@ -954,7 +959,7 @@ class Importer {
 			$item->set_quantity( isset( $line_item['quantity'] ) ? $line_item['quantity'] : 1 );
 
 			if ( ! empty( $line_item['taxes']['total'] ) ) {
-				foreach( $line_item['taxes']['total'] as $rate_id => $tax_total ) {
+				foreach ( $line_item['taxes']['total'] as $rate_id => $tax_total ) {
 					if ( $rate = $this->get_tax_rate_by_rate_id( $rate_id ) ) {
 						$item->add_tax_rate( $rate );
 					}
@@ -964,7 +969,7 @@ class Importer {
 			$this->document->add_item( $item );
 		}
 
-		foreach( $this->get_item_data( 'fee' ) as $line_item ) {
+		foreach ( $this->get_item_data( 'fee' ) as $line_item ) {
 			$item = new \Vendidero\StoreaBill\Invoice\FeeItem();
 
 			$total    = $this->document->prices_include_tax() ? ( $line_item['total'] + $line_item['total_tax'] ) : $line_item['total'];
@@ -983,7 +988,7 @@ class Importer {
 			$item->set_quantity( isset( $line_item['quantity'] ) ? $line_item['quantity'] : 1 );
 
 			if ( ! empty( $line_item['taxes']['total'] ) ) {
-				foreach( $line_item['taxes']['total'] as $rate_id => $tax_total ) {
+				foreach ( $line_item['taxes']['total'] as $rate_id => $tax_total ) {
 					if ( $rate = $this->get_tax_rate_by_rate_id( $rate_id ) ) {
 						$item->add_tax_rate( $rate );
 					}
@@ -1050,7 +1055,7 @@ class Importer {
 		$this->document->set_discount_total( $invoice_totals['discount'] );
 		$this->document->set_total_tax( $invoice_totals['tax'] );
 
-		if ( sizeof( $invoice_tax_totals ) === 1 ) {
+		if ( count( $invoice_tax_totals ) === 1 ) {
 			if ( $this->document->get_product_total() > 0 ) {
 				$item = new \Vendidero\StoreaBill\Invoice\ProductItem();
 
@@ -1068,7 +1073,7 @@ class Importer {
 				if ( $this->get_reference() && is_array( $invoice_items ) ) {
 					$order_item_names = '';
 
-					foreach( $invoice_items as $invoice_line_item ) {
+					foreach ( $invoice_items as $invoice_line_item ) {
 						if ( is_a( $invoice_line_item, 'WC_Order_Item' ) ) {
 							if ( $invoice_line_item->get_id() > 0 ) {
 								$order_item_names .= empty( $order_item_names ) ? $invoice_line_item->get_name() : ' | ' . $invoice_line_item->get_name();
@@ -1138,7 +1143,7 @@ class Importer {
 		$rates = array();
 
 		if ( ! empty( $invoice_tax_totals ) ) {
-			foreach( $invoice_tax_totals as $tax_total ) {
+			foreach ( $invoice_tax_totals as $tax_total ) {
 				$rate_id    = $tax_total->rate_id;
 				$percentage = Tax::get_rate_percent_value( $rate_id );
 
@@ -1148,7 +1153,7 @@ class Importer {
 					}
 				}
 
-				$merge_key = $percentage . "_" . wc_bool_to_string( $tax_total->is_compound );
+				$merge_key = $percentage . '_' . wc_bool_to_string( $tax_total->is_compound );
 
 				if ( ! array_key_exists( $merge_key, $rates ) ) {
 					$tax_data = array(
@@ -1167,9 +1172,9 @@ class Importer {
 				 * Multiple tax rates cause problems as we do not know the tax rate
 				 * of each item.
 				 */
-				if ( sizeof( $invoice_tax_totals ) === 1 ) {
+				if ( count( $invoice_tax_totals ) === 1 ) {
 					if ( $this->document->get_product_tax() > 0 ) {
-						$tax_item = new \Vendidero\StoreaBill\Invoice\TaxItem();
+						$tax_item          = new \Vendidero\StoreaBill\Invoice\TaxItem();
 						$product_tax_total = $this->document->get_product_tax();
 
 						$total_tax -= $product_tax_total;
@@ -1186,7 +1191,7 @@ class Importer {
 						$items = $this->document->get_items( 'product' );
 
 						if ( ! empty( $items ) ) {
-							foreach( $items as $item ) {
+							foreach ( $items as $item ) {
 								$item->add_tax( $tax_item );
 							}
 						} else {
@@ -1195,7 +1200,7 @@ class Importer {
 					}
 
 					if ( $this->document->get_shipping_tax() > 0 ) {
-						$tax_item = new \Vendidero\StoreaBill\Invoice\TaxItem();
+						$tax_item           = new \Vendidero\StoreaBill\Invoice\TaxItem();
 						$shipping_tax_total = $this->document->get_shipping_tax();
 
 						$total_tax -= $shipping_tax_total;
@@ -1212,7 +1217,7 @@ class Importer {
 						$items = $this->document->get_items( 'shipping' );
 
 						if ( ! empty( $items ) ) {
-							foreach( $items as $item ) {
+							foreach ( $items as $item ) {
 								$item->add_tax( $tax_item );
 							}
 						} else {
@@ -1221,7 +1226,7 @@ class Importer {
 					}
 
 					if ( $this->document->get_fee_tax() > 0 ) {
-						$tax_item = new \Vendidero\StoreaBill\Invoice\TaxItem();
+						$tax_item      = new \Vendidero\StoreaBill\Invoice\TaxItem();
 						$fee_tax_total = $this->document->get_fee_tax();
 
 						$total_tax -= $fee_tax_total;
@@ -1238,7 +1243,7 @@ class Importer {
 						$items = $this->document->get_items( 'fee' );
 
 						if ( ! empty( $items ) ) {
-							foreach( $items as $item ) {
+							foreach ( $items as $item ) {
 								$item->add_tax( $tax_item );
 							}
 						} else {
@@ -1263,12 +1268,12 @@ class Importer {
 						$this->document->add_item( $tax_item );
 					}
 				} else {
-					$product_tax_share    = ( $this->document->get_product_total() / $this->document->get_total() );
-					$shipping_tax_share   = ( $this->document->get_shipping_total() / $this->document->get_total() );
-					$fee_tax_share        = ( $this->document->get_fee_total() / $this->document->get_total() );
+					$product_tax_share  = ( $this->document->get_product_total() / $this->document->get_total() );
+					$shipping_tax_share = ( $this->document->get_shipping_total() / $this->document->get_total() );
+					$fee_tax_share      = ( $this->document->get_fee_total() / $this->document->get_total() );
 
 					if ( ! empty( $product_tax_share ) ) {
-						$tax_item = new \Vendidero\StoreaBill\Invoice\TaxItem();
+						$tax_item       = new \Vendidero\StoreaBill\Invoice\TaxItem();
 						$item_total_tax = $total_tax * $product_tax_share;
 
 						$tax_item->set_total_tax( $item_total_tax );
@@ -1281,7 +1286,7 @@ class Importer {
 					}
 
 					if ( ! empty( $shipping_tax_share ) ) {
-						$tax_item = new \Vendidero\StoreaBill\Invoice\TaxItem();
+						$tax_item       = new \Vendidero\StoreaBill\Invoice\TaxItem();
 						$item_total_tax = $total_tax * $shipping_tax_share;
 
 						$tax_item->set_total_tax( $item_total_tax );
@@ -1294,7 +1299,7 @@ class Importer {
 					}
 
 					if ( ! empty( $fee_tax_share ) ) {
-						$tax_item = new \Vendidero\StoreaBill\Invoice\TaxItem();
+						$tax_item       = new \Vendidero\StoreaBill\Invoice\TaxItem();
 						$item_total_tax = $total_tax * $fee_tax_share;
 
 						$tax_item->set_total_tax( $item_total_tax );
@@ -1318,7 +1323,7 @@ class Importer {
 			$importer      = new Importer( $parent_id );
 			$parent_result = $importer->import( false );
 
-			foreach( $importer->get_logs() as $log ) {
+			foreach ( $importer->get_logs() as $log ) {
 				$this->log( $log );
 			}
 
@@ -1328,7 +1333,7 @@ class Importer {
 
 					return;
 				} else {
-					foreach( $parent_result->get_error_messages() as $error ) {
+					foreach ( $parent_result->get_error_messages() as $error ) {
 						$this->error( $error );
 					}
 
@@ -1379,8 +1384,8 @@ class Importer {
 				$product_total      = abs( $invoice_totals['subtotal_gross'] );
 				$product_net_total  = abs( $invoice_totals['subtotal'] );
 				// Fee total in net
-				$fee_net_total     = $total - $total_tax - $shipping_net_total - $product_net_total;
-				$left_to_cancel    = $this->get_parent()->get_items_left_to_cancel();
+				$fee_net_total  = $total - $total_tax - $shipping_net_total - $product_net_total;
+				$left_to_cancel = $this->get_parent()->get_items_left_to_cancel();
 
 				$cancel_amounts = array(
 					'product'  => $product_total,
@@ -1388,7 +1393,7 @@ class Importer {
 					'fee'      => $fee_net_total,
 				);
 
-				foreach( $this->get_parent()->get_items( $this->get_parent()->get_item_types_cancelable() ) as $item ) {
+				foreach ( $this->get_parent()->get_items( $this->get_parent()->get_item_types_cancelable() ) as $item ) {
 					if ( array_key_exists( $item->get_id(), $left_to_cancel ) ) {
 						$total_left    = $left_to_cancel[ $item->get_id() ]['total'];
 						$quantity_left = $left_to_cancel[ $item->get_id() ]['quantity'];
@@ -1461,7 +1466,7 @@ class Importer {
 		if ( empty( $this->items_to_cancel ) ) {
 			$this->version_after_save = '0.0.1-legacy-incomplete-placeholder';
 		} else {
-			foreach( $this->items_to_cancel as $item_id => $item_data ) {
+			foreach ( $this->items_to_cancel as $item_id => $item_data ) {
 				if ( $parent_item = $this->get_parent()->get_item( $item_id ) ) {
 
 					$new_item = sab_get_document_item( 0, $parent_item->get_type() );
@@ -1476,7 +1481,11 @@ class Importer {
 					 * Calculate the percentage of the parent item
 					 * being cancelled.
 					 */
-					$total_percentage = $item_data['total'] / $parent_item->get_total();
+					if ( 0 != $parent_item->get_total() ) { // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
+						$total_percentage = $item_data['total'] / $parent_item->get_total();
+					} else {
+						$total_percentage = 0;
+					}
 
 					if ( $total_percentage >= 1 ) {
 						$total_percentage = 1;
@@ -1498,7 +1507,7 @@ class Importer {
 						$item_total_tax    = 0;
 						$item_subtotal_tax = 0;
 
-						foreach( $parent_item->get_taxes() as $tax_item ) {
+						foreach ( $parent_item->get_taxes() as $tax_item ) {
 							$new_tax_item = sab_get_document_item( 0, $tax_item->get_type() );
 							$props        = array_diff_key( $tax_item->get_data(), array_flip( array( 'id', 'document_id', 'parent_id', 'taxes', 'total_net', 'subtotal_net', 'total_tax', 'subtotal_tax' ) ) );
 
@@ -1507,7 +1516,7 @@ class Importer {
 							$tax_total    = $tax_item->get_total_tax() * $total_percentage;
 							$subtotal_tax = $tax_item->get_subtotal_tax() * $total_percentage;
 
-							$item_total_tax += $tax_total;
+							$item_total_tax    += $tax_total;
 							$item_subtotal_tax += $subtotal_tax;
 
 							// Need to calculate taxes for adjusted totals.
@@ -1563,10 +1572,10 @@ class Importer {
 			$total     = abs( $refund_order->get_total() );
 			$total_tax = abs( $refund_order->get_total_tax() );
 
-			if ( $this->document->get_total() == $total && $this->document->get_total_tax() == $total_tax ) {
+			if ( $this->document->get_total() == $total && $this->document->get_total_tax() == $total_tax ) { // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
 				$sync_by_refund_order = true;
 
-				foreach( $refund_order->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item ) {
+				foreach ( $refund_order->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item ) {
 					$quantity = $item->get_quantity();
 					$total    = abs( $item->get_total() );
 					$tax      = abs( $item->get_total_tax() );
@@ -1631,7 +1640,7 @@ class Importer {
 
 		$items = array_merge( $this->get_item_data( 'product' ), $this->get_item_data( 'shipping' ), $this->get_item_data( 'fee' ) );
 
-		foreach( $items as $item ) {
+		foreach ( $items as $item ) {
 			$quantity = isset( $item['quantity'] ) ? abs( $item['quantity'] ) : 1;
 			$total    = isset( $item['total'] ) ? abs( $item['total'] ) : 0;
 			$tax      = isset( $item['total_tax'] ) ? abs( $item['total_tax'] ) : 0;
@@ -1678,7 +1687,7 @@ class Importer {
 	}
 
 	protected function import_packing_slip() {
-		$shipment_id = get_post_meta( $this->post->ID,'_invoice_shipment_id', true );
+		$shipment_id = get_post_meta( $this->post->ID, '_invoice_shipment_id', true );
 
 		if ( empty( $shipment_id ) || ! ( $shipment = wc_gzd_get_shipment( $shipment_id ) ) ) {
 			$this->import_packing_slip_legacy();
@@ -1697,7 +1706,7 @@ class Importer {
 	}
 
 	protected function import_packing_slip_by_shipment() {
-		$shipment_id = get_post_meta( $this->post->ID,'_invoice_shipment_id', true );
+		$shipment_id = get_post_meta( $this->post->ID, '_invoice_shipment_id', true );
 
 		$this->document = new PackingSlip();
 		$this->document->set_shipment_id( $shipment_id );
@@ -1709,7 +1718,7 @@ class Importer {
 	}
 
 	protected function import_packing_slip_legacy() {
-		$shipment_id = get_post_meta( $this->post->ID,'_invoice_shipment_id', true );
+		$shipment_id = get_post_meta( $this->post->ID, '_invoice_shipment_id', true );
 
 		$this->document = new PackingSlip();
 
@@ -1721,8 +1730,8 @@ class Importer {
 	}
 
 	protected function find_parent_item_by_product_id( $product_id ) {
-		foreach( $this->get_parent()->get_items( 'product' ) as $item ) {
-			if ( $item->get_product_id() == $product_id ) {
+		foreach ( $this->get_parent()->get_items( 'product' ) as $item ) {
+			if ( (int) $item->get_product_id() === (int) $product_id ) {
 				$this->log( sprintf( 'Found parent item for %1$s based on product id %2$s.', $this->formatted_number, $product_id ) );
 
 				return $item;
@@ -1733,15 +1742,15 @@ class Importer {
 	}
 
 	protected function find_parent_item_by_name( $name ) {
-		foreach( $this->get_parent()->get_items() as $item ) {
-			if ( $item->get_name() == $name ) {
+		foreach ( $this->get_parent()->get_items() as $item ) {
+			if ( $item->get_name() === $name ) {
 				$this->log( sprintf( 'Found parent item for %1$s based on name "%2$s".', $this->formatted_number, $name ) );
 
 				return $item;
 			}
 		}
 
-		foreach( $this->get_parent()->get_items() as $item ) {
+		foreach ( $this->get_parent()->get_items() as $item ) {
 			if ( strpos( $item->get_name(), $name ) !== false ) {
 				$this->log( sprintf( 'Found parent item for %1$s based on name substring "%2$s" matching "%3$s".', $this->formatted_number, $name, $item->get_name() ) );
 
@@ -1753,9 +1762,9 @@ class Importer {
 	}
 
 	protected function find_parent_item_by_total( $total ) {
-		foreach( $this->get_parent()->get_items() as $item ) {
+		foreach ( $this->get_parent()->get_items() as $item ) {
 			if ( is_callable( array( $item, 'get_total' ) ) ) {
-				if ( $item->get_total() == $total ) {
+				if ( $item->get_total() == $total ) { // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
 					$this->log( sprintf( 'Found parent item for %1$s based on total "%3$s".', $this->formatted_number, $total ) );
 
 					return $item;

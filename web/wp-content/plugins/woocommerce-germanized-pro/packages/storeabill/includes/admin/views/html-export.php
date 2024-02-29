@@ -30,17 +30,17 @@ wp_enqueue_script( 'storeabill_admin_export' );
 						</th>
 						<td id="sab-exporter-date-range">
                             <input type="text" size="11" placeholder="yyyy-mm-dd" value="<?php echo esc_attr( $exporter->get_default_setting( 'start_date' ) ); ?>" name="start_date" class="range_datepicker from" autocomplete="off" /><?php //@codingStandardsIgnoreLine ?>
-                            <span>&ndash;</span>
+							<span>&ndash;</span>
                             <input type="text" size="11" placeholder="yyyy-mm-dd" value="<?php echo esc_attr( $exporter->get_default_setting( 'end_date' ) ); ?>" name="end_date" class="range_datepicker to" autocomplete="off" /><?php //@codingStandardsIgnoreLine ?>
-                            <br/>
-                            <a class="sab-exporter-date-adjuster" data-adjust="last_month" href="#"><?php echo esc_html_x( 'Last Month', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></a>
-                            <a class="sab-exporter-date-adjuster" data-adjust="current_month" href="#"><?php echo esc_html_x( 'Current Month', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></a>
-                        </td>
+							<br/>
+							<a class="sab-exporter-date-adjuster" data-adjust="last_month" href="#"><?php echo esc_html_x( 'Last Month', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></a>
+							<a class="sab-exporter-date-adjuster" data-adjust="current_month" href="#"><?php echo esc_html_x( 'Current Month', 'storeabill-core', 'woocommerce-germanized-pro' ); ?></a>
+						</td>
 					</tr>
-					<?php echo $exporter->render_filters(); ?>
+					<?php echo $exporter->render_filters(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					</tbody>
 				</table>
-                <div class="sab-notice-wrapper"></div>
+				<div class="sab-notice-wrapper"></div>
 				<progress class="sab-exporter-progress sab-progress-bar" max="100" value="0"></progress>
 			</section>
 			<div class="sab-actions">

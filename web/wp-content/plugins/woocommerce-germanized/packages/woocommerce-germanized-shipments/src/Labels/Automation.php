@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\Germanized\Shipments\Labels;
+
 use Exception;
 use Vendidero\Germanized\Shipments\Package;
 use Vendidero\Germanized\Shipments\Shipment;
@@ -77,7 +78,7 @@ class Automation {
 
 				if ( $is_hook ) {
 					add_action( $hook_prefix . $status, array( __CLASS__, 'maybe_create_label' ), 5, 2 );
-				} elseif( $shipment->has_status( $status ) ) {
+				} elseif ( $shipment->has_status( $status ) ) {
 					self::maybe_create_label( $shipment->get_id(), $shipment );
 				}
 			}
@@ -105,18 +106,26 @@ class Automation {
 			$result = $shipment->create_label();
 
 			if ( is_wp_error( $result ) ) {
-				Package::log( sprintf( 'Error while automatically creating label for %1$s: %2$s', $shipment->get_shipment_number(), wc_print_r( $result->get_error_messages(), true ) ) );
+				$result = wc_gzd_get_shipment_error( $result );
+			}
+
+			if ( is_wp_error( $result ) ) {
+				if ( $result->is_soft_error() ) {
+					Package::log( sprintf( 'Info while automatically creating label for %1$s: %2$s', $shipment->get_shipment_number(), wc_print_r( $result->get_error_messages(), true ) ) );
+				} else {
+					Package::log( sprintf( 'Error while automatically creating label for %1$s: %2$s', $shipment->get_shipment_number(), wc_print_r( $result->get_error_messages(), true ) ) );
+				}
 			}
 		}
 	}
 
 	private static function is_admin_edit_order_request() {
-		return ( isset( $_POST['action'] ) && 'editpost' === $_POST['action'] && isset( $_POST['post_type'] ) && 'shop_order' === $_POST['post_type'] );
+		return ( isset( $_POST['action'] ) && 'editpost' === $_POST['action'] && isset( $_POST['post_type'] ) && 'shop_order' === $_POST['post_type'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 	}
 
 	public static function maybe_create_label( $shipment_id, $shipment = false ) {
 		// Make sure that MetaBox is saved before we process automation
-		if ( self::is_admin_edit_order_request() ) {
+		if ( self::is_admin_edit_order_request() && ! did_action( 'woocommerce_process_shop_order_meta' ) ) {
 			add_action( 'woocommerce_process_shop_order_meta', array( __CLASS__, 'create_label' ), 70 );
 		} else {
 			self::create_label( $shipment_id, $shipment );

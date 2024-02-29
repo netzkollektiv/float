@@ -22,7 +22,6 @@ class Ajax {
 	 * Hook in methods - uses WordPress ajax handlers (admin-ajax).
 	 */
 	public static function add_ajax_events() {
-
 		$ajax_events = array(
 			'order_sync',
 			'order_finalize',
@@ -30,7 +29,7 @@ class Ajax {
 			'cancel_invoice',
 			'refresh_document',
 			'send_document',
-			'toggle_invoice_payment_status'
+			'toggle_invoice_payment_status',
 		);
 
 		foreach ( $ajax_events as $ajax_event ) {
@@ -41,7 +40,7 @@ class Ajax {
 
 	public static function suppress_errors() {
 		if ( ! WP_DEBUG || ( WP_DEBUG && ! WP_DEBUG_DISPLAY ) ) {
-			@ini_set( 'display_errors', 0 ); // Turn off display_errors during AJAX events to prevent malformed JSON.
+			@ini_set( 'display_errors', 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.display_errors_Blacklisted
 		}
 
 		$GLOBALS['wpdb']->hide_errors();
@@ -57,12 +56,12 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				_x( 'This invoice cannot be edited.', 'storeabill-core', 'woocommerce-germanized-pro' )
+				_x( 'This invoice cannot be edited.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 			'data'     => false,
 		);
 
-		$enable      = sab_string_to_bool( $_POST['enable'] );
+		$enable      = sab_string_to_bool( sab_clean( wp_unslash( $_POST['enable'] ) ) );
 		$document_id = absint( $_POST['id'] );
 
 		if ( ! $document = sab_get_invoice( $document_id ) ) {
@@ -86,22 +85,26 @@ class Ajax {
 			 */
 			$order->refresh();
 
-			wp_send_json( array(
-				'success'   => true,
-				'data'      => $enable,
-				'fragments' => array(
-					'#sab-order-payment-status' => self::get_order_payment_status_html( $order ),
-				),
-			) );
+			wp_send_json(
+				array(
+					'success'   => true,
+					'data'      => $enable,
+					'fragments' => array(
+						'#sab-order-payment-status' => self::get_order_payment_status_html( $order ),
+					),
+				)
+			);
 		} else {
-			wp_send_json( array(
-				'success'   => false,
-				'data'      => ! $enable,
-				'fragments' => array(),
-				'messages' => array(
-					_x( 'An error occurred while updating the payment status.', 'storeabill-core', 'woocommerce-germanized-pro' )
-				),
-			) );
+			wp_send_json(
+				array(
+					'success'   => false,
+					'data'      => ! $enable,
+					'fragments' => array(),
+					'messages'  => array(
+						_x( 'An error occurred while updating the payment status.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+					),
+				)
+			);
 		}
 	}
 
@@ -115,7 +118,7 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				_x( 'This document cannot be deleted.', 'storeabill-core', 'woocommerce-germanized-pro' )
+				_x( 'This document cannot be deleted.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -148,7 +151,7 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				_x( 'This document cannot be sent by email.', 'storeabill-core', 'woocommerce-germanized-pro' )
+				_x( 'This document cannot be sent by email.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -166,10 +169,13 @@ class Ajax {
 		$result = $document->send_to_customer();
 
 		if ( ! is_wp_error( $result ) ) {
-			self::send_json_success( array(
-				'document_id' => $document_id,
-				'message'     => _x( 'Successfully sent to customer by email', 'storeabill-core', 'woocommerce-germanized-pro' )
-			), $order );
+			self::send_json_success(
+				array(
+					'document_id' => $document_id,
+					'message'     => _x( 'Successfully sent to customer by email', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				),
+				$order
+			);
 		} else {
 			$response_error = array(
 				'success'  => false,
@@ -190,7 +196,7 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				_x( 'This invoice cannot be cancelled.', 'storeabill-core', 'woocommerce-germanized-pro' )
+				_x( 'This invoice cannot be cancelled.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -232,7 +238,7 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				_x( 'This document cannot be refreshed.', 'storeabill-core', 'woocommerce-germanized-pro' )
+				_x( 'This document cannot be refreshed.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -283,12 +289,12 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				_x( 'There was an error processing the document.', 'storeabill-core', 'woocommerce-germanized-pro' )
+				_x( 'There was an error processing the document.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 		);
 
 		$order_id = absint( $_POST['order_id'] );
-		$add_new  = isset( $_POST['add_new'] ) ? sab_string_to_bool( sab_clean( $_POST['add_new'] ) ) : true;
+		$add_new  = isset( $_POST['add_new'] ) ? sab_string_to_bool( sab_clean( wp_unslash( $_POST['add_new'] ) ) ) : true;
 
 		if ( empty( $order_id ) || ( ! $order = Helper::get_order( $order_id ) ) ) {
 			self::send_json_error( $response_error );
@@ -299,7 +305,7 @@ class Ajax {
 		if ( is_wp_error( $result ) ) {
 			$response = array(
 				'success'  => false,
-				'messages' => $result->get_error_messages()
+				'messages' => $result->get_error_messages(),
 			);
 		}
 
@@ -317,7 +323,7 @@ class Ajax {
 		$response_error = array(
 			'success'  => false,
 			'messages' => array(
-				_x( 'There was an while finalizing the order.', 'storeabill-core', 'woocommerce-germanized-pro' )
+				_x( 'There was an while finalizing the order.', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -365,7 +371,7 @@ class Ajax {
 		$sab_order = $order;
 
 		ob_start();
-		include( Package::get_path() . '/includes/admin/views/html-order-invoices.php' );
+		include Package::get_path() . '/includes/admin/views/html-order-invoices.php';
 		$html = ob_get_clean();
 
 		return $html;
@@ -382,7 +388,7 @@ class Ajax {
 		$sab_order = $order;
 
 		ob_start();
-		include( Package::get_path() . '/includes/admin/views/html-order-payment-status.php' );
+		include Package::get_path() . '/includes/admin/views/html-order-payment-status.php';
 		$html = ob_get_clean();
 
 		return $html;

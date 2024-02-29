@@ -6,7 +6,7 @@ jQuery( function ( $ ) {
 
 	$( '.wc-gzdp-generator .form-table tr' ).bind( 'check_question', function () {
 		$( this ).find( 'input:not(.select2-focusser, .select2-input), select' ).each( function () {
-			$( this ).trigger( 'check_input' )
+			$( this ).trigger( 'check_input' );
 		} );
 	} );
 
@@ -39,8 +39,9 @@ jQuery( function ( $ ) {
 		var name = $( elem ).attr( 'name' ).replace( '[]', '' );
 		var cur_val = $( this ).data( 'show_if_' + name );
 		var hide = true;
-		if ( cur_val == 'equal_' + i_val && $( elem ).is( ':visible' ) )
+		if ( cur_val == 'equal_' + i_val && $( elem ).is( ':visible' ) ) {
 			$( this ).parents( 'tr' ).show();
+		}
 		$( this ).trigger( 'check_input' );
 	} );
 
@@ -49,8 +50,9 @@ jQuery( function ( $ ) {
 		var name = $( elem ).attr( 'name' ).replace( '[]', '' );
 		var cur_val = $( this ).data( 'show_if_' + name );
 		var hide = true;
-		if ( cur_val == 'equal_' + i_val || !($( elem ).is( ':visible' )) )
+		if ( cur_val == 'equal_' + i_val || !($( elem ).is( ':visible' )) ) {
 			$( this ).parents( 'tr' ).hide();
+		}
 		$( this ).trigger( 'check_input' );
 	} );
 
@@ -58,22 +60,28 @@ jQuery( function ( $ ) {
 		var hide = true;
 		var table = $( this );
 		$( this ).find( 'tr' ).each( function () {
-			if ( $( this ).is( ':visible' ) )
+			if ( $( this ).is( ':visible' ) ) {
 				hide = false;
+			}
 		} );
-		if ( hide )
+		if ( hide ) {
 			table.hide();
+		}
 	} );
 
 	$( '.wc-gzdp-generator .form-table tr' ).bind( 'desc', function ( e, desc ) {
 		if ( desc.length > 0 ) {
 			$( '.wc-gzdp-generator-sidebar .info' ).html( desc ).show();
+			$( '.wc-gzd-admin-settings-sidebar-inner' ).show();
+		} else {
+			$( '.wc-gzd-admin-settings-sidebar-inner' ).hide();
 		}
 	} );
 
 	$( document ).on( 'mouseover', '.wc-gzdp-generator .form-table tr', function () {
-		if ( $( this ).find( '*[data-custom-desc]:first' ).length > 0 )
+		if ( $( this ).find( '*[data-custom-desc]:first' ).length > 0 ) {
 			$( this ).trigger( 'desc', $( this ).find( '*[data-custom-desc]:first' ).data( 'custom-desc' ) );
+		}
 	} );
 
 	$( '.wc-gzdp-generator .form-table tr' ).each( function () {

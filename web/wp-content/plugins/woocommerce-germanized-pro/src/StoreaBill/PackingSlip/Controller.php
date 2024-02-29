@@ -57,7 +57,7 @@ class Controller extends DocumentController {
 		$params = parent::get_additional_collection_params();
 
 		$params['order_id'] = array(
-			'description'       => _x( 'Limit result set to packing slips belonging to a certain order.', 'woocommerce-germanized-pro' ),
+			'description'       => __( 'Limit result set to packing slips belonging to a certain order.', 'woocommerce-germanized-pro' ),
 			'type'              => 'integer',
 			'sanitize_callback' => 'absint',
 			'validate_callback' => 'rest_validate_request_arg',

@@ -28,11 +28,11 @@ class ItemTable extends DynamicBlock {
 			'hasDenseLayout'               => $this->get_schema_boolean( false ),
 			'borders'                      => array(
 				'type'    => 'array',
-				'default' => ['horizontal'],
+				'default' => array( 'horizontal' ),
 				'items'   => array(
-					'type' => 'string'
+					'type' => 'string',
 				),
-			)
+			),
 		);
 	}
 
@@ -50,21 +50,29 @@ class ItemTable extends DynamicBlock {
 		/**
 		 * Generate column data.
 		 */
-		foreach( $block['innerBlocks'] as $column ) {
+		foreach ( $block['innerBlocks'] as $column ) {
 			$count++;
 
 			if ( $block_type = \WP_Block_Type_Registry::get_instance()->get_registered( $column['blockName'] ) ) {
-
 				$attributes = is_array( $column['attrs'] ) ? $column['attrs'] : array();
 				$attributes = $block_type->prepare_attributes_for_render( $attributes );
 
-				$column_classes    = ( ! empty( $attributes['className'] ) ) ? implode( ' ', $attributes['className'] ) : array();
-				$column_classes[]  = 'sab-item-table-column';
-				$column_classes[]  = 'sab-item-table-column-' . $attributes['align'];
-				$column_classes    = array_merge( $column_classes, sab_get_html_loop_classes( 'sab-item-table-column', sizeof( $block['innerBlocks'] ), $count ) );
-				$column_classes    = array_unique( array_merge( $column_classes, $border_classes ) );
-				$heading_styles    = sab_generate_block_styles( $attributes, array( 'headingTextColor' => 'textColor', 'headingBackgroundColor' => 'backgroundColor', 'headingFontSize' => 'fontSize' ) );
-				$column_styles     = array();
+				$column_classes   = ( ! empty( $attributes['className'] ) ) ? explode( ' ', $attributes['className'] ) : array();
+				$column_classes[] = 'sab-item-table-column';
+				$column_classes[] = 'sab-item-table-column-' . $attributes['align'];
+				$column_classes   = array_merge( $column_classes, sab_get_html_loop_classes( 'sab-item-table-column', count( $block['innerBlocks'] ), $count ) );
+				$column_classes   = array_unique( array_merge( $column_classes, $border_classes ) );
+
+				$heading_styles = sab_generate_block_styles(
+					$attributes,
+					array(
+						'headingTextColor'       => 'textColor',
+						'headingBackgroundColor' => 'backgroundColor',
+						'headingFontSize'        => 'fontSize',
+					)
+				);
+
+				$column_styles = sab_generate_block_styles( $attributes );
 
 				/**
 				 * Copy global border color styles to headings and rows to support custom border colors
@@ -82,7 +90,8 @@ class ItemTable extends DynamicBlock {
 					'innerBlocks'    => $column['innerBlocks'],
 					'header_styles'  => $heading_styles,
 					'styles'         => $column_styles,
-					'header_classes' => sab_get_html_classes( $column['innerContent'][0] )
+					'fontSize'       => $attributes['fontSize'],
+					'header_classes' => sab_get_html_classes( $column['innerContent'][0] ),
 				);
 
 				if ( $dom = sab_load_html_dom( $column['innerHTML'] ) ) {
@@ -90,7 +99,7 @@ class ItemTable extends DynamicBlock {
 
 					if ( ! empty( $spans ) ) {
 						$span                  = $spans[0];
-						$new_column['heading'] = $span->ownerDocument->saveXML( $span );
+						$new_column['heading'] = $span->ownerDocument->saveXML( $span ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 					}
 				} else {
 					preg_match( '#<\s*?span\b[^>]* class="item-column-heading-text">(.*?)</span\b[^>]*>#s', $column['innerHTML'], $matches );
@@ -119,7 +128,7 @@ class ItemTable extends DynamicBlock {
 				$auto_width = round( $width_remaining / $auto_width_count, 3 );
 			}
 
-			foreach( $columns as $key => $column ) {
+			foreach ( $columns as $key => $column ) {
 				if ( empty( $column['plain_width'] ) ) {
 					$columns[ $key ]['plain_width'] = $auto_width;
 					$columns[ $key ]['width']       = ! empty( $auto_width ) ? $auto_width . '%' : '';
@@ -134,12 +143,15 @@ class ItemTable extends DynamicBlock {
 				return $content;
 			}
 
-			$content = sab_get_template_html( 'blocks/item-table/table.php', array(
-				'document' => $GLOBALS['document'],
-				'columns'  => $columns,
-				'classes'  => $classes,
-				'styles'   => $styles,
-			) );
+			$content = sab_get_template_html(
+				'blocks/item-table/table.php',
+				array(
+					'document' => $GLOBALS['document'],
+					'columns'  => $columns,
+					'classes'  => $classes,
+					'styles'   => $styles,
+				)
+			);
 		}
 
 		return $content;

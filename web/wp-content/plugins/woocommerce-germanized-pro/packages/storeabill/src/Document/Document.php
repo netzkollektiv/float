@@ -146,7 +146,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		'status'                 => '',
 		'address'                => array(),
 		'external_sync_handlers' => array(),
-		'relative_path'          => ''
+		'relative_path'          => '',
 	);
 
 	/**
@@ -207,18 +207,24 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 
 	public function get_line_item_types() {
 		$default_line_item_types = $this->get_item_types();
+		$main_line_item_types    = array();
 
 		if ( $document_type = sab_get_document_type( $this->get_type() ) ) {
 			$default_line_item_types = $document_type->default_line_item_types;
+			$main_line_item_types    = $document_type->main_line_item_types;
 		}
 
+		/**
+		 * Override with template data
+		 */
 		if ( $template = $this->get_template() ) {
-			$template_line_item_types = $template->get_line_item_types();
-
-			if ( ! empty( $template_line_item_types ) ) {
-				$default_line_item_types = $template_line_item_types;
-			}
+			$default_line_item_types = $template->get_line_item_types();
 		}
+
+		/**
+		 * Make sure to always include the main line item types e.g. product.
+		 */
+		$default_line_item_types = array_filter( array_unique( array_merge( $main_line_item_types, $default_line_item_types ) ) );
 
 		return apply_filters( $this->get_hook_prefix() . 'line_item_types', $default_line_item_types, $this );
 	}
@@ -260,29 +266,33 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 
 		$item_data = array();
 
-		foreach( $this->get_item_types() as $item_type ) {
+		foreach ( $this->get_item_types() as $item_type ) {
 			$item_data[ $item_type . '_items' ] = $this->get_items( $item_type );
 		}
 
 		$data = array_merge( $data, $item_data );
 
 		// Force core address data to exist
-		$address_fields = apply_filters( "{$this->get_general_hook_prefix()}address_fields", array(
-			'first_name' => '',
-			'last_name'  => '',
-			'company'    => '',
-			'address_1'  => '',
-			'address_2'  => '',
-			'city'       => '',
-			'state'      => '',
-			'postcode'   => '',
-			'country'    => '',
-			'email'      => '',
-			'phone'      => '',
-			'vat_id'     => '',
-		), $this );
+		$address_fields = apply_filters(
+			"{$this->get_general_hook_prefix()}address_fields",
+			array(
+				'first_name' => '',
+				'last_name'  => '',
+				'company'    => '',
+				'address_1'  => '',
+				'address_2'  => '',
+				'city'       => '',
+				'state'      => '',
+				'postcode'   => '',
+				'country'    => '',
+				'email'      => '',
+				'phone'      => '',
+				'vat_id'     => '',
+			),
+			$this
+		);
 
-		foreach( $address_fields as $field => $default_value ) {
+		foreach ( $address_fields as $field => $default_value ) {
 			if ( ! isset( $data['address'][ $field ] ) ) {
 				$data['address'][ $field ] = $default_value;
 			}
@@ -509,13 +519,16 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		$url = false;
 
 		if ( $this->has_file() ) {
-			$url = wp_nonce_url( add_query_arg(
-				array(
-					'sab-document' => $this->get_id(),
-					'force'        => $force_download
+			$url = wp_nonce_url(
+				add_query_arg(
+					array(
+						'sab-document' => $this->get_id(),
+						'force'        => $force_download,
+					),
+					trailingslashit( home_url() )
 				),
-				trailingslashit( home_url() )
-			), 'sab-download-document' );
+				'sab-download-document'
+			);
 		}
 
 		return apply_filters( "{$this->get_hook_prefix()}download_url", $url, $this, $force_download );
@@ -633,9 +646,12 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	}
 
 	public function cancel_deferred_render( $args = array() ) {
-		$args = wp_parse_args( $args, array(
-			'document_id' => $this->get_id(),
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'document_id' => $this->get_id(),
+			)
+		);
 
 		$queue = WC()->queue();
 
@@ -655,7 +671,6 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		$error = new \WP_Error();
 
 		try {
-
 			/**
 			 * In preview mode: Make sure to mark numbers as non-existent yet.
 			 */
@@ -675,9 +690,12 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 			$this->cancel_deferred_render();
 
 			$default_renderer = apply_filters( 'storeabill_default_document_pdf_renderer', '', $this );
-			$renderer         = sab_get_pdf_renderer( $default_renderer, array(
-				'template' => $this->get_template(),
-			) );
+			$renderer         = sab_get_pdf_renderer(
+				$default_renderer,
+				array(
+					'template' => $this->get_template(),
+				)
+			);
 
 			$html_parts = array(
 				'wrapper_before'    => '',
@@ -703,14 +721,14 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 
 			if ( $is_preview ) {
 				if ( $preview_output ) {
-					do_action( "storeabill_after_render_document", $this, $is_preview );
+					do_action( 'storeabill_after_render_document', $this, $is_preview );
 
 					$renderer->output( $this->get_filename() );
 				} else {
 					$stream = $renderer->stream();
 
 					if ( ! empty( $stream ) ) {
-						do_action( "storeabill_after_render_document", $this, $is_preview );
+						do_action( 'storeabill_after_render_document', $this, $is_preview );
 
 						return $stream;
 					} else {
@@ -735,8 +753,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 					throw new Exception( _x( 'Missing stream while rendering document.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 				}
 			}
-
-		} catch( Exception $e ) {
+		} catch ( Exception $e ) {
 			$error->add( 'render-error', $e->getMessage() );
 
 			$this->create_notice( _x( 'An error ocurred while rendering the document.', 'storeabill-core', 'woocommerce-germanized-pro' ), 'error' );
@@ -764,7 +781,16 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	}
 
 	public function get_country( $context = 'view' ) {
-		return $this->get_address_prop( 'country', $context );
+		$country = $this->get_address_prop( 'country', $context );
+
+		/**
+		 * If country data is missing: Use base country instead.
+		 */
+		if ( 'view' === $context && '' === $country ) {
+			$country = Countries::get_base_country();
+		}
+
+		return $country;
 	}
 
 	/**
@@ -888,7 +914,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	}
 
 	public function number_upon_save() {
-		return $this->numbering_transition === true ? true : false;
+		return true === $this->numbering_transition ? true : false;
 	}
 
 	/**
@@ -1197,7 +1223,8 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		} catch ( Exception $e ) {
 			$logger = wc_get_logger();
 			$logger->error(
-				sprintf( 'Error updating status for document #%d', $this->get_id() ), array(
+				sprintf( 'Error updating status for document #%d', $this->get_id() ),
+				array(
 					'document' => $this,
 					'error'    => $e,
 				)
@@ -1480,7 +1507,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	public function set_address( $address ) {
 		$address = empty( $address ) ? array() : (array) $address;
 
-		foreach( $address as $prop => $value ) {
+		foreach ( $address as $prop => $value ) {
 			$setter = "set_{$prop}";
 
 			if ( is_callable( array( $this, $setter ) ) ) {
@@ -1503,7 +1530,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	public function has_changed() {
 		$has_changed = parent::has_changed();
 
-		foreach( $this->get_items() as $item ) {
+		foreach ( $this->get_items() as $item ) {
 			if ( $item->has_changed() ) {
 				$has_changed = true;
 			}
@@ -1526,9 +1553,12 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		$types         = array_filter( (array) ( empty( $types ) ? $this->get_item_types() : $types ) );
 		$document_type = $this->get_type();
 
-		$types = array_map( function( $type ) use ( $document_type ) {
-			return sab_remove_document_item_type_prefix( $type, $document_type );
-		}, $types );
+		$types = array_map(
+			function( $type ) use ( $document_type ) {
+				return sab_remove_document_item_type_prefix( $type, $document_type );
+			},
+			$types
+		);
 
 		foreach ( $types as $key => $type ) {
 			if ( ! isset( $this->items[ $type ] ) ) {
@@ -1540,7 +1570,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		}
 
 		// Refresh document reference
-		foreach( $items as $item ) {
+		foreach ( $items as $item ) {
 			$item->set_document( $this );
 		}
 
@@ -1560,6 +1590,21 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		 * @package Vendidero/StoreaBill
 		 */
 		return apply_filters( "{$this->get_hook_prefix()}items", $items, $this, $types );
+	}
+
+	/**
+	 * Return the item count included in this document.
+	 *
+	 * @return integer
+	 */
+	public function get_item_count( $types = '' ) {
+		$count = 0;
+
+		foreach ( $this->get_items( $types ) as $item ) {
+			$count += $item->get_quantity();
+		}
+
+		return $count;
 	}
 
 	/**
@@ -1606,7 +1651,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	public function get_item_by_reference_id( $reference_id ) {
 		$items = $this->get_items();
 
-		foreach( $items as $item ) {
+		foreach ( $items as $item ) {
 			if ( $item->get_reference_id() === (int) $reference_id ) {
 				return $item;
 			}
@@ -1645,7 +1690,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	 * @return bool|string
 	 */
 	protected function get_items_key( $item ) {
-		if ( ! in_array( $item->get_item_type(), $this->get_item_types() ) ) {
+		if ( ! in_array( $item->get_item_type(), $this->get_item_types(), true ) ) {
 			return false;
 		}
 
@@ -1661,7 +1706,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	 */
 	protected function get_notice_key( $notice ) {
 
-		if ( ! in_array( $notice->get_type(), array_keys( sab_get_document_notice_types() ) ) ) {
+		if ( ! in_array( $notice->get_type(), array_keys( sab_get_document_notice_types() ), true ) ) {
 			return false;
 		}
 
@@ -1682,7 +1727,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 			return false;
 		}
 
-		if ( ! in_array( $item->get_item_type(), $this->get_item_types() ) ) {
+		if ( ! in_array( $item->get_item_type(), $this->get_item_types(), true ) ) {
 			return false;
 		}
 
@@ -1700,7 +1745,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		if ( $item->get_id() ) {
 			$this->items[ $items_key ][ $item->get_id() ] = $item;
 		} else {
-			$key = 'new_' . $items_key . ':' . sizeof( $this->items[ $items_key ] ) . uniqid();
+			$key = 'new_' . $items_key . ':' . count( $this->items[ $items_key ] ) . uniqid();
 
 			$item->set_key( $key );
 
@@ -1708,7 +1753,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		}
 
 		// Add children to document
-		foreach( $children as $child ) {
+		foreach ( $children as $child ) {
 
 			// Child has already been added
 			if ( $child->get_id() > 0 && ( $exists = $this->get_item( $child->get_id() ) ) ) {
@@ -1742,7 +1787,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		}
 
 		// Refresh document reference
-		foreach( $notices as $notice ) {
+		foreach ( $notices as $notice ) {
 			$notice->set_document( $this );
 		}
 
@@ -1799,7 +1844,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 			return false;
 		}
 
-		if ( ! in_array( $notice->get_type(), array_keys( sab_get_document_notice_types() ) ) ) {
+		if ( ! in_array( $notice->get_type(), array_keys( sab_get_document_notice_types() ), true ) ) {
 			return false;
 		}
 
@@ -1815,7 +1860,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		if ( $notice->get_id() ) {
 			$this->notices[ $notice_key ][ $notice->get_id() ] = $notice;
 		} else {
-			$key = 'new_' . $notice_key . ':' . sizeof( $this->notices[ $notice_key ] ) . uniqid();
+			$key = 'new_' . $notice_key . ':' . count( $this->notices[ $notice_key ] ) . uniqid();
 			$notice->set_key( $key );
 
 			$this->notices[ $notice_key ][ $key ] = $notice;
@@ -1883,19 +1928,30 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	}
 
 	protected function get_formatted_number_placeholders( $args ) {
-		$args = wp_parse_args( $args, array(
-			'number' => ''
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'number' => '',
+			)
+		);
 
-		return apply_filters( "{$this->get_hook_prefix()}formatted_number_placeholders", array_merge( array(
-			'{y}'      => $this->get_date_created()->date_i18n(  'y' ),
-			'{Y}'      => $this->get_date_created()->date_i18n(  'Y' ),
-			'{m}'      => $this->get_date_created()->date_i18n(  'm' ),
-			'{n}'      => $this->get_date_created()->date_i18n(  'n' ),
-			'{d}'      => $this->get_date_created()->date_i18n(  'd' ),
-			'{j}'      => $this->get_date_created()->date_i18n(  'j' ),
-			'{number}' => $args['number'],
-		), $this->get_additional_number_placeholders() ), $this, $args );
+		return apply_filters(
+			"{$this->get_hook_prefix()}formatted_number_placeholders",
+			array_merge(
+				array(
+					'{y}'      => $this->get_date_created()->date_i18n( 'y' ),
+					'{Y}'      => $this->get_date_created()->date_i18n( 'Y' ),
+					'{m}'      => $this->get_date_created()->date_i18n( 'm' ),
+					'{n}'      => $this->get_date_created()->date_i18n( 'n' ),
+					'{d}'      => $this->get_date_created()->date_i18n( 'd' ),
+					'{j}'      => $this->get_date_created()->date_i18n( 'j' ),
+					'{number}' => $args['number'],
+				),
+				$this->get_additional_number_placeholders()
+			),
+			$this,
+			$args
+		);
 	}
 
 	public function send_to_customer() {
@@ -1909,7 +1965,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 			if ( ! is_wp_error( $result ) ) {
 				$this->maybe_set_date_sent();
 			} else {
-				foreach( $result->get_error_messages() as $message ) {
+				foreach ( $result->get_error_messages() as $message ) {
 					Package::extended_log( 'Error while sending ' . $this->get_title() . ' via email: ' . $message );
 				}
 			}
@@ -1935,7 +1991,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 	}
 
 	protected function maybe_set_date_sent() {
-		$this->set_date_sent( current_time( 'timestamp', true ) );
+		$this->set_date_sent( time() );
 		$this->save();
 	}
 
@@ -1947,7 +2003,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 			$min_size      = $journal->get_number_min_size();
 
 			// Fill number with trailing zeros
-			$number        = sprintf('%0' . $min_size . 'd', $number );
+			$number = sprintf( '%0' . $min_size . 'd', $number );
 		}
 
 		$number_format = apply_filters( "{$this->get_hook_prefix()}number_format", $number_format, $this, $number );
@@ -2067,7 +2123,8 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 			} catch ( Exception $e ) {
 				$logger = wc_get_logger();
 				$logger->error(
-					sprintf( 'Status transition of document #%d errored!', $this->get_id() ), array(
+					sprintf( 'Status transition of document #%d errored!', $this->get_id() ),
+					array(
 						'document' => $this,
 						'error'    => $e,
 					)
@@ -2132,7 +2189,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		 * store the children -> parent relationship to db.
 		 */
 		if ( ! empty( $children ) ) {
-			foreach( $children as $item_group => $items ) {
+			foreach ( $children as $item_group => $items ) {
 				if ( is_array( $items ) ) {
 					foreach ( $items as $item_key => $item ) {
 						if ( $this->save_item( $item, $item_key, $item_group ) ) {
@@ -2141,7 +2198,7 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 					}
 				}
 			}
- 		}
+		}
 
 		return $items_changed;
 	}
@@ -2278,7 +2335,8 @@ abstract class Document extends Data implements Numberable, ExternalSyncable {
 		} catch ( Exception $e ) {
 			$logger = wc_get_logger();
 			$logger->error(
-				sprintf( 'Error saving document #%d', $this->get_id() ), array(
+				sprintf( 'Error saving document #%d', $this->get_id() ),
+				array(
 					'document' => $this,
 					'error'    => $e,
 				)

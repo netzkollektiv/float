@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\Germanized\Shipments\Admin;
+
 use Vendidero\Germanized\Shipments\Package;
 use Vendidero\Germanized\Shipments\Ajax;
 use Vendidero\Germanized\Shipments\Order;
@@ -12,160 +13,166 @@ defined( 'ABSPATH' ) || exit;
  */
 class MetaBox {
 
-    /**
-     * @param Order $order
-     */
-    public static function refresh_shipments( &$order ) {
+	/**
+	 * @param Order $order
+	 */
+	public static function refresh_shipments( &$order ) {
+		foreach ( $order->get_shipments() as $shipment ) {
+			$id    = $shipment->get_id();
+			$props = array();
 
-        foreach( $order->get_shipments() as $shipment ) {
+			// Update items
+			self::refresh_shipment_items( $order, $shipment );
 
-            $id    = $shipment->get_id();
-            $props = array();
+			// Do only update props if they exist
+			if ( isset( $_POST['shipment_weight'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$props['weight'] = wc_clean( wp_unslash( $_POST['shipment_weight'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
 
-            // Update items
-            self::refresh_shipment_items( $order, $shipment );
+			if ( isset( $_POST['shipment_length'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$props['length'] = wc_clean( wp_unslash( $_POST['shipment_length'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
 
-            // Do only update props if they exist
-            if ( isset( $_POST['shipment_weight'][ $id ] ) ) {
-                $props['weight'] = wc_clean( wp_unslash( $_POST['shipment_weight'][ $id ] ) );
-            }
+			if ( isset( $_POST['shipment_width'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$props['width'] = wc_clean( wp_unslash( $_POST['shipment_width'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
 
-            if ( isset( $_POST['shipment_length'][ $id ] ) ) {
-                $props['length'] = wc_clean( wp_unslash( $_POST['shipment_length'][ $id ] ) );
-            }
+			if ( isset( $_POST['shipment_height'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$props['height'] = wc_clean( wp_unslash( $_POST['shipment_height'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
 
-            if ( isset( $_POST['shipment_width'][ $id ] ) ) {
-                $props['width'] = wc_clean( wp_unslash( $_POST['shipment_width'][ $id ] ) );
-            }
+			if ( isset( $_POST['shipment_shipping_method'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$props['shipping_method'] = wc_clean( wp_unslash( $_POST['shipment_shipping_method'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
 
-            if ( isset( $_POST['shipment_height'][ $id ] ) ) {
-                $props['height'] = wc_clean( wp_unslash( $_POST['shipment_height'][ $id ] ) );
-            }
+			if ( isset( $_POST['shipment_tracking_id'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$props['tracking_id'] = wc_clean( wp_unslash( $_POST['shipment_tracking_id'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
 
-	        if ( isset( $_POST['shipment_shipping_method'][ $id ] ) ) {
-		        $props['shipping_method'] = wc_clean( wp_unslash( $_POST['shipment_shipping_method'][ $id ] ) );
-	        }
+			if ( isset( $_POST['shipment_packaging_id'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$props['packaging_id'] = wc_clean( wp_unslash( $_POST['shipment_packaging_id'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
 
-	        if ( isset( $_POST['shipment_tracking_id'][ $id ] ) ) {
-		        $props['tracking_id'] = wc_clean( wp_unslash( $_POST['shipment_tracking_id'][ $id ] ) );
-	        }
+			if ( isset( $_POST['shipment_shipping_provider'][ $id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$provider  = wc_clean( wp_unslash( $_POST['shipment_shipping_provider'][ $id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$providers = wc_gzd_get_shipping_providers();
 
-	        if ( isset( $_POST['shipment_packaging_id'][ $id ] ) ) {
-		        $props['packaging_id'] = wc_clean( wp_unslash( $_POST['shipment_packaging_id'][ $id ] ) );
-	        }
+				if ( empty( $provider ) || array_key_exists( $provider, $providers ) ) {
+					$props['shipping_provider'] = $provider;
+				}
+			}
 
-	        if ( isset( $_POST['shipment_shipping_provider'][ $id ] ) ) {
-	        	$provider  = wc_clean( wp_unslash( $_POST['shipment_shipping_provider'][ $id ] ) );
-	        	$providers = wc_gzd_get_shipping_providers();
+			$new_status = isset( $_POST['shipment_status'][ $id ] ) ? str_replace( 'gzd-', '', wc_clean( wp_unslash( $_POST['shipment_status'][ $id ] ) ) ) : 'draft'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
-	        	if ( empty( $provider ) || array_key_exists( $provider, $providers ) ) {
-			        $props['shipping_provider'] = $provider;
-		        }
-	        }
+			// Sync the shipment - make sure gets refresh on status switch (e.g. from shipped to processing)
+			if ( $shipment->is_editable() || in_array( $new_status, wc_gzd_get_shipment_editable_statuses(), true ) ) {
+				$shipment->sync( $props );
+			}
+		}
+	}
 
-	        $new_status = isset( $_POST['shipment_status'][ $id ] ) ? str_replace( 'gzd-', '', wc_clean( wp_unslash( $_POST['shipment_status'][ $id ] ) ) ) : 'draft';
+	/**
+	 * @param Order $order
+	 * @param bool $shipment
+	 */
+	public static function refresh_shipment_items( &$order, &$shipment = false ) {
+		$shipments = $shipment ? array( $shipment ) : $order->get_shipments();
 
-	        // Sync the shipment - make sure gets refresh on status switch (e.g. from shipped to processing)
-            if ( $shipment->is_editable() || in_array( $new_status, wc_gzd_get_shipment_editable_statuses() ) ) {
-	            $shipment->sync( $props );
-            }
-        }
-    }
+		foreach ( $shipments as $shipment ) {
+			$id = $shipment->get_id();
 
-    /**
-     * @param Order $order
-     * @param bool $shipment
-     */
-    public static function refresh_shipment_items( &$order, &$shipment = false ) {
-        $shipments = $shipment ? array( $shipment ) : $order->get_shipments();
+			if ( ! $shipment->is_editable() ) {
+				continue;
+			}
 
-        foreach( $shipments as $shipment ) {
-            $id = $shipment->get_id();
+			// Update items
+			foreach ( $shipment->get_items() as $item ) {
+				$item_id = $item->get_id();
+				$props   = array();
 
-            if ( ! $shipment->is_editable() ) {
-                continue;
-            }
+				// Set quantity to 1 by default
+				if ( $shipment->is_editable() ) {
+					$props['quantity'] = 1;
+				}
 
-            // Update items
-            foreach( $shipment->get_items() as $item ) {
-                $item_id = $item->get_id();
-                $props   = array();
+				if ( isset( $_POST['shipment_item'][ $id ]['quantity'][ $item_id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					$props['quantity'] = absint( wp_unslash( $_POST['shipment_item'][ $id ]['quantity'][ $item_id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				}
 
-                // Set quantity to 1 by default
-                if ( $shipment->is_editable() ) {
-                    $props['quantity'] = 1;
-                }
+				if ( isset( $_POST['shipment_item'][ $id ]['return_reason_code'][ $item_id ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+					$props['return_reason_code'] = wc_clean( wp_unslash( $_POST['shipment_item'][ $id ]['return_reason_code'][ $item_id ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				}
 
-                if ( isset( $_POST['shipment_item'][ $id ]['quantity'][ $item_id ] ) ) {
-                    $props['quantity'] = absint( wp_unslash( $_POST['shipment_item'][ $id ]['quantity'][ $item_id ] ) );
-                }
+				$item->sync( $props );
+			}
+		}
+	}
 
-	            if ( isset( $_POST['shipment_item'][ $id ]['return_reason_code'][ $item_id ] ) ) {
-		            $props['return_reason_code'] = wc_clean( wp_unslash( $_POST['shipment_item'][ $id ]['return_reason_code'][ $item_id ] ) );
-	            }
+	/**
+	 * @param Order $order
+	 */
+	public static function refresh_status( &$order ) {
+		foreach ( $order->get_shipments() as $shipment ) {
+			$id     = $shipment->get_id();
+			$status = isset( $_POST['shipment_status'][ $id ] ) ? wc_clean( wp_unslash( $_POST['shipment_status'][ $id ] ) ) : 'draft'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
-                $item->sync( $props );
-            }
-        }
-    }
+			if ( ! wc_gzd_is_shipment_status( $status ) ) {
+				$status = 'draft';
+			}
 
-    /**
-     * @param Order $order
-     */
-    public static function refresh_status( &$order ) {
+			$shipment->set_status( $status );
+		}
+	}
 
-        foreach( $order->get_shipments() as $shipment ) {
+	protected static function init_order_object( $post ) {
+		if ( is_callable( array( '\Automattic\WooCommerce\Utilities\OrderUtil', 'init_theorder_object' ) ) ) {
+			\Automattic\WooCommerce\Utilities\OrderUtil::init_theorder_object( $post );
+		} else {
+			global $post, $thepostid, $theorder;
 
-            $id     = $shipment->get_id();
-            $status = isset( $_POST['shipment_status'][ $id ] ) ? wc_clean( wp_unslash( $_POST['shipment_status'][ $id ] ) ) : 'draft';
+			if ( ! is_int( $thepostid ) ) {
+				$thepostid = $post->ID;
+			}
 
-            if ( ! wc_gzd_is_shipment_status( $status ) ) {
-                $status = 'draft';
-            }
+			if ( ! is_object( $theorder ) ) {
+				$theorder = wc_get_order( $thepostid );
+			}
+		}
+	}
 
-            $shipment->set_status( $status );
-        }
-    }
+	/**
+	 * Output the metabox.
+	 *
+	 * @param \WP_Post $post
+	 */
+	public static function output( $post ) {
+		global $theorder;
 
-    /**
-     * Output the metabox.
-     *
-     * @param WP_Post $post
-     */
-    public static function output( $post ) {
-        global $post, $thepostid, $theorder;
+		self::init_order_object( $post );
 
-        if ( ! is_int( $thepostid ) ) {
-            $thepostid = $post->ID;
-        }
+		$order           = $theorder;
+		$order_shipment  = wc_gzd_get_shipment_order( $order );
+		$active_shipment = isset( $_GET['shipment_id'] ) ? absint( $_GET['shipment_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-        if ( ! is_object( $theorder ) ) {
-            $theorder = wc_get_order( $thepostid );
-        }
+		include Package::get_path() . '/includes/admin/views/html-order-shipments.php';
+	}
 
-        $order           = $theorder;
-        $order_shipment  = wc_gzd_get_shipment_order( $order );
-        $active_shipment = isset( $_GET['shipment_id'] ) ? absint( $_GET['shipment_id'] ) : 0;
+	/**
+	 * Save meta box data.
+	 *
+	 * @param int $post_id
+	 */
+	public static function save( $order_id ) {
+		// Get order object.
+		$order_shipment = wc_gzd_get_shipment_order( $order_id );
 
-        include( Package::get_path() . '/includes/admin/views/html-order-shipments.php' );
-    }
+		self::refresh_shipments( $order_shipment );
 
-    /**
-     * Save meta box data.
-     *
-     * @param int $post_id
-     */
-    public static function save( $order_id ) {
-        // Get order object.
-        $order_shipment = wc_gzd_get_shipment_order( $order_id );
+		$order_shipment->validate_shipments( array( 'save' => false ) );
 
-        self::refresh_shipments( $order_shipment );
+		// Refresh status just before saving
+		self::refresh_status( $order_shipment );
 
-        $order_shipment->validate_shipments( array( 'save' => false ) );
-
-        // Refresh status just before saving
-        self::refresh_status( $order_shipment );
-
-        $order_shipment->save();
-    }
+		$order_shipment->save();
+	}
 }

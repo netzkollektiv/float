@@ -22,6 +22,8 @@ class Helper {
 
 	protected static $blocks = null;
 
+	protected static $registered_block_scripts = false;
+
 	protected static $asset_data = array();
 
 	protected static $font_embed = null;
@@ -29,13 +31,24 @@ class Helper {
 	protected static $has_registered_assets = false;
 
 	public static function init() {
-		add_filter( 'allowed_block_types', array( __CLASS__, 'allowed_block_types' ), 10, 2 );
+		global $wp_version;
+
 		add_filter( 'template_include', array( __CLASS__, 'template_loader' ) );
 		add_filter( 'replace_editor', array( __CLASS__, 'conditionally_load_template' ), 10, 2 );
 
 		add_action( 'storeabill_load_block_editor', array( __CLASS__, 'register_assets' ), 10 );
 		add_action( 'storeabill_load_block_editor', array( __CLASS__, 'get_blocks' ), 11 );
-		add_action( 'rest_api_init', array( __CLASS__, 'get_blocks' ), 10 );
+
+		/**
+		 * Fallback for dynamic blocks (register without registering scripts to prevent performance issues in default Gutenberg)
+		 */
+		add_action(
+			'rest_api_init',
+			function() {
+				self::get_blocks( false );
+			},
+			10
+		);
 
 		add_action( 'init', array( __CLASS__, 'register_meta' ) );
 
@@ -53,7 +66,14 @@ class Helper {
 		add_filter( 'block_editor_no_javascript_message', array( __CLASS__, 'reset_theme_file_path_filter' ), 999 );
 
 		add_action( 'enqueue_block_editor_assets', array( __CLASS__, 'enqueue_editor_assets' ) );
-		add_filter( 'block_editor_settings_all', array( __CLASS__, 'prevent_theme_settings' ), 999, 2 );
+
+		/**
+		 * The Gutenberg core plugins uses PHP_INT_MAX to filter the settings. That may lead to overrides
+		 * within our custom font size definitions.
+		 *
+		 * @see gutenberg/lib/compat/wordpress-6.0/block-editor-settings.php
+		 */
+		add_filter( 'block_editor_settings_all', array( __CLASS__, 'override_theme_settings' ), PHP_INT_MAX, 2 );
 
 		add_action( 'admin_footer', array( __CLASS__, 'add_footer_styles' ), 150 );
 
@@ -68,7 +88,21 @@ class Helper {
 		add_action( 'admin_init', array( __CLASS__, 'maybe_merge_template' ), 10 );
 		add_action( 'admin_init', array( __CLASS__, 'force_redirect_on_archive' ), 10 );
 
-		add_filter( 'block_categories', array( __CLASS__, 'register_category' ), 10, 2 );
+		if ( version_compare( $wp_version, '5.8.0', '>=' ) ) {
+			add_filter( 'block_categories_all', array( __CLASS__, 'register_category_all' ), 10, 2 );
+			add_filter( 'allowed_block_types_all', array( __CLASS__, 'allowed_block_types_all' ), 10, 2 );
+		} else {
+			add_filter( 'block_categories', array( __CLASS__, 'register_category' ), 10, 2 );
+			add_filter( 'allowed_block_types', array( __CLASS__, 'allowed_block_types' ), 10, 2 );
+		}
+	}
+
+	public static function register_category_all( $categories, $block_context ) {
+		if ( is_a( $block_context, 'WP_Block_Editor_Context' ) && $block_context->post ) {
+			return self::register_category( $categories, $block_context->post );
+		}
+
+		return $categories;
 	}
 
 	public static function register_category( $categories, $post ) {
@@ -77,7 +111,7 @@ class Helper {
 				$categories,
 				array(
 					array(
-						'slug' => 'storeabill',
+						'slug'  => 'storeabill',
 						'title' => _x( 'Storeabill', 'storeabill-core', 'woocommerce-germanized-pro' ),
 					),
 				)
@@ -94,12 +128,12 @@ class Helper {
 	public static function force_redirect_on_archive() {
 		global $pagenow;
 
-		if ( 'edit.php' === $pagenow && isset( $_GET['post_type'] ) && 'document_template' === $_GET['post_type'] ) {
+		if ( 'edit.php' === $pagenow && isset( $_GET['post_type'] ) && 'document_template' === $_GET['post_type'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$referer = wp_get_referer();
 			$url     = Settings::get_admin_url();
 
 			if ( ! empty( $referer ) ) {
-				$parts = parse_url( $referer );
+				$parts = wp_parse_url( $referer );
 				parse_str( $parts['query'], $args );
 
 				if ( isset( $args['post'] ) ) {
@@ -112,7 +146,7 @@ class Helper {
 				}
 			}
 
-			wp_safe_redirect( $url );
+			wp_safe_redirect( esc_url_raw( $url ) );
 			exit();
 		}
 	}
@@ -124,8 +158,8 @@ class Helper {
 	public static function maybe_merge_template() {
 		if ( current_user_can( 'manage_storeabill' ) ) {
 			if ( isset( $_GET['do'], $_GET['post'], $_GET['action'], $_GET['_wpnonce'], $_GET['base_document_type'] ) && 'edit' === $_GET['action'] && 'merge' === $_GET['do'] ) {
-				if ( wp_verify_nonce( $_GET['_wpnonce'], 'sab-merge-template' ) ) {
-					$document_type = sab_clean( $_GET['base_document_type'] );
+				if ( wp_verify_nonce( wp_unslash( $_GET['_wpnonce'] ), 'sab-merge-template' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+					$document_type = sab_clean( wp_unslash( $_GET['base_document_type'] ) );
 					$post_id       = absint( $_GET['post'] );
 					$post          = get_post( $post_id );
 					$ref           = remove_query_arg( array( '_wpnonce', 'do', 'document_type' ), wp_get_referer() );
@@ -135,7 +169,7 @@ class Helper {
 							$result = self::merge_from_template( $base_template, $post_id );
 
 							if ( $result ) {
-								wp_safe_redirect( $ref );
+								wp_safe_redirect( esc_url_raw( $ref ) );
 								exit();
 							}
 						}
@@ -167,10 +201,10 @@ class Helper {
 			return false;
 		}
 
-		$content          = $base_template->get_content();
-		$header_content   = self::get_block_content( 'storeabill/header', $content, true );
-		$footer_content   = self::get_block_content( 'storeabill/footer', $content, true );
-		$address_content  = self::get_block_content( 'storeabill/address', $content, true );
+		$content         = $base_template->get_content();
+		$header_content  = self::get_block_content( 'storeabill/header', $content, true );
+		$footer_content  = self::get_block_content( 'storeabill/footer', $content, true );
+		$address_content = self::get_block_content( 'storeabill/address', $content, true );
 
 		$to_merge_content = $to_merge_template->get_content();
 
@@ -212,8 +246,8 @@ class Helper {
 			}
 
 			if ( 'accounting' === $to_merge_document_type->group ) {
-				$reverse_charge     = self::get_block_content( 'storeabill/reverse-charge-notice', $content, true );
-				$third_country      = self::get_block_content( 'storeabill/third-country-notice', $content, true );
+				$reverse_charge = self::get_block_content( 'storeabill/reverse-charge-notice', $content, true );
+				$third_country  = self::get_block_content( 'storeabill/third-country-notice', $content, true );
 
 				if ( $third_country ) {
 					$to_merge_content = self::replace_block_content( 'storeabill/third-country-notice', $to_merge_content, $third_country );
@@ -231,6 +265,7 @@ class Helper {
 		$to_merge_template->set_pdf_template_id( $base_template->get_pdf_template_id( 'edit' ) );
 		$to_merge_template->set_font_size( $base_template->get_font_size( 'edit' ) );
 		$to_merge_template->set_fonts( $base_template->get_fonts( 'edit' ) );
+		$to_merge_template->set_line_item_types( $base_template->get_line_item_types( 'edit' ) );
 
 		$to_merge_template->save();
 
@@ -248,9 +283,9 @@ class Helper {
 				$to_merge_first_page_template = $to_merge_template->get_first_page();
 			}
 
-			$content          = $base_template_first_page->get_content();
-			$header_content   = self::get_block_content( 'storeabill/header', $content, true );
-			$footer_content   = self::get_block_content( 'storeabill/footer', $content, true );
+			$content        = $base_template_first_page->get_content();
+			$header_content = self::get_block_content( 'storeabill/header', $content, true );
+			$footer_content = self::get_block_content( 'storeabill/footer', $content, true );
 
 			$to_merge_content = $to_merge_first_page_template->get_content();
 
@@ -267,7 +302,7 @@ class Helper {
 			$to_merge_first_page_template->set_pdf_template_id( $base_template_first_page->get_pdf_template_id( 'edit' ) );
 
 			$to_merge_first_page_template->save();
-		} elseif( $to_merge_template->has_custom_first_page() ) {
+		} elseif ( $to_merge_template->has_custom_first_page() ) {
 			$to_merge_template->get_first_page()->delete( true );
 		}
 
@@ -280,7 +315,7 @@ class Helper {
 		$result = $content;
 
 		if ( self::get_block_content( $block_name, $content ) ) {
-			$result = preg_replace( '#('. $start .')(.*)(' . preg_quote( $end ) . ')#siU', $new_content, $content );
+			$result = preg_replace( '#(' . $start . ')(.*)(' . preg_quote( $end ) . ')#siU', $new_content, $content ); // phpcs:ignore WordPress.PHP.PregQuoteDelimiter.Missing
 		} elseif ( $append_if_not_found ) {
 			$result .= "\n\r" . $new_content;
 		}
@@ -290,7 +325,7 @@ class Helper {
 
 	protected static function get_block_regex( $block_name, $type = 'start' ) {
 		if ( 'start' === $type ) {
-			return '<!-- wp:' . preg_quote( $block_name ) . ' ({(.*)}(\s)*)?-->';
+			return '<!-- wp:' . preg_quote( $block_name ) . ' ({(.*)}(\s)*)?-->'; // phpcs:ignore WordPress.PHP.PregQuoteDelimiter.Missing
 		} elseif ( 'end' === $type ) {
 			return '<!-- /wp:' . $block_name . ' -->';
 		}
@@ -302,7 +337,7 @@ class Helper {
 		$start = self::get_block_regex( $block_name, 'start' );
 		$end   = self::get_block_regex( $block_name, 'end' );
 
-		preg_match_all( '#('. $start .')(.*)(' . preg_quote( $end ) . ')#siU', $content, $matches );
+		preg_match_all( '#(' . $start . ')(.*)(' . preg_quote( $end ) . ')#siU', $content, $matches ); // phpcs:ignore WordPress.PHP.PregQuoteDelimiter.Missing
 
 		if ( ! empty( $matches[0] ) ) {
 			if ( $first_only ) {
@@ -356,7 +391,7 @@ class Helper {
 		$templates = sab_get_document_templates( $document_type, true );
 		$count     = 0;
 
-		foreach( $templates as $template ) {
+		foreach ( $templates as $template ) {
 			$count++;
 
 			$args = array(
@@ -399,7 +434,7 @@ class Helper {
 	public static function on_insert_new( $post_id, $post, $update ) {
 		if ( ! $update && self::is_document_template( $post ) ) {
 
-			if ( ! isset( $_GET['document_type'] ) ) {
+			if ( ! isset( $_GET['document_type'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				return;
 			}
 
@@ -410,7 +445,7 @@ class Helper {
 				return;
 			}
 
-			$document_type = sab_clean( $_GET['document_type'] );
+			$document_type = sab_clean( wp_unslash( $_GET['document_type'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 			if ( ! sab_get_document_type( $document_type ) ) {
 				$document_type = 'invoice';
@@ -447,9 +482,33 @@ class Helper {
 				if ( $embed = self::get_font_embed( $template ) ) {
 					$inline_css = $embed->get_inline_css();
 
-					echo '<style class="sab-font-inline">' . $inline_css . '</style>';
+					echo '<style class="sab-font-inline">' . wp_strip_all_tags( $inline_css ) . '</style>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				}
 			}
+
+			/**
+			 * Do not use wp_add_inline_style() as it seems to be invalidated during
+			 * editor initialization (after AJAX request finished).
+			 */
+			$inline_css = '';
+
+			foreach ( sab_get_document_font_sizes() as $size ) {
+				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $size['slug'] ) . '-font-size, .has-' . sanitize_key( $size['slug'] ) . '-font-size {
+					font-size: ' . esc_attr( $size['size'] ) . 'px;
+				} ';
+			}
+
+			foreach ( sab_get_color_names() as $color_name => $color ) {
+				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $color_name ) . '-color, .has-' . sanitize_key( $color_name ) . '-color {
+					color: ' . esc_attr( $color ) . ';
+				} ';
+
+				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $color_name ) . '-background-color, .has-' . sanitize_key( $color_name ) . '-background-color {
+					background-color: ' . esc_attr( $color ) . ';
+				} ';
+			}
+
+			echo '<style class="sab-editor-inline">' . $inline_css . '</style>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 	}
 
@@ -457,10 +516,9 @@ class Helper {
 		global $post;
 
 		if ( self::is_document_template( $post ) ) {
-
 			if ( $template = sab_get_document_template( $post ) ) {
 				if ( $embed = self::get_font_embed( $template ) ) {
-					$facet_css  = $embed->get_font_facets_css();
+					$facet_css = $embed->get_font_facets_css();
 
 					wp_add_inline_style( 'sab-block-editor', $facet_css );
 				}
@@ -492,63 +550,60 @@ class Helper {
 				$edit_link = $template->get_first_page()->get_edit_url();
 			}
 
-			$line_item_types        = $template->get_line_item_types();
-			$line_item_type_options = array();
+			$current_line_item_types = $template->get_line_item_types();
+			$line_item_type_options  = array();
 
-			if ( empty( $line_item_types ) ) {
-				$line_item_types = $document_type->default_line_item_types;
-			}
-
-			$item_types        = $document_type->available_line_item_types;
-			$item_type_options = array();
-
-			foreach( $item_types as $item_type ) {
-				$item_type_options[ $item_type ] = sab_get_document_item_type_title( sab_maybe_prefix_document_item_type( $item_type, $template->get_document_type() ) );
-			}
-
-			foreach( $line_item_types as $item_type ) {
+			foreach ( apply_filters( 'storeabill_additional_line_item_types_selectable', $document_type->additional_line_item_types, $template->get_document_type() ) as $item_type ) {
 				$line_item_type_options[ $item_type ] = sab_get_document_item_type_title( sab_maybe_prefix_document_item_type( $item_type, $template->get_document_type() ) );
 			}
 
 			$document_types = array();
 
-			foreach( sab_get_document_types() as $type ) {
+			foreach ( sab_get_document_types() as $type ) {
 				$document_types[ $type ] = sab_get_document_type_label( $type );
 			}
 
-			self::$asset_data['templateType']         = $template->get_type();
-			self::$asset_data['title']                = $template->get_title( $template->is_first_page() ? 'view' : 'edit' );
+			self::$asset_data['templateType'] = $template->get_type();
+			self::$asset_data['title']        = $template->get_title( $template->is_first_page() ? 'view' : 'edit' );
 
-			self::$asset_data['documentType']         = $template->get_document_type();
-			self::$asset_data['documentTypes']        = $document_types;
+			self::$asset_data['documentType']  = $template->get_document_type();
+			self::$asset_data['documentTypes'] = $document_types;
 
-			self::$asset_data['documentTypeTitle']    = sab_get_document_type_label( $document_type );
-			self::$asset_data['isFirstPage']          = $template->is_first_page();
-			self::$asset_data['linkedEditLink']       = $edit_link ? $edit_link : '';
-			self::$asset_data['marginTypesSupported'] = $template->is_first_page() ? array( 'top', 'bottom' ) : array( 'top', 'left', 'bottom', 'right' );
-			self::$asset_data['defaultMargins']       = $template->get_default_margins();
-			self::$asset_data['lineItemTypes']        = $line_item_type_options;
-			self::$asset_data['itemTypes']            = $item_type_options;
-			self::$asset_data['dateFormat']           = sab_date_format();
-			self::$asset_data['dateTypes']            = apply_filters( 'storeabill_document_template_editor_date_types', $document_type->date_types, $document_type );
-			self::$asset_data['supports']             = $document_type->supports;
-			self::$asset_data['discountTotalTypes']   = array();
-			self::$asset_data['dynamicContentBlocks'] = self::get_dynamic_content_blocks();
-			self::$asset_data['defaultInnerBlocks']   = self::get_default_inner_blocks( $template->get_document_type() );
-			self::$asset_data['assets_url']           = trailingslashit( Package::get_assets_url() );
-			self::$asset_data['attribute_slugs']      = array_values( wp_list_pluck( wc_get_attribute_taxonomies(), 'attribute_name' ) );
-			self::$asset_data['barcodeTypes']         = sab_get_barcode_types();
-			self::$asset_data['barcodeCodeTypes']     = sab_get_document_type_barcode_code_types( $template->get_document_type() );
-			self::$asset_data['allowedBlockTypes']    = self::allowed_block_types( array(), $post );
+			self::$asset_data['documentTypeTitle']      = sab_get_document_type_label( $document_type );
+			self::$asset_data['isFirstPage']            = $template->is_first_page();
+			self::$asset_data['linkedEditLink']         = $edit_link ? $edit_link : '';
+			self::$asset_data['marginTypesSupported']   = $template->is_first_page() ? array( 'top', 'bottom' ) : array( 'top', 'left', 'bottom', 'right' );
+			self::$asset_data['defaultMargins']         = $template->get_default_margins();
+			self::$asset_data['lineItemTypes']          = $current_line_item_types;
+			self::$asset_data['mainLineItemType']       = $document_type->main_line_item_types[0];
+			self::$asset_data['availableLineItemTypes'] = $line_item_type_options;
+			self::$asset_data['dateFormat']             = sab_date_format();
+			self::$asset_data['dateTypes']              = apply_filters( 'storeabill_document_template_editor_date_types', $document_type->date_types, $document_type );
+			self::$asset_data['supports']               = $document_type->supports;
+			self::$asset_data['discountTotalTypes']     = array();
+			self::$asset_data['dynamicContentBlocks']   = self::get_dynamic_content_blocks();
+			self::$asset_data['defaultInnerBlocks']     = self::get_default_inner_blocks( $template->get_document_type() );
+			self::$asset_data['assets_url']             = trailingslashit( Package::get_assets_url() );
+			self::$asset_data['attribute_slugs']        = array_values( wp_list_pluck( wc_get_attribute_taxonomies(), 'attribute_name' ) );
+			self::$asset_data['barcodeTypes']           = sab_get_barcode_types();
+			self::$asset_data['barcodeCodeTypes']       = sab_get_document_type_barcode_code_types( $template->get_document_type() );
+			self::$asset_data['allowedBlockTypes']      = self::allowed_block_types( array(), $post );
+			self::$asset_data['priceFormat']            = array(
+				'decimals'           => sab_get_price_decimals(),
+				'decimal_separator'  => sab_get_price_decimal_separator(),
+				'currency'           => sab_get_currency_symbol(),
+				'thousand_separator' => sab_get_price_thousand_separator(),
+				'format'             => esc_attr( str_replace( array( '%1$s', '%2$s' ), array( '%s', '%v' ), sab_get_price_format() ) ),
+			);
 
 			if ( sab_document_type_supports( $template->get_document_type(), 'discounts' ) ) {
 				self::$asset_data['discountTotalTypes'] = array(
 					'before_discounts' => _x( 'Before discounts', 'storeabill-core', 'woocommerce-germanized-pro' ),
-					'after_discounts'  => _x( 'After discounts', 'storeabill-core', 'woocommerce-germanized-pro' )
+					'after_discounts'  => _x( 'After discounts', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				);
 			}
 
-			self::$asset_data['itemTableBlockTypes']  = array(
+			self::$asset_data['itemTableBlockTypes'] = array(
 				'core/paragraph',
 				'core/spacer',
 				'core/separator',
@@ -562,7 +617,7 @@ class Helper {
 			);
 
 			foreach ( self::get_blocks() as $block ) {
-				self::$asset_data['shortcodes']['blocks']['storeabill/' . $block->get_name()] = $block->get_available_shortcodes();
+				self::$asset_data['shortcodes']['blocks'][ 'storeabill/' . $block->get_name() ] = $block->get_available_shortcodes();
 
 				if ( is_a( $block, '\Vendidero\StoreaBill\Editor\Blocks\ItemTableColumnBlock' ) ) {
 					self::$asset_data['itemTableBlockTypes'][] = 'storeabill/' . $block->get_name();
@@ -582,14 +637,17 @@ class Helper {
 				self::$asset_data['fontDisplayTypes']   = $template->get_font_display_types();
 				self::$asset_data['defaultFont']        = $template->get_default_font();
 				self::$asset_data['fontVariationTypes'] = sab_get_font_variant_types();
-				self::$asset_data['mergeBaseUrl']       = html_entity_decode( wp_nonce_url( add_query_arg( array( 'do' => 'merge' ), get_edit_post_link( $template->get_id(), 'edit' ) ), 'sab-merge-template' ) );
+				self::$asset_data['mergeBaseUrl']       = esc_url_raw( html_entity_decode( wp_nonce_url( add_query_arg( array( 'do' => 'merge' ), get_edit_post_link( $template->get_id(), 'edit' ) ), 'sab-merge-template' ) ) );
 
-				foreach( $document_type->total_types as $type => $data ) {
-					$data = wp_parse_args( $data, array(
-						'title'       => '',
-						'desc'        => '',
-						'hide_editor' => false,
-					) );
+				foreach ( $document_type->total_types as $type => $data ) {
+					$data = wp_parse_args(
+						$data,
+						array(
+							'title'       => '',
+							'desc'        => '',
+							'hide_editor' => false,
+						)
+					);
 
 					/**
 					 * Skip in case the total type should not be visible within the editor.
@@ -609,7 +667,7 @@ class Helper {
 				/**
 				 * Register item meta data ready to preview in the editor.
 				 */
-				foreach( array_keys( self::$asset_data['itemTypes'] ) as $type ) {
+				foreach ( $document_type->main_line_item_types as $type ) {
 					self::$asset_data['itemMetaTypes'][ $type ] = $preview ? $preview->get_item_preview_meta( $type ) : array();
 				}
 			}
@@ -619,8 +677,8 @@ class Helper {
 			$response = rest_do_request( $request );
 
 			if ( 200 === $response->get_status() ) {
-				$server   = rest_get_server();
-				$data     = wp_json_encode( $server->response_to_data( $response, false ) );
+				$server = rest_get_server();
+				$data   = wp_json_encode( $server->response_to_data( $response, false ) );
 
 				self::$asset_data['preview'] = json_decode( $data );
 			}
@@ -633,8 +691,8 @@ class Helper {
 		$default_inner_blocks = array(
 			'storeabill/item-table' => array(
 				array(
-					'name' => 'storeabill/item-table-column',
-					'attributes' => array(
+					'name'        => 'storeabill/item-table-column',
+					'attributes'  => array(
 						'heading' => '<strong>' . _x( 'Name', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
 					),
 					'innerBlocks' => array(
@@ -645,8 +703,8 @@ class Helper {
 					),
 				),
 				array(
-					'name' => 'storeabill/item-table-column',
-					'attributes' => array(
+					'name'        => 'storeabill/item-table-column',
+					'attributes'  => array(
 						'heading' => '<strong>' . _x( 'Quantity', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
 						'align'   => 'right',
 					),
@@ -664,8 +722,8 @@ class Helper {
 			$default_inner_blocks = array(
 				'storeabill/item-table'  => array(
 					array(
-						'name' => 'storeabill/item-table-column',
-						'attributes' => array(
+						'name'        => 'storeabill/item-table-column',
+						'attributes'  => array(
 							'heading' => '<strong>' . _x( 'Name', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
 							'width'   => 45,
 						),
@@ -677,10 +735,10 @@ class Helper {
 						),
 					),
 					array(
-						'name' => 'storeabill/item-table-column',
-						'attributes' => array(
+						'name'        => 'storeabill/item-table-column',
+						'attributes'  => array(
 							'heading' => '<strong>' . _x( 'Quantity', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
-							'align'   => 'center'
+							'align'   => 'center',
 						),
 						'innerBlocks' => array(
 							array(
@@ -690,10 +748,10 @@ class Helper {
 						),
 					),
 					array(
-						'name' => 'storeabill/item-table-column',
-						'attributes' => array(
+						'name'        => 'storeabill/item-table-column',
+						'attributes'  => array(
 							'heading' => '<strong>' . _x( 'Price', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
-							'align'   => 'center'
+							'align'   => 'center',
 						),
 						'innerBlocks' => array(
 							array(
@@ -703,10 +761,10 @@ class Helper {
 						),
 					),
 					array(
-						'name' => 'storeabill/item-table-column',
-						'attributes' => array(
+						'name'        => 'storeabill/item-table-column',
+						'attributes'  => array(
 							'heading' => '<strong>' . _x( 'Discount', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
-							'align'   => 'center'
+							'align'   => 'center',
 						),
 						'innerBlocks' => array(
 							array(
@@ -716,8 +774,8 @@ class Helper {
 						),
 					),
 					array(
-						'name' => 'storeabill/item-table-column',
-						'attributes' => array(
+						'name'        => 'storeabill/item-table-column',
+						'attributes'  => array(
 							'heading' => '<strong>' . _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
 							'align'   => 'right',
 						),
@@ -731,14 +789,14 @@ class Helper {
 				),
 				'storeabill/item-totals' => array(
 					array(
-						'name' => 'storeabill/item-total-row',
+						'name'       => 'storeabill/item-total-row',
 						'attributes' => array(
 							'heading'   => _x( 'Subtotal', 'storeabill-core', 'woocommerce-germanized-pro' ),
 							'totalType' => 'line_subtotal_after',
 						),
 					),
 					array(
-						'name' => 'storeabill/item-total-row',
+						'name'       => 'storeabill/item-total-row',
 						'attributes' => array(
 							'heading'     => _x( 'Fee', 'storeabill-core', 'woocommerce-germanized-pro' ),
 							'totalType'   => 'fee',
@@ -746,7 +804,7 @@ class Helper {
 						),
 					),
 					array(
-						'name' => 'storeabill/item-total-row',
+						'name'       => 'storeabill/item-total-row',
 						'attributes' => array(
 							'heading'     => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
 							'totalType'   => 'shipping',
@@ -755,18 +813,18 @@ class Helper {
 						),
 					),
 					array(
-						'name' => 'storeabill/item-total-row',
+						'name'       => 'storeabill/item-total-row',
 						'attributes' => array(
 							'heading'        => '<strong>' . _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</strong>',
 							'totalType'      => 'total',
 							'content'        => '<strong>{total}</strong>',
 							'borderColor'    => 'black',
 							'customFontSize' => 16,
-							'border'         => 'bottom'
+							'border'         => 'bottom',
 						),
 					),
 					array(
-						'name' => 'storeabill/item-total-row',
+						'name'       => 'storeabill/item-total-row',
 						'attributes' => array(
 							'heading'        => _x( 'Net', 'storeabill-core', 'woocommerce-germanized-pro' ),
 							'totalType'      => 'net',
@@ -774,7 +832,7 @@ class Helper {
 						),
 					),
 					array(
-						'name' => 'storeabill/item-total-row',
+						'name'       => 'storeabill/item-total-row',
 						'attributes' => array(
 							'heading'        => _x( 'Tax %s %%', 'storeabill-core', 'woocommerce-germanized-pro' ),
 							'totalType'      => 'taxes',
@@ -785,7 +843,7 @@ class Helper {
 			);
 		}
 
-		return apply_filters( "storeabill_document_template_editor_default_inner_blocks", $default_inner_blocks, $document_type );
+		return apply_filters( 'storeabill_document_template_editor_default_inner_blocks', $default_inner_blocks, $document_type );
 	}
 
 	protected static function initialize_core_asset_data() {
@@ -826,9 +884,7 @@ class Helper {
 	}
 
 	public static function conditionally_load_template( $replace, $post ) {
-
 		if ( self::is_document_template( $post ) ) {
-
 			// Setup custom filters
 			add_theme_support( 'editor-font-sizes', array_values( sab_get_document_font_sizes() ) );
 
@@ -836,12 +892,14 @@ class Helper {
 			remove_theme_support( 'align-wide' );
 			remove_theme_support( 'editor-color-palette' );
 			remove_theme_support( 'editor-gradient-presets' );
+			remove_theme_support( 'custom-units' );
+			remove_theme_support( 'custom-spacing' );
 
 			/**
 			 * This action indicates that the current request
 			 * is a StoreaBill editor request which will load all the editor blocks and assets.
 			 */
-			do_action( 'storeabill_load_block_editor' );
+			do_action( 'storeabill_load_block_editor', $post );
 
 			return $replace;
 		}
@@ -853,24 +911,61 @@ class Helper {
 	 * @param $args
 	 * @param \WP_Block_Editor_Context $block_editor_context
 	 */
-	public static function prevent_theme_settings( $args, $block_editor_context ) {
+	public static function override_theme_settings( $args, $block_editor_context ) {
 		if ( $block_editor_context->post && self::is_document_template( $block_editor_context->post ) ) {
-			unset( $args['styles'] );
 			unset( $args['colors'] );
 			unset( $args['gradients'] );
 
+			$args['styles']                 = array();
 			$args['disableCustomColors']    = false;
-
 			$args['disableCustomGradients'] = true;
-			$args['enableCustomUnits']      = false;
+			$args['enableCustomSpacing']    = false;
 			$args['supportsLayout']         = false;
+			$args['defaultEditorStyles']    = array();
+
+			// Force % as spacing unit to make sure column widths are always provided in %.
+			$args['enableCustomUnits'] = array( '%' );
 
 			if ( isset( $args['__experimentalFeatures']['color']['customDuotone'] ) ) {
 				$args['__experimentalFeatures']['color']['customDuotone'] = false;
+			} elseif ( $args['color']['customDuotone'] ) {
+				$args['color']['customDuotone'] = false;
 			}
 
 			if ( isset( $args['__experimentalFeatures']['color']['palette']['theme'] ) ) {
 				unset( $args['__experimentalFeatures']['color']['palette']['theme'] );
+			} elseif ( isset( $args['color']['palette']['theme'] ) ) {
+				unset( $args['color']['palette']['theme'] );
+			}
+
+			$args['fontSizes'] = array_values( sab_get_document_font_sizes() );
+
+			if ( isset( $args['__experimentalFeatures']['typography']['fontSizes'] ) ) {
+				$args['__experimentalFeatures']['typography']['fontSizes'] = array(
+					'default' => array_values( sab_get_document_font_sizes() ),
+					'theme'   => array_values( sab_get_document_font_sizes() ),
+				);
+
+				$args['__experimentalFeatures']['typography']['fontStyle']     = false;
+				$args['__experimentalFeatures']['typography']['fontWeight']    = false;
+				$args['__experimentalFeatures']['typography']['letterSpacing'] = false;
+			} elseif ( isset( $args['typography']['fontSizes'] ) ) {
+				$args['typography']['fontSizes'] = array(
+					'default' => array_values( sab_get_document_font_sizes() ),
+					'theme'   => array_values( sab_get_document_font_sizes() ),
+				);
+
+				$args['typography']['fontStyle']     = false;
+				$args['typography']['fontWeight']    = false;
+				$args['typography']['letterSpacing'] = false;
+			}
+
+			if ( isset( $args['__experimentalFeatures']['spacing'] ) ) {
+				$args['__experimentalFeatures']['spacing']['blockGap'] = false;
+				$args['__experimentalFeatures']['spacing']['margin']   = false;
+			} elseif ( isset( $args['spacing'] ) ) {
+				$args['spacing']['blockGap'] = false;
+				$args['spacing']['margin']   = false;
 			}
 		}
 
@@ -925,10 +1020,13 @@ class Helper {
 		/**
 		 * Whitelist assets from StoreaBill
 		 */
-		$whitelist = apply_filters( 'storeabill_document_template_editor_asset_whitelist_paths', array(
-			'plugins/storeabill',
-			'packages/storeabill'
-		) );
+		$whitelist = apply_filters(
+			'storeabill_document_template_editor_asset_whitelist_paths',
+			array(
+				'plugins/storeabill',
+				'packages/storeabill',
+			)
+		);
 
 		/**
 		 * Check whether the asset belongs to an extension (theme, plugin).
@@ -936,7 +1034,7 @@ class Helper {
 		if ( strpos( $src, 'wp-content/' ) !== false && strpos( $src, 'wp-content/plugins/gutenberg/' ) === false ) {
 			$allow = false;
 
-			foreach( $whitelist as $file_whitelist ) {
+			foreach ( $whitelist as $file_whitelist ) {
 				if ( strpos( $src, $file_whitelist ) !== false ) {
 					$allow = true;
 					break;
@@ -953,13 +1051,13 @@ class Helper {
 		if ( self::is_document_template( $post ) ) {
 			global $wp_styles, $wp_scripts;
 
-			foreach( $wp_styles->registered as $key => $style ) {
+			foreach ( $wp_styles->registered as $key => $style ) {
 				if ( ! self::allow_third_party_asset( $style->src ) ) {
 					wp_dequeue_style( $style->handle );
 				}
 			}
 
-			foreach( $wp_scripts->registered as $key => $script ) {
+			foreach ( $wp_scripts->registered as $key => $script ) {
 				if ( ! self::allow_third_party_asset( $script->src ) ) {
 					wp_dequeue_script( $script->handle );
 				}
@@ -982,21 +1080,9 @@ class Helper {
 		self::register_style( 'sab-block-editor', Package::get_url() . '/build/editor/editor.css', array( 'wp-edit-blocks' ) );
 		wp_style_add_data( 'sab-block-editor', 'rtl', 'replace' );
 
-		if ( ! self::$has_registered_assets ) {
-			$inline_css = '';
-
-			foreach( sab_get_document_font_sizes() as $type => $size ) {
-				$inline_css .= '.editor-styles-wrapper .has-' . sanitize_key( $size['slug'] ) . '-font-size, .has-' . sanitize_key( $size['slug'] ) . '-font-size {
-					font-size: ' . esc_attr( $size['size'] ) . 'px;
-				} ';
-			}
-
-			wp_add_inline_style( 'sab-block-editor', $inline_css );
-		}
-
 		self::register_script( 'sab-settings', Package::get_url() . '/build/editor/settings.js' );
 		self::register_script( 'sab-blocks', Package::get_url() . '/build/editor/blocks.js' );
-		self::register_script( 'sab-vendors', Package::get_url() . '/build/editor/vendors.js', [], false );
+		self::register_script( 'sab-vendors', Package::get_url() . '/build/editor/vendors.js', array(), false );
 		self::register_script( 'sab-format-types', Package::get_url() . '/build/editor/format-types.js' );
 
 		self::register_script( 'sab-document-main-panel', Package::get_url() . '/build/editor/document-main-panel.js' );
@@ -1011,111 +1097,152 @@ class Helper {
 
 	public static function register_meta() {
 
-		register_post_meta('document_template', '_pdf_template_id', array(
-			'show_in_rest'      => true,
-			'type'              => 'integer',
-			'single'            => true,
-			'sanitize_callback' => 'absint',
-			'auth_callback'     => function() {
-				return current_user_can( 'manage_storeabill' );
-			}
-		) );
+		register_post_meta(
+			'document_template',
+			'_pdf_template_id',
+			array(
+				'show_in_rest'      => true,
+				'type'              => 'integer',
+				'single'            => true,
+				'sanitize_callback' => 'absint',
+				'auth_callback'     => function() {
+					return current_user_can( 'manage_storeabill' );
+				},
+			)
+		);
 
-		register_post_meta('document_template', '_fonts', array(
-			'show_in_rest' => array(
-				'schema' => array(
-					'type'       => 'object',
-					'properties' => array(
-						'default' => array(
-							'type' => 'object',
-							'single'     => true,
-							'properties' => array(
-								'name' => array(
-									'type' => 'string'
-								),
-								'variants' => array(
-									'type'  => 'object',
-									'properties' => array(
-										'regular' => array(
-											'type' => 'string',
+		register_post_meta(
+			'document_template',
+			'_fonts',
+			array(
+				'show_in_rest'  => array(
+					'schema' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'default' => array(
+								'type'       => 'object',
+								'single'     => true,
+								'properties' => array(
+									'name'     => array(
+										'type' => 'string',
+									),
+									'variants' => array(
+										'type'       => 'object',
+										'properties' => array(
+											'regular'     => array(
+												'type' => 'string',
+											),
+											'bold'        => array(
+												'type' => 'string',
+											),
+											'italic'      => array(
+												'type' => 'string',
+											),
+											'bold_italic' => array(
+												'type' => 'string',
+											),
 										),
-										'bold' => array(
-											'type' => 'string',
-										),
-										'italic' => array(
-											'type' => 'string',
-										),
-										'bold_italic' => array(
-											'type' => 'string',
-										)
 									),
 								),
 							),
 						),
 					),
 				),
-			),
-			'type'              => 'object',
-			'single'            => true,
-			'auth_callback'     => function() {
-				return current_user_can( 'manage_storeabill' );
-			}
-		) );
+				'type'          => 'object',
+				'single'        => true,
+				'auth_callback' => function() {
+					return current_user_can( 'manage_storeabill' );
+				},
+			)
+		);
 
-		register_post_meta('document_template', '_margins', array(
-			'show_in_rest' => array(
-				'schema' => array(
-					'type'       => 'object',
-					'properties' => array(
-						'left' => array(
-							'type' => 'string',
+		register_post_meta(
+			'document_template',
+			'_margins',
+			array(
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'left'   => array(
+								'type' => 'string',
+							),
+							'right'  => array(
+								'type' => 'string',
+							),
+							'top'    => array(
+								'type' => 'string',
+							),
+							'bottom' => array(
+								'type' => 'string',
+							),
 						),
-						'right'  => array(
-							'type' => 'string',
-						),
-						'top'  => array(
-							'type' => 'string',
-						),
-						'bottom'  => array(
+					),
+				),
+				'type'              => 'object',
+				'single'            => true,
+				'sanitize_callback' => array( __CLASS__, 'sanitize_margins' ),
+				'auth_callback'     => function() {
+					return current_user_can( 'manage_storeabill' );
+				},
+			)
+		);
+
+		register_post_meta(
+			'document_template',
+			'_font_size',
+			array(
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'string',
+					),
+				),
+				'type'              => 'object',
+				'single'            => true,
+				'sanitize_callback' => array( __CLASS__, 'sanitize_font_size' ),
+				'auth_callback'     => function() {
+					return current_user_can( 'manage_storeabill' );
+				},
+			)
+		);
+
+		register_post_meta(
+			'document_template',
+			'_color',
+			array(
+				'show_in_rest'  => array(
+					'schema' => array(
+						'type' => 'string',
+					),
+				),
+				'type'          => 'string',
+				'single'        => true,
+				'auth_callback' => function() {
+					return current_user_can( 'manage_storeabill' );
+				},
+			)
+		);
+
+		register_post_meta(
+			'document_template',
+			'_line_item_types',
+			array(
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'  => 'array',
+						'items' => array(
 							'type' => 'string',
 						),
 					),
 				),
-			),
-			'type'              => 'object',
-			'single'            => true,
-			'sanitize_callback' => array( __CLASS__, 'sanitize_margins' ),
-			'auth_callback'     => function() {
-				return current_user_can( 'manage_storeabill' );
-			}
-		) );
-
-		register_post_meta('document_template', '_font_size', array(
-			'show_in_rest' => array(
-				'schema' => array(
-					'type'  => 'string',
-				),
-			),
-			'type'              => 'object',
-			'single'            => true,
-			'sanitize_callback' => array( __CLASS__, 'sanitize_font_size' ),
-			'auth_callback'     => function() {
-				return current_user_can( 'manage_storeabill' );
-			}
-		) );
-
-		register_post_meta('document_template', '_color', array(
-			'show_in_rest' => array(
-				'schema' => array(
-					'type'  => 'string',
-				),
-			),
-			'type'              => 'string',
-			'single'            => true,
-			'auth_callback'     => function() {
-				return current_user_can( 'manage_storeabill' );
-			}
-		) );
+				'type'              => 'array',
+				'single'            => true,
+				'sanitize_callback' => array( __CLASS__, 'sanitize_line_item_types' ),
+				'auth_callback'     => function() {
+					return current_user_can( 'manage_storeabill' );
+				},
+			)
+		);
 	}
 
 	public static function sanitize_font_size( $font_size ) {
@@ -1136,16 +1263,22 @@ class Helper {
 		return $margins;
 	}
 
+	public static function sanitize_line_item_types( $line_item_types ) {
+		$line_item_types = array_filter( array_map( 'sanitize_key', (array) $line_item_types ) );
+
+		return $line_item_types;
+	}
+
 	public static function get_editor_templates( $document_type ) {
 		$templates = array();
 
 		if ( 'invoice' === $document_type ) {
 			$templates = array(
-				'default' => '\Vendidero\StoreaBill\Editor\Templates\DefaultInvoice'
+				'default' => '\Vendidero\StoreaBill\Editor\Templates\DefaultInvoice',
 			);
-		} elseif( 'invoice_cancellation' === $document_type ) {
+		} elseif ( 'invoice_cancellation' === $document_type ) {
 			$templates = array(
-				'default' => '\Vendidero\StoreaBill\Editor\Templates\DefaultInvoiceCancellation'
+				'default' => '\Vendidero\StoreaBill\Editor\Templates\DefaultInvoiceCancellation',
 			);
 		}
 
@@ -1188,10 +1321,11 @@ class Helper {
 	/**
 	 * @return Block[]
 	 */
-	public static function get_blocks() {
-		if ( is_null( self::$blocks ) ) {
+	public static function get_blocks( $and_scripts = true ) {
+		$and_scripts = ! is_bool( $and_scripts ) ? true : $and_scripts;
 
-			self::$blocks = array();
+		if ( is_null( self::$blocks ) || ( $and_scripts && ! self::$registered_block_scripts ) ) {
+			self::$blocks = is_null( self::$blocks ) ? array() : self::$blocks;
 
 			$blocks = array(
 				'ItemTableColumn',
@@ -1206,6 +1340,7 @@ class Helper {
 				'ItemSku',
 				'ItemDiscount',
 				'ItemTaxRate',
+				'ItemTotalTax',
 				'ItemLineTotal',
 				'ItemDifferentialTaxationNotice',
 				'ItemMeta',
@@ -1222,32 +1357,52 @@ class Helper {
 				'DocumentStyles',
 				'ThirdCountryNotice',
 				'ReverseChargeNotice',
-				'ShippingAddress'
+				'ShippingAddress',
+				'SenderAddress',
 			);
 
-			foreach ( $blocks as $class ) {
-				$class    = __NAMESPACE__ . '\\Blocks\\' . $class;
-				$instance = new $class();
+			if ( empty( self::$blocks ) ) {
+				foreach ( $blocks as $class ) {
+					$class    = __NAMESPACE__ . '\\Blocks\\' . $class;
+					$instance = new $class();
 
-				$instance->register_script();
-				$instance->register_type();
+					if ( $and_scripts ) {
+						$instance->register_script();
+					}
 
-				self::$blocks[ $instance->get_name() ] = $instance;
+					$instance->register_type();
+
+					self::$blocks[ $instance->get_name() ] = $instance;
+				}
+
+				foreach ( self::get_dynamic_content_blocks() as $block_name => $dynamic_content_block ) {
+					$block = wp_parse_args(
+						$dynamic_content_block,
+						array(
+							'title'           => '',
+							'render_callback' => null,
+						)
+					);
+
+					$class    = __NAMESPACE__ . '\\Blocks\\DynamicContent';
+					$instance = new $class( $block_name, $block );
+
+					if ( $and_scripts ) {
+						$instance->register_script();
+					}
+
+					$instance->register_type();
+
+					self::$blocks[ $instance->get_name() ] = $instance;
+				}
+			} elseif ( $and_scripts ) {
+				foreach ( self::$blocks as $instance ) {
+					$instance->register_script();
+				}
 			}
 
-			foreach( self::get_dynamic_content_blocks() as $block_name => $dynamic_content_block ) {
-				$block = wp_parse_args( $dynamic_content_block, array(
-					'title'           => '',
-					'render_callback' => null,
-				) );
-
-				$class    = __NAMESPACE__ . '\\Blocks\\DynamicContent';
-				$instance = new $class( $block_name, $block );
-
-				$instance->register_script();
-				$instance->register_type();
-
-				self::$blocks[ $instance->get_name() ] = $instance;
+			if ( $and_scripts ) {
+				self::$registered_block_scripts = true;
 			}
 		}
 
@@ -1284,7 +1439,7 @@ class Helper {
 	 * @param array  $dependencies Optional. An array of registered script handles this script depends on. Default empty array.
 	 * @param bool   $has_i18n     Optional. Whether to add a script translation call to this file. Default 'true'.
 	 */
-	public static function register_script( $handle, $src, $dependencies = [], $has_i18n = true ) {
+	public static function register_script( $handle, $src, $dependencies = array(), $has_i18n = true ) {
 		$relative_src = str_replace( Package::get_url() . '/', '', $src );
 		$asset_path   = Package::get_path() . '/' . str_replace( '.js', '.asset.php', $relative_src );
 
@@ -1314,7 +1469,7 @@ class Helper {
 	 * @param string $media  Optional. The media for which this stylesheet has been defined. Default 'all'. Accepts media types like
 	 *                       'all', 'print' and 'screen', or media queries like '(orientation: portrait)' and '(max-width: 640px)'.
 	 */
-	public static function register_style( $handle, $src, $deps = [], $media = 'all' ) {
+	public static function register_style( $handle, $src, $deps = array(), $media = 'all' ) {
 		$filename = str_replace( plugins_url( '/', __DIR__ ), '', $src );
 		$ver      = self::get_file_version( $filename );
 
@@ -1353,7 +1508,7 @@ class Helper {
 				$preview->set_template( $template );
 
 				if ( 'html' === $output_type ) {
-					echo $preview->get_html();
+					echo $preview->get_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					exit();
 				} else {
 					$result = $preview->preview();
@@ -1365,7 +1520,7 @@ class Helper {
 			} else {
 				throw new Exception( _x( 'Document type does not support previewing.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 			}
-		} catch( Exception $e ) {
+		} catch ( Exception $e ) {
 			$error->add( 'preview-error', $e->getMessage() );
 		}
 
@@ -1377,7 +1532,6 @@ class Helper {
 	}
 
 	public static function template_loader( $template ) {
-
 		if ( is_embed() ) {
 			return $template;
 		}
@@ -1386,16 +1540,24 @@ class Helper {
 			global $post;
 
 			if ( $doc_template = sab_get_document_template( $post->ID ) ) {
-				$output_type = isset( $_GET['output_type'] ) ? sab_clean( $_GET['output_type'] ) : 'pdf';
+				$output_type = isset( $_GET['output_type'] ) ? sab_clean( wp_unslash( $_GET['output_type'] ) ) : 'pdf'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				$result      = self::preview( $doc_template, $output_type );
 
 				if ( is_wp_error( $result ) ) {
-					wp_die( $result );
+					wp_die( wp_kses_post( $result->get_error_message() ) );
 				}
 			}
 		}
 
 		return $template;
+	}
+
+	public static function allowed_block_types_all( $allowed_block_types, $block_context ) {
+		if ( is_a( $block_context, 'WP_Block_Editor_Context' ) && $block_context->post ) {
+			return self::allowed_block_types( $allowed_block_types, $block_context->post );
+		}
+
+		return $allowed_block_types;
 	}
 
 	public static function allowed_block_types( $allowed_block_types, $post ) {
@@ -1424,14 +1586,15 @@ class Helper {
 
 			$total_block_types = array(
 				'storeabill/item-totals',
-				'storeabill/item-total-row'
+				'storeabill/item-total-row',
 			);
 
 			$item_total_block_types = array(
 				'storeabill/item-price',
 				'storeabill/item-discount',
 				'storeabill/item-line-total',
-				'storeabill/item-tax-rate'
+				'storeabill/item-tax-rate',
+				'storeabill/item-total-tax',
 			);
 
 			/**
@@ -1441,35 +1604,41 @@ class Helper {
 
 				$document_type_object = sab_get_document_type( $template->get_document_type() );
 
-				$allowed_block_types = array_merge( $allowed_block_types, array(
-					'storeabill/address',
-					'storeabill/document-title',
-					'storeabill/document-date',
-					'storeabill/barcode'
-				) );
+				$allowed_block_types = array_merge(
+					$allowed_block_types,
+					array(
+						'storeabill/address',
+						'storeabill/document-title',
+						'storeabill/document-date',
+						'storeabill/barcode',
+					)
+				);
 
 				/**
 				 * Add blocks only available to documents supporting items.
 				 */
 				if ( sab_document_type_supports( $template->get_document_type(), 'items' ) ) {
-					$allowed_block_types = array_merge( array(
-						'storeabill/item-table',
-						'storeabill/item-table-column',
-						'storeabill/item-name',
-						'storeabill/item-image',
-						'storeabill/item-field',
-						'storeabill/item-position',
-						'storeabill/item-sku',
-						'storeabill/item-meta',
-						'storeabill/item-attributes',
-						'storeabill/item-quantity',
-					), $allowed_block_types );
+					$allowed_block_types = array_merge(
+						array(
+							'storeabill/item-table',
+							'storeabill/item-table-column',
+							'storeabill/item-name',
+							'storeabill/item-image',
+							'storeabill/item-field',
+							'storeabill/item-position',
+							'storeabill/item-sku',
+							'storeabill/item-meta',
+							'storeabill/item-attributes',
+							'storeabill/item-quantity',
+						),
+						$allowed_block_types
+					);
 				}
 
 				/**
 				 * Differential taxation notice is quite special
 				 */
-				if ( apply_filters( 'storeabill_enable_differential_taxation', in_array( Countries::get_base_country(), array( 'DE', 'AT' ) ) ) ) {
+				if ( apply_filters( 'storeabill_enable_differential_taxation', in_array( Countries::get_base_country(), array( 'DE', 'AT' ), true ) ) ) {
 					$item_total_block_types[] = 'storeabill/item-differential-taxation-notice';
 				}
 

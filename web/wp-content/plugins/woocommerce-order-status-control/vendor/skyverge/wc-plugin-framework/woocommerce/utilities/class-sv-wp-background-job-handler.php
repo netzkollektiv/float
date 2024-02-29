@@ -1012,6 +1012,7 @@ abstract class SV_WP_Background_Job_Handler extends SV_WP_Async_Request {
 	public function test_connection() {
 
 		$test_url = add_query_arg( 'action', "{$this->identifier}_test", admin_url( 'admin-ajax.php' ) );
+
 		$result   = wp_safe_remote_get( $test_url );
 		$body     = ! is_wp_error( $result ) ? wp_remote_retrieve_body( $result ) : null;
 
@@ -1063,7 +1064,6 @@ abstract class SV_WP_Background_Job_Handler extends SV_WP_Async_Request {
 	 * @return string
 	 */
 	public function run_debug_tool() {
-
 		if ( $this->test_connection() ) {
 			$this->debug_message = esc_html__( 'Success! You should be able to process background jobs.', 'woocommerce-plugin-framework' );
 			$result = true;

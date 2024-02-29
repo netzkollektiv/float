@@ -10,5 +10,5 @@ defined( 'ABSPATH' ) || exit;
 global $document;
 ?>
 <div id="content" class="page-content" role="main">
-	<?php echo sab_render_blocks( $document->get_template()->get_content_blocks() ); ?>
+	<?php echo sab_render_blocks( $document->get_template()->get_content_blocks() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 </div>

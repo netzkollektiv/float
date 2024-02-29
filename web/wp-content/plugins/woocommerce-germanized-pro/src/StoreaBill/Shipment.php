@@ -54,17 +54,20 @@ class Shipment implements SyncableReference {
 	 * @param array $args
 	 */
 	public function sync( &$packing_slip, $args = array() ) {
-		do_action( "woocommerce_gzdp_before_sync_packing_slip", $this->shipment, $args );
+		do_action( 'woocommerce_gzdp_before_sync_packing_slip', $this->shipment, $args );
 
-		$packing_slip_args = wp_parse_args( $args, array(
-			'reference_id'     => $this->get_id(),
-			'reference_number' => $this->shipment->get_shipment_number(),
-			'reference_type'   => 'germanized',
-			'order_id'         => $this->shipment->get_order_id(),
-			'order_number'     => $this->shipment->get_order_number(),
-			'country'          => $this->shipment->get_country(),
-			'address'          => $this->shipment->get_address(),
-		) );
+		$packing_slip_args = wp_parse_args(
+			$args,
+			array(
+				'reference_id'     => $this->get_id(),
+				'reference_number' => $this->shipment->get_shipment_number(),
+				'reference_type'   => 'germanized',
+				'order_id'         => $this->shipment->get_order_id(),
+				'order_number'     => $this->shipment->get_order_number(),
+				'country'          => $this->shipment->get_country(),
+				'address'          => $this->shipment->get_address(),
+			)
+		);
 
 		if ( $order = $this->shipment->get_order() ) {
 			$packing_slip_args['customer_id'] = $order->get_customer_id();
@@ -72,7 +75,7 @@ class Shipment implements SyncableReference {
 
 		$packing_slip->set_props( $packing_slip_args );
 
-		foreach( $this->shipment->get_items() as $item ) {
+		foreach ( $this->shipment->get_items() as $item ) {
 			if ( $shipment_item = $this->get_item( $item ) ) {
 
 				$is_new        = false;
@@ -83,6 +86,7 @@ class Shipment implements SyncableReference {
 					$is_new        = true;
 				}
 
+				$document_item->set_document( $packing_slip );
 				$shipment_item->sync( $document_item );
 
 				if ( $is_new ) {
@@ -94,15 +98,15 @@ class Shipment implements SyncableReference {
 		/**
 		 * Remove items that do not exist in parent shipment any longer.
 		 */
-		foreach( $packing_slip->get_items() as $item ) {
+		foreach ( $packing_slip->get_items() as $item ) {
 			if ( ! $shipment_item = $this->shipment->get_item( $item->get_reference_id() ) ) {
 				$packing_slip->remove_item( $item->get_id() );
 			}
 		}
 
-		do_action( "woocommerce_gzdp_synced_packing_slip", $packing_slip, $this->shipment, $args );
+		do_action( 'woocommerce_gzdp_synced_packing_slip', $packing_slip, $this->shipment, $args );
 
-		do_action( "woocommerce_gzdp_after_sync_packing_slip", $this->shipment, $args );
+		do_action( 'woocommerce_gzdp_after_sync_packing_slip', $this->shipment, $args );
 
 		$this->document = $packing_slip;
 	}
@@ -133,7 +137,7 @@ class Shipment implements SyncableReference {
 	public function is_callable( $method ) {
 		if ( method_exists( $this, $method ) ) {
 			return true;
-		} elseif( is_callable( array( $this->get_shipment(), $method ) ) ) {
+		} elseif ( is_callable( array( $this->get_shipment(), $method ) ) ) {
 			return true;
 		}
 

@@ -1,4 +1,17 @@
 .woocommerce-multistep-checkout {
+  // Prevent flashing during loading
+  form #order_review {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  &.woocommerce-multistep-checkout-active-payment, &.woocommerce-multistep-checkout-active-order {
+    form #order_review {
+      visibility: visible;
+      opacity: 1;
+    }
+  }
+
   .step-buttons {
     display: block;
     width: 100%;
@@ -58,6 +71,21 @@
         margin-top: 0;
         clear: both;
       }
+    }
+  }
+}
+
+/**
+ * Hide elementor pro elements
+ */
+.woocommerce-multistep-checkout-active-payment, .woocommerce-multistep-checkout-active-address {
+  .e-checkout__order_review-2 {
+    display: none;
+  }
+
+  &.woocommerce-multistep-checkout-active-address {
+    .e-checkout__order_review {
+      display: none;
     }
   }
 }

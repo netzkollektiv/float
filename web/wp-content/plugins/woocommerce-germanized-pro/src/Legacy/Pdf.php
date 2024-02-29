@@ -111,8 +111,6 @@ class Pdf {
 
 	public function populate() {
 		wc_deprecated_function( 'WC_GZDP_Post_PDF::populate', '3.0.0' );
-
-		return;
 	}
 
 	public function get_option( $key, $default = false, $suppress_typing = false ) {
@@ -217,7 +215,7 @@ class Pdf {
 	public function is_callable( $method ) {
 		if ( method_exists( $this, $method ) ) {
 			return true;
-		} elseif( is_callable( array( $this->get_document(), $method ) ) ) {
+		} elseif ( is_callable( array( $this->get_document(), $method ) ) ) {
 			return true;
 		}
 

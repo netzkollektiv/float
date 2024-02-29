@@ -3,6 +3,7 @@
 namespace Vendidero\StoreaBill\sevDesk;
 
 use Vendidero\StoreaBill\ExternalSync\SyncData;
+use Vendidero\StoreaBill\References\Customer;
 use Vendidero\StoreaBill\sevDesk\API\Models;
 
 defined( 'ABSPATH' ) || exit;
@@ -10,13 +11,14 @@ defined( 'ABSPATH' ) || exit;
 class Contact {
 
 	protected $data = array(
-		'first_name'    => '',
-		'last_name'     => '',
-		'vat_id'        => '',
-		'is_vat_exempt' => false,
-		'number'        => '',
-		'title'         => '',
-		'address' => array(
+		'first_name'       => '',
+		'last_name'        => '',
+		'vat_id'           => '',
+		'is_vat_exempt'    => false,
+		'number'           => '',
+		'title'            => '',
+		'academic_title'   => '',
+		'address'          => array(
 			'street'   => '',
 			'zip'      => '',
 			'city'     => '',
@@ -32,10 +34,10 @@ class Contact {
 			'type'     => '',
 			'country'  => '',
 		),
-		'phone'   => '',
-		'email'   => '',
-		'company' => '',
-		'company_number' => '',
+		'phone'            => '',
+		'email'            => '',
+		'company'          => '',
+		'company_number'   => '',
 	);
 
 	protected $sync_data = array(
@@ -53,6 +55,11 @@ class Contact {
 	protected $api = null;
 
 	/**
+	 * @var null|Customer
+	 */
+	protected $customer = null;
+
+	/**
 	 * Contact constructor.
 	 *
 	 * @param $args
@@ -62,19 +69,23 @@ class Contact {
 	public function __construct( $args, $api, $sync_data = false ) {
 		$this->api = $api;
 
-		foreach( $args as $key => $arg ) {
-			$this->set( $key, $arg );
+		foreach ( $args as $key => $arg ) {
+			if ( 'customer' === $key ) {
+				$this->customer = $arg;
+			} else {
+				$this->set( $key, $arg );
+			}
 		}
 
 		$sync_props = array();
 
 		if ( $sync_data && is_a( $sync_data, '\Vendidero\StoreaBill\ExternalSync\SyncData' ) ) {
 			$sync_props = $sync_data->get_data();
-		} elseif( is_array( $sync_data ) ) {
+		} elseif ( is_array( $sync_data ) ) {
 			$sync_props = $sync_data;
 		}
 
-		foreach( $sync_props as $prop => $data ) {
+		foreach ( $sync_props as $prop => $data ) {
 			if ( array_key_exists( $prop, $this->sync_data ) ) {
 				$setter = "set_{$prop}";
 
@@ -85,6 +96,17 @@ class Contact {
 				}
 			}
 		}
+	}
+
+	public function set_customer( $customer ) {
+		$this->customer = $customer;
+	}
+
+	/**
+	 * @return Customer|null
+	 */
+	public function get_customer() {
+		return $this->customer;
 	}
 
 	public function is_new() {
@@ -125,6 +147,10 @@ class Contact {
 
 	public function get_first_name() {
 		return $this->get( 'first_name' );
+	}
+
+	public function get_academic_title() {
+		return $this->get( 'academic_title' );
 	}
 
 	public function get_last_name() {
@@ -215,9 +241,9 @@ class Contact {
 		$title  = $this->get( 'title' );
 		$gender = '';
 
-		if ( 'Herr' === $title || 1 == $title ) {
+		if ( 'Herr' === $title || 1 === (int) $title ) {
 			$gender = 'm';
-		} elseif( 'Frau' === $title || 2 == $title ) {
+		} elseif ( 'Frau' === $title || 2 === (int) $title ) {
 			$gender = 'w';
 		}
 
@@ -253,28 +279,30 @@ class Contact {
 	 * @return bool|\WP_Error
 	 */
 	public function save() {
-		$contact =  array(
-			'familyname'	 => $this->get_last_name(),
-			'surename'		 => $this->get_first_name(),
-			'vatNumber'		 => $this->get_vat_id(),
-			'category'		 => array(
-				'id' 		 => apply_filters( 'storeabill_external_sync_sevdesk_contact_category_id', 3, $this ),
-				'objectName' => 'Category'
+		$contact = array(
+			'familyname'  => $this->get_last_name(),
+			'surename'    => $this->get_first_name(),
+			'vatNumber'   => $this->get_vat_id(),
+			'category'    => array(
+				'id'         => apply_filters( 'storeabill_external_sync_sevdesk_contact_category_id', 3, $this ),
+				'objectName' => 'Category',
 			),
-			'gender'	     => $this->get_gender(),
-			'exemptVat'      => $this->is_vat_exempt(),
-			'description'	 => null
+			'gender'      => $this->get_gender(),
+			'description' => null,
 		);
+
+		if ( '' !== $this->get_academic_title() ) {
+			$contact['academicTitle'] = $this->get_academic_title();
+		}
 
 		if ( $this->has_company() ) {
 			$company = array(
-				'name'		     => $this->get_company(),
-				'category'		 => array(
-					'id' 		 => apply_filters( 'storeabill_external_sync_sevdesk_contact_category_id', 3, $this ),
-					'objectName' => 'Category'
+				'name'      => $this->get_company(),
+				'category'  => array(
+					'id'         => apply_filters( 'storeabill_external_sync_sevdesk_contact_category_id', 3, $this ),
+					'objectName' => 'Category',
 				),
-				'vatNumber'      => $this->get_vat_id(),
-				'exemptVat'      => $this->is_vat_exempt()
+				'vatNumber' => $this->get_vat_id(),
 			);
 
 			if ( $this->is_new_company() ) {
@@ -294,7 +322,7 @@ class Contact {
 			if ( $this->get_company_id() > 0 ) {
 				$contact['parent'] = array(
 					'id'         => $this->get_company_id(),
-					'objectName' => 'Contact'
+					'objectName' => 'Contact',
 				);
 			}
 		}
@@ -302,9 +330,11 @@ class Contact {
 		if ( $this->is_new() ) {
 			$contact['customerNumber'] = $this->get_formatted_number();
 
-			$result = $this->api->create_contact( $contact );
+			$contact = apply_filters( 'storeabill_external_sync_sevdesk_contact', $contact, $this );
+			$result  = $this->api->create_contact( $contact );
 		} else {
-			$result = $this->api->update_contact( $this->get_id(), $contact );
+			$contact = apply_filters( 'storeabill_external_sync_sevdesk_contact', $contact, $this );
+			$result  = $this->api->update_contact( $this->get_id(), $contact );
 		}
 
 		if ( ! is_wp_error( $result ) ) {
@@ -334,7 +364,7 @@ class Contact {
 			if ( $this->api->is_404( $api_result ) ) {
 				return true;
 			} elseif ( ! $this->api->has_failed( $api_result ) ) {
-				if ( $api_result['objects'][0]['country']['id'] != $address_data['country']['id'] ) {
+				if ( (string) $api_result['objects'][0]['country']['id'] !== (string) $address_data['country']['id'] ) {
 					return true;
 				}
 
@@ -361,6 +391,8 @@ class Contact {
 			'objectName' => 'Contact',
 			'id'         => $this->get_id(),
 		);
+
+		$address_data = apply_filters( 'storeabill_external_sync_sevdesk_address', $address_data, $type, $this );
 
 		if ( ! $this->is_new_address( $id, $address_data ) ) {
 			$response = $this->api->update_address( $id, $address_data );
@@ -397,12 +429,14 @@ class Contact {
 		$existing = $this->api->get_communication_ways( $this->get_id(), $type );
 
 		if ( ! $this->api->has_failed( $existing ) ) {
-			foreach( $existing as $communication_data ) {
+			foreach ( $existing as $communication_data ) {
 				if ( $communication_data['value'] === $current_value ) {
 					return false;
 				}
 			}
 
+			return true;
+		} elseif ( false === $existing ) {
 			return true;
 		}
 
@@ -414,11 +448,11 @@ class Contact {
 			'type'    => 'EMAIL',
 			'key'     => array(
 				'id'         => 2,
-				'objectName' => 'CommunicationWayKey'
+				'objectName' => 'CommunicationWayKey',
 			),
 			'contact' => array(
 				'id'         => $this->get_id(),
-				'objectName' => 'Contact'
+				'objectName' => 'Contact',
 			),
 			'value'   => $this->get_email(),
 		);
@@ -444,11 +478,11 @@ class Contact {
 			'type'    => 'PHONE',
 			'key'     => array(
 				'id'         => 2,
-				'objectName' => 'CommunicationWayKey'
+				'objectName' => 'CommunicationWayKey',
 			),
 			'contact' => array(
 				'id'         => $this->get_id(),
-				'objectName' => 'Contact'
+				'objectName' => 'Contact',
 			),
 			'value'   => $this->get_phone(),
 		);

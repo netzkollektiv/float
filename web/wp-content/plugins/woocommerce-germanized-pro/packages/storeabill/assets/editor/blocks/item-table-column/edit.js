@@ -21,16 +21,17 @@ import { useRef } from "@wordpress/element";
 import { FORMAT_TYPES, ITEM_TABLE_BLOCK_TYPES } from '@storeabill/settings';
 
 function ColumnEdit( {
+	clientId,
   attributes,
   setAttributes,
   className,
   hasChildBlocks,
 } ) {
-
-	const { width, align, headingTextColor, headingBackgroundColor, headingFontSize } = attributes;
-
+	const { width, align, headingTextColor, headingBackgroundColor, headingFontSize, itemType, isDisabled, fontSize, customFontSize } = attributes;
+	
 	const classes = classnames( className, 'block-core-columns', {
 		[`is-horizontally-aligned-${ align }`]: align,
+		[ fontSize ? fontSize.class : '' ]: fontSize ? fontSize.class : '',
 	} );
 
 	return (

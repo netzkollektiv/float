@@ -67,7 +67,7 @@ class Tax {
 	protected static function convert_tax_rates_to_woo( $rates ) {
 		$woo_rates = array();
 
-		foreach( $rates as $rate ) {
+		foreach ( $rates as $rate ) {
 			$woo_rate = array(
 				'rate'     => $rate->get_percent(),
 				'country'  => $rate->get_country(),
@@ -84,7 +84,7 @@ class Tax {
 		return WC_Tax::get_base_tax_rates( $class );
 	}
 
-	public static function _sort_tax_rates_callback( $rate1, $rate2 ) {
+	public static function sort_tax_rates_callback( $rate1, $rate2 ) {
 		if ( $rate1->get_country() !== $rate2->get_country() ) {
 			if ( '' === $rate1->get_country() ) {
 				return 1;
@@ -105,18 +105,21 @@ class Tax {
 	}
 
 	public static function get_tax_rate_merge_key( $args ) {
-		$args = wp_parse_args( $args, array(
-			'is_compound' => false,
-			'is_moss'     => false,
-			'is_oss'      => false,
-			'percent'     => 0,
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'is_compound' => false,
+				'is_moss'     => false,
+				'is_oss'      => false,
+				'percent'     => 0,
+			)
+		);
 
 		/**
 		 * MOSS turned into OSS
 		 */
 		$is_oss = $args['is_moss'] || $args['is_oss'];
 
-		return $args['percent'] . "_compound_" . sab_bool_to_string( $args['is_compound'] ) . "_oss_" . sab_bool_to_string( $is_oss );
+		return $args['percent'] . '_compound_' . sab_bool_to_string( $args['is_compound'] ) . '_oss_' . sab_bool_to_string( $is_oss );
 	}
 }

@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -61,6 +61,7 @@ class FixedReader extends AbstractReader implements ReaderInterface
 
     /**
      * @inheritdoc
+     * @return int|false
      */
     public function getOffsetFor($objectNumber)
     {

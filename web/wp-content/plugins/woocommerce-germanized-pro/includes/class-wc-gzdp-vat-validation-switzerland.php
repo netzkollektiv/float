@@ -2,7 +2,7 @@
 
 class WC_GZDP_VAT_Validation_Switzerland {
 
-	private $api_url = "https://www.uid-wse.admin.ch/V5.0/PublicServices.svc?wsdl";
+	private $api_url = 'https://www.uid-wse.admin.ch/V5.0/PublicServices.svc?wsdl';
 
 	private $client = null;
 
@@ -17,18 +17,23 @@ class WC_GZDP_VAT_Validation_Switzerland {
 	private $errors = false;
 
 	public function __construct( $options = array() ) {
-
-		foreach( $options as $option => $value ) {
+		foreach ( $options as $option => $value ) {
 			$this->options[ $option ] = $value;
 		}
 
 		if ( ! class_exists( 'SoapClient' ) ) {
-			wp_die( __( 'SoapClient is required to enable VAT validation', 'woocommerce-germanized-pro' ) );
+			wp_die( esc_html__( 'SoapClient is required to enable VAT validation', 'woocommerce-germanized-pro' ) );
 		}
 
 		try {
-			$this->client = new SoapClient( $this->api_url, array( 'trace' => true, "exceptions" => true ) );
-		} catch( Exception $e ) {
+			$this->client = new SoapClient(
+				$this->api_url,
+				array(
+					'trace'      => true,
+					'exceptions' => true,
+				)
+			);
+		} catch ( Exception $e ) {
 			WC_germanized_pro()->log( sprintf( 'Error %s while setting up the SOAP Client for CH VAT validation: %s', $e->getCode(), $e->getMessage() ), 'error', 'vat-validation' );
 
 			$this->valid = false;
@@ -43,27 +48,26 @@ class WC_GZDP_VAT_Validation_Switzerland {
 		if ( $this->client ) {
 			try {
 				$args = array(
-					'vatNumber' => $country . $nr
+					'vatNumber' => $country . $nr,
 				);
 
 				$rs = $this->client->ValidateVatNumber( $args );
 
-				if ( true === $rs->ValidateVatNumberResult ) {
+				if ( true === $rs->ValidateVatNumberResult ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 					$instance->log( sprintf( 'Successfully validated: %s', $args['vatNumber'] ), 'info', 'vat-validation' );
 
-					$this->data = array();
+					$this->data  = array();
 					$this->valid = true;
 
 				} else {
-					$instance->log( sprintf( 'VAT is invalid: %s', $args['countryCode'] . $args['vatNumber'] ), 'info', 'vat-validation' );
+					$instance->log( sprintf( 'VAT is invalid: %s', $args['vatNumber'] ), 'info', 'vat-validation' );
 
 					$this->valid = false;
-					$this->data = array();
+					$this->data  = array();
 
 					$this->errors->add( 'vat-id-invalid', __( 'The VAT ID you\'ve provided is invalid.', 'woocommerce-germanized-pro' ) );
 				}
-
-			} catch( SoapFault $e ) {
+			} catch ( SoapFault $e ) {
 				$this->valid = false;
 				$this->data  = array();
 
@@ -89,8 +93,8 @@ class WC_GZDP_VAT_Validation_Switzerland {
 	}
 
 	public function is_debug() {
-		return ( $this->options['debug'] === true );
+		return ( true === $this->options['debug'] );
 	}
 }
 
-?>
+

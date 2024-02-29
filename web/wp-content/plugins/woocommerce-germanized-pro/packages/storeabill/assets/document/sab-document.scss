@@ -133,6 +133,11 @@ blockquote.wp-block-quote {
 .sab-block {
   margin-top: 0;
   margin-bottom: $global-block-margin;
+
+  &.has-border-color, &.has-border {
+    border-style: solid;
+    border-width: 1px;
+  }
 }
 
 .clearfix {
@@ -209,7 +214,13 @@ blockquote.wp-block-quote {
   }
 }
 
-.wp-block-storeabill-address {
+.wp-block-group.reset-columns-margin {
+  .wp-block-column p {
+    padding: 0 $item-table-padding;
+  }
+}
+
+.wp-block-storeabill-address, .wp-block-storeabill-shipping-address, .wp-block-storeabill-sender-address {
   .address-heading {
     margin-top: 0;
     margin-bottom: $global-margin/2;
@@ -556,8 +567,8 @@ table.sab-item-field {
     }
 
     td.sab-item-total-data {
-      padding-right: 0;
       min-width: 25%;
+      padding-right: $item-table-padding;
     }
 
     td.sab-item-total-heading {
@@ -589,7 +600,7 @@ table.sab-item-field {
     }
 
     td.sab-item-total-data {
-      padding-right: 0;
+      padding-right: $item-table-padding-dense;
     }
   }
 }

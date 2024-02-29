@@ -3,6 +3,7 @@
 namespace Vendidero\StoreaBill\Invoice;
 
 use Exception;
+use Vendidero\StoreaBill\Utilities\Numbers;
 use WP_Error;
 
 defined( 'ABSPATH' ) || exit;
@@ -15,11 +16,16 @@ class Simple extends Invoice {
 	protected $cancellations = null;
 
 	public function get_item_types_cancelable() {
-		return apply_filters( $this->get_hook_prefix() . 'item_types_cancelable', array(
-			'product',
-			'fee',
-			'shipping',
-		), $this );
+		return apply_filters(
+			$this->get_hook_prefix() . 'item_types_cancelable',
+			array(
+				'product',
+				'fee',
+				'shipping',
+				'voucher',
+			),
+			$this
+		);
 	}
 
 	public function get_invoice_type() {
@@ -37,7 +43,7 @@ class Simple extends Invoice {
 			$this->set_date_paid( time() );
 			$this->set_total_paid( $this->get_total() );
 
-			foreach( $this->get_cancellations() as $cancellation ) {
+			foreach ( $this->get_cancellations() as $cancellation ) {
 				$cancellation->set_payment_status( 'complete' );
 				$cancellation->set_total_paid( $cancellation->get_total() );
 
@@ -47,7 +53,7 @@ class Simple extends Invoice {
 			$this->set_date_paid( null );
 			$this->set_total_paid( 0 );
 
-			foreach( $this->get_cancellations() as $cancellation ) {
+			foreach ( $this->get_cancellations() as $cancellation ) {
 				$cancellation->set_payment_status( 'pending' );
 				$cancellation->set_total_paid( 0 );
 
@@ -59,10 +65,12 @@ class Simple extends Invoice {
 	public function get_cancellations() {
 		if ( is_null( $this->cancellations ) ) {
 			if ( $this->get_id() > 0 ) {
-				$this->cancellations = sab_get_invoices( array(
-					'parent_id' => $this->get_id(),
-					'type'      => 'cancellation',
-				) );
+				$this->cancellations = sab_get_invoices(
+					array(
+						'parent_id' => $this->get_id(),
+						'type'      => 'cancellation',
+					)
+				);
 			}
 
 			if ( is_null( $this->cancellations ) ) {
@@ -93,7 +101,7 @@ class Simple extends Invoice {
 	public function get_items_left_to_cancel() {
 		$items_left = array();
 
-		foreach( $this->get_items( $this->get_item_types_cancelable() ) as $item ) {
+		foreach ( $this->get_items( $this->get_item_types_cancelable() ) as $item ) {
 			$items_left[ $item->get_id() ] = array(
 				'quantity'      => $item->get_quantity(),
 				'line_total'    => $item->get_line_total(),
@@ -102,14 +110,14 @@ class Simple extends Invoice {
 				'line_subtotal' => $item->get_line_subtotal(),
 				'subtotal'      => $item->get_subtotal(),
 				'subtotal_tax'  => $item->get_subtotal_tax(),
-				'is_free'       => ( 0 == $item->get_total() && 0 == $item->get_subtotal() )
+				'is_free'       => ( 0.0 === $item->get_total() && 0.0 === $item->get_subtotal() ),
 			);
 		}
 
-		foreach( $this->get_cancellations() as $cancellation ) {
+		foreach ( $this->get_cancellations() as $cancellation ) {
 			$items = $cancellation->get_items( $this->get_item_types_cancelable() );
 
-			foreach( $items as $item ) {
+			foreach ( $items as $item ) {
 				$parent_id = $item->get_parent_id();
 
 				if ( $parent_item = $this->get_item( $parent_id ) ) {
@@ -121,15 +129,15 @@ class Simple extends Invoice {
 					$cancelled_tax           = $item->get_total_tax();
 					$cancelled_subtotal_tax  = $item->get_subtotal_tax();
 
-					if ( empty( $cancelled_subtotal ) || ! is_numeric( $cancelled_subtotal ) ) {
+					if ( empty( $cancelled_subtotal ) ) {
 						$cancelled_subtotal = $cancelled_total;
 					}
 
-					if ( empty( $cancelled_line_subtotal ) || ! is_numeric( $cancelled_line_subtotal ) ) {
+					if ( empty( $cancelled_line_subtotal ) ) {
 						$cancelled_line_subtotal = $cancelled_line_total;
 					}
 
-					if ( empty( $cancelled_subtotal_tax ) || ! is_numeric( $cancelled_subtotal_tax ) ) {
+					if ( empty( $cancelled_subtotal_tax ) ) {
 						$cancelled_subtotal_tax = $cancelled_tax;
 					}
 
@@ -142,7 +150,7 @@ class Simple extends Invoice {
 						$items_left[ $parent_item->get_id() ]['tax']           = ( $items_left[ $parent_item->get_id() ]['tax'] - $cancelled_tax );
 						$items_left[ $parent_item->get_id() ]['subtotal_tax']  = ( $items_left[ $parent_item->get_id() ]['subtotal_tax'] - $cancelled_subtotal_tax );
 
-						if ( $items_left[ $parent_item->get_id() ]['total'] == 0 && $items_left[ $parent_item->get_id() ]['tax'] == 0 ) {
+						if ( 0.0 === Numbers::round_to_precision( $items_left[ $parent_item->get_id() ]['total'] ) && 0.0 === Numbers::round_to_precision( $items_left[ $parent_item->get_id() ]['tax'] ) ) {
 							unset( $items_left[ $parent_item->get_id() ] );
 						}
 					}
@@ -150,26 +158,19 @@ class Simple extends Invoice {
 			}
 		}
 
-		$total_to_cancel = 0;
+		$total_to_cancel = 0.0;
 
-		foreach( $items_left as $item_id => $item ) {
+		foreach ( $items_left as $item_id => $item ) {
 			$org_quantity = $items_left[ $item_id ]['quantity'];
 
 			if ( empty( $items_left[ $item_id ]['quantity'] ) ) {
 				$items_left[ $item_id ]['quantity'] = 1;
 			}
 
-			$items_left[ $item_id ]['total']         = sab_format_decimal( $items_left[ $item_id ]['total'] );
-			$items_left[ $item_id ]['line_total']    = sab_format_decimal( $items_left[ $item_id ]['line_total'] );
-			$items_left[ $item_id ]['subtotal']      = sab_format_decimal( $items_left[ $item_id ]['subtotal'] );
-			$items_left[ $item_id ]['line_subtotal'] = sab_format_decimal( $items_left[ $item_id ]['line_subtotal'] );
-			$items_left[ $item_id ]['tax']           = sab_format_decimal( $items_left[ $item_id ]['tax'] );
-			$items_left[ $item_id ]['subtotal_tax']  = sab_format_decimal( $items_left[ $item_id ]['subtotal_tax'] );
-
-			$total_rounded        = sab_format_decimal( $items_left[ $item_id ]['total'], '' );
-			$subtotal_rounded     = sab_format_decimal( $items_left[ $item_id ]['subtotal'], '' );
-			$tax_rounded          = sab_format_decimal( $items_left[ $item_id ]['tax'], '' );
-			$subtotal_tax_rounded = sab_format_decimal( $items_left[ $item_id ]['subtotal_tax'], '' );
+			$total_rounded        = Numbers::round_to_precision( $items_left[ $item_id ]['total'] );
+			$subtotal_rounded     = Numbers::round_to_precision( $items_left[ $item_id ]['subtotal'] );
+			$tax_rounded          = Numbers::round_to_precision( $items_left[ $item_id ]['tax'] );
+			$subtotal_tax_rounded = Numbers::round_to_precision( $items_left[ $item_id ]['subtotal_tax'] );
 
 			$total_to_cancel += $total_rounded;
 
@@ -180,7 +181,7 @@ class Simple extends Invoice {
 			 * Explicitly check subtotal too as vouchers/discounts may have been added
 			 * which might lead to item totals of zero which still need cancellation.
 			 */
-			if ( $total_rounded == 0 && $subtotal_rounded == 0 && $tax_rounded == 0 && ( ! $item['is_free'] || $org_quantity <= 0 ) ) {
+			if ( 0.0 === $total_rounded && 0.0 === $subtotal_rounded && 0.0 === $tax_rounded && ( ! $item['is_free'] || $org_quantity <= 0 ) ) {
 				unset( $items_left[ $item_id ] );
 			}
 		}
@@ -188,24 +189,32 @@ class Simple extends Invoice {
 		return $items_left;
 	}
 
+	/**
+	 * @return float
+	 */
 	public function get_total_left_to_cancel() {
 		$items_left = $this->get_items_left_to_cancel();
-		$total_left = 0;
+		$total_left = 0.0;
 
-		foreach( $items_left as $item_id => $item ) {
-			$total_left += $item['total'];
+		foreach ( $items_left as $item_id => $item ) {
+			$total_left += (float) $item['total'];
 		}
 
-		return sab_format_decimal( $total_left, '' );
+		return Numbers::round_to_precision( $total_left );
 	}
 
+	/**
+	 * @param $item_id
+	 *
+	 * @return int
+	 */
 	public function get_item_quantity_cancelled( $item_id ) {
 		$quantity_cancelled = 0;
 
-		foreach( $this->get_cancellations() as $cancellation ) {
+		foreach ( $this->get_cancellations() as $cancellation ) {
 			$items = $cancellation->get_items( $this->get_item_types_cancelable() );
 
-			foreach( $items as $item ) {
+			foreach ( $items as $item ) {
 				$parent_id = $item->get_parent_id();
 
 				if ( $parent_id === (int) $item_id ) {
@@ -217,17 +226,23 @@ class Simple extends Invoice {
 		return $quantity_cancelled;
 	}
 
+	/**
+	 * @param $item_id
+	 * @param $incl_tax
+	 *
+	 * @return float
+	 */
 	public function get_item_total_cancelled( $item_id, $incl_tax = true ) {
-		$total_cancelled = 0;
+		$total_cancelled = 0.0;
 
-		foreach( $this->get_cancellations() as $cancellation ) {
+		foreach ( $this->get_cancellations() as $cancellation ) {
 			$items = $cancellation->get_items( $this->get_item_types_cancelable() );
 
-			foreach( $items as $item ) {
+			foreach ( $items as $item ) {
 				$parent_id = $item->get_parent_id();
 
 				if ( $parent_id === (int) $item_id ) {
-					$total_cancelled += $incl_tax ? $item->get_total() : $item->get_total_net();
+					$total_cancelled += $incl_tax ? (float) $item->get_total() : (float) $item->get_total_net();
 				}
 			}
 		}
@@ -235,17 +250,23 @@ class Simple extends Invoice {
 		return $total_cancelled;
 	}
 
+	/**
+	 * @param $item_id
+	 * @param $incl_tax
+	 *
+	 * @return float
+	 */
 	public function get_item_subtotal_cancelled( $item_id, $incl_tax = true ) {
-		$total_cancelled = 0;
+		$total_cancelled = 0.0;
 
-		foreach( $this->get_cancellations() as $cancellation ) {
+		foreach ( $this->get_cancellations() as $cancellation ) {
 			$items = $cancellation->get_items( $this->get_item_types_cancelable() );
 
-			foreach( $items as $item ) {
+			foreach ( $items as $item ) {
 				$parent_id = $item->get_parent_id();
 
 				if ( $parent_id === (int) $item_id ) {
-					$total_cancelled += $incl_tax ? $item->get_subtotal() : $item->get_subtotal_net();
+					$total_cancelled += $incl_tax ? (float) $item->get_subtotal() : (float) $item->get_subtotal_net();
 				}
 			}
 		}
@@ -253,17 +274,22 @@ class Simple extends Invoice {
 		return $total_cancelled;
 	}
 
+	/**
+	 * @param $item_id
+	 *
+	 * @return float
+	 */
 	public function get_item_tax_total_cancelled( $item_id ) {
-		$total_cancelled = 0;
+		$total_cancelled = 0.0;
 
-		foreach( $this->get_cancellations() as $cancellation ) {
+		foreach ( $this->get_cancellations() as $cancellation ) {
 			$items = $cancellation->get_items( $this->get_item_types_cancelable() );
 
-			foreach( $items as $item ) {
+			foreach ( $items as $item ) {
 				$parent_id = $item->get_parent_id();
 
 				if ( $parent_id === (int) $item_id ) {
-					$total_cancelled += $item->get_total_tax();
+					$total_cancelled += (float) $item->get_total_tax();
 				}
 			}
 		}
@@ -294,7 +320,7 @@ class Simple extends Invoice {
 	 *
 	 * @return WP_Error|Cancellation
 	 */
-	public function cancel( $items = array(), $refund_order_id = 0 ) {
+	public function cancel( $items = array(), $refund_order_id = 0, $cancellation_props = array() ) {
 		$error = new WP_Error();
 
 		if ( ! $this->is_cancelable() ) {
@@ -311,15 +337,17 @@ class Simple extends Invoice {
 				if ( ! empty( $items ) ) {
 					$total_to_cancel = 0;
 
-					foreach( $items as $item_id => $item_data ) {
+					foreach ( $items as $item_id => $item_data ) {
 						if ( isset( $items_left[ $item_id ] ) ) {
-
-							$item_data = wp_parse_args( $item_data, array(
-								'quantity'   => '',
-								'total'      => '',
-								'line_total' => '',
-								'subtotal'   => '',
-							) );
+							$item_data = wp_parse_args(
+								$item_data,
+								array(
+									'quantity'   => '',
+									'total'      => '',
+									'line_total' => '',
+									'subtotal'   => '',
+								)
+							);
 
 							if ( empty( $item_data['total'] ) && ! empty( $item_data['quantity'] ) ) {
 								if ( $item = $this->get_item( $item_id ) ) {
@@ -347,19 +375,19 @@ class Simple extends Invoice {
 								$error->add( 'item-invalid', sprintf( _x( 'The item quantity for %d exceeds quantity left to cancel.', 'storeabill-core', 'woocommerce-germanized-pro' ), $item_id ) );
 							}
 
-							if ( $item_data['total'] > $items_left[ $item_id ]['total'] ) {
+							if ( abs( $item_data['total'] ) > abs( $items_left[ $item_id ]['total'] ) ) {
 								$error->add( 'item-invalid', sprintf( _x( 'The item total for %d exceeds total left to cancel.', 'storeabill-core', 'woocommerce-germanized-pro' ), $item_id ) );
 							}
 
-							if ( $item_data['line_total'] > $items_left[ $item_id ]['line_total'] ) {
+							if ( abs( $item_data['line_total'] ) > abs( $items_left[ $item_id ]['line_total'] ) ) {
 								$error->add( 'item-invalid', sprintf( _x( 'The item total for %d exceeds total left to cancel.', 'storeabill-core', 'woocommerce-germanized-pro' ), $item_id ) );
 							}
 
-							if ( $item_data['subtotal'] > $items_left[ $item_id ]['subtotal'] ) {
+							if ( abs( $item_data['subtotal'] ) > abs( $items_left[ $item_id ]['subtotal'] ) ) {
 								$error->add( 'item-invalid', sprintf( _x( 'The item subtotal for %d exceeds subtotal left to cancel.', 'storeabill-core', 'woocommerce-germanized-pro' ), $item_id ) );
 							}
 
-							if ( $item_data['line_subtotal'] > $items_left[ $item_id ]['line_subtotal'] ) {
+							if ( abs( $item_data['line_subtotal'] ) > abs( $items_left[ $item_id ]['line_subtotal'] ) ) {
 								$error->add( 'item-invalid', sprintf( _x( 'The item subtotal for %d exceeds subtotal left to cancel.', 'storeabill-core', 'woocommerce-germanized-pro' ), $item_id ) );
 							}
 
@@ -371,7 +399,7 @@ class Simple extends Invoice {
 						}
 					}
 
-					$total_to_cancel      = sab_format_decimal( $total_to_cancel, '' );
+					$total_to_cancel      = Numbers::round_to_precision( $total_to_cancel );
 					$total_left_to_cancel = $this->get_total_left_to_cancel();
 
 					/**
@@ -381,7 +409,7 @@ class Simple extends Invoice {
 					if ( $total_to_cancel >= $total_left_to_cancel ) {
 						$items_to_cancel = $items_left;
 					}
- 				}
+				}
 
 				if ( empty( $items_to_cancel ) ) {
 					$error->add( 'missing-items', _x( 'There are no items available to cancel.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
@@ -413,16 +441,25 @@ class Simple extends Invoice {
 				$cancellation->set_payment_method_title( $this->get_payment_method_title() );
 				$cancellation->set_date_of_service( $this->get_date_of_service() );
 				$cancellation->set_date_of_service_end( $this->get_date_of_service_end() );
-				$cancellation->set_voucher_total( $this->get_voucher_total() );
-				$cancellation->set_voucher_tax( $this->get_voucher_tax() );
 				$cancellation->set_discount_notice( $this->get_discount_notice() );
+				$cancellation->set_stores_vouchers_as_discount( $this->stores_vouchers_as_discount() );
+
+				if ( $cancellation->stores_vouchers_as_discount() ) {
+					$cancellation->set_voucher_total( $this->get_voucher_total() );
+					$cancellation->set_voucher_tax( $this->get_voucher_tax() );
+				}
 
 				if ( $refund = $cancellation->get_refund_order() ) {
 					$cancellation->set_refund_order_number( $refund->get_formatted_number() );
 					$cancellation->set_reason( $refund->get_reason() );
+					$cancellation->set_payment_transaction_id( $refund->get_transaction_id() );
+
+					if ( '' === $cancellation->get_payment_transaction_id() && ( $order = $cancellation->get_order() ) ) {
+						$order->get_refund_transaction_id( $refund );
+					}
 				}
 
-				foreach( $items_to_cancel as $item_id => $item_data ) {
+				foreach ( $items_to_cancel as $item_id => $item_data ) {
 					if ( $parent_item = $this->get_item( $item_id ) ) {
 
 						$new_item = sab_get_document_item( 0, $parent_item->get_type() );
@@ -449,10 +486,10 @@ class Simple extends Invoice {
 						 * Calculate the percentage of the parent item
 						 * being cancelled.
 						 */
-						if ( $parent_item->get_line_total() != 0 ) {
-							$total_percentage = $item_total / $parent_item->get_line_total();
+						if ( 0.0 !== (float) $parent_item->get_line_total() ) {
+							$total_percentage = (float) $item_total / (float) $parent_item->get_line_total();
 						} else {
-							$total_percentage = 1;
+							$total_percentage = 1.0;
 						}
 
 						/**
@@ -460,13 +497,13 @@ class Simple extends Invoice {
 						 * being cancelled.
 						 */
 						if ( $parent_item->get_line_subtotal() ) {
-							$subtotal_percentage = $item_subtotal / $parent_item->get_line_subtotal();
+							$subtotal_percentage = (float) $item_subtotal / (float) $parent_item->get_line_subtotal();
 						} else {
 							$subtotal_percentage = $total_percentage;
 						}
 
 						if ( $subtotal_percentage >= 1 ) {
-							$subtotal_percentage = 1;
+							$subtotal_percentage = 1.0;
 						}
 
 						if ( is_callable( array( $new_item, 'set_quantity' ) ) ) {
@@ -482,10 +519,10 @@ class Simple extends Invoice {
 						}
 
 						if ( is_a( $new_item, '\Vendidero\StoreaBill\Invoice\TaxableItem' ) ) {
-							$item_total_tax    = 0;
-							$item_subtotal_tax = 0;
+							$item_total_tax    = 0.0;
+							$item_subtotal_tax = 0.0;
 
-							foreach( $parent_item->get_taxes() as $tax_item ) {
+							foreach ( $parent_item->get_taxes() as $tax_item ) {
 								$new_tax_item = sab_get_document_item( 0, $tax_item->get_type() );
 								$props        = array_diff_key( $tax_item->get_data(), array_flip( array( 'id', 'document_id', 'parent_id', 'taxes', 'total_net', 'subtotal_net', 'total_tax', 'subtotal_tax' ) ) );
 
@@ -494,8 +531,8 @@ class Simple extends Invoice {
 								$tax_total    = $tax_item->get_total_tax() * $total_percentage;
 								$subtotal_tax = $tax_item->get_subtotal_tax() * $subtotal_percentage;
 
-								$item_total_tax += $tax_total;
-								$item_subtotal_tax += $subtotal_tax;
+								$item_total_tax    += (float) $tax_total;
+								$item_subtotal_tax += (float) $subtotal_tax;
 
 								// Need to calculate taxes for adjusted totals.
 								$new_tax_item->set_total_tax( $tax_total );
@@ -516,6 +553,11 @@ class Simple extends Invoice {
 				 * Copy meta data
 				 */
 				$cancellation->set_meta_data( $this->get_meta_data() );
+
+				/**
+				 * Set additional props
+				 */
+				$cancellation->set_props( $cancellation_props );
 
 				/**
 				 * Calculate totals (without taxes)
@@ -547,10 +589,10 @@ class Simple extends Invoice {
 				$this->maybe_set_cancelled_status();
 
 				return $cancellation;
-			} catch( Exception $e ) {
+			} catch ( Exception $e ) {
 				$error->add( 'creating', sprintf( _x( 'There was an error creating the cancellation: %s', 'storeabill-core', 'woocommerce-germanized-pro' ), $e->getMessage() ) );
 			}
- 		}
+		}
 
 		return $error;
 	}

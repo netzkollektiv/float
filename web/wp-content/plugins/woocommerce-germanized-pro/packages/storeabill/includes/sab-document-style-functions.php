@@ -82,12 +82,16 @@ function sab_document_print_styles( $handles = false ) {
  */
 function sab_document_add_inline_style( $handle, $data ) {
 	if ( false !== stripos( $data, '</style>' ) ) {
-		_doing_it_wrong( __FUNCTION__, sprintf(
-		/* translators: 1: <style>, 2: wp_add_inline_style() */
-			_x( 'Do not pass %1$s tags to %2$s.', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'<code>&lt;style&gt;</code>',
-			'<code>wp_add_inline_style()</code>'
-		), '3.7.0' );
+		_doing_it_wrong(
+			__FUNCTION__,
+			sprintf(
+			/* translators: 1: <style>, 2: wp_add_inline_style() */
+				esc_html_x( 'Do not pass %1$s tags to %2$s.', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'<code>&lt;style&gt;</code>',
+				'<code>wp_add_inline_style()</code>'
+			),
+			'3.7.0'
+		);
 		$data = trim( preg_replace( '#<style[^>]*>(.*)</style>#is', '$1', $data ) );
 	}
 
@@ -159,7 +163,7 @@ function sab_document_enqueue_style( $handle, $src = '', $deps = array(), $ver =
 	$sab_styles = sab_document_styles();
 
 	if ( $src ) {
-		$_handle = explode('?', $handle);
+		$_handle = explode( '?', $handle );
 		$sab_styles->add( $_handle[0], $src, $deps, $ver, $media );
 	}
 

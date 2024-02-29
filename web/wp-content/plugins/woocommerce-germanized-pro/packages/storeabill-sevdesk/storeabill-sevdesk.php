@@ -5,7 +5,7 @@
  * Description: StoreaBill sevDesk integration
  * Author: vendidero
  * Author URI: https://vendidero.de
- * Version: 1.1.2
+ * Version: 1.1.9
  * Requires PHP: 5.6
  * License: GPLv3
  *

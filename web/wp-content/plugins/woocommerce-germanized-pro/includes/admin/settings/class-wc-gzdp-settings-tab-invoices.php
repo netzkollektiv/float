@@ -7,9 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Adds Germanized Invoice settings.
  *
- * @class 		WC_GZDP_Settings_Tab_Invoices
- * @version		3.0.0
- * @author 		Vendidero
+ * @class       WC_GZDP_Settings_Tab_Invoices
+ * @version     3.0.0
+ * @author      Vendidero
  */
 class WC_GZDP_Settings_Tab_Invoices extends WC_GZD_Settings_Tab_Invoices {
 
@@ -71,7 +71,7 @@ class WC_GZDP_Settings_Tab_Invoices extends WC_GZD_Settings_Tab_Invoices {
 		parent::after_save( $settings, $current_section );
 
 		if ( class_exists( '\Vendidero\StoreaBill\Admin\Settings' ) ) {
-			\Vendidero\StoreaBill\Admin\Settings::before_save( $settings, $current_section);
+			\Vendidero\StoreaBill\Admin\Settings::before_save( $settings, $current_section );
 		}
 	}
 
@@ -79,12 +79,12 @@ class WC_GZDP_Settings_Tab_Invoices extends WC_GZD_Settings_Tab_Invoices {
 		parent::after_save( $settings, $current_section );
 
 		if ( class_exists( '\Vendidero\StoreaBill\Admin\Settings' ) ) {
-			\Vendidero\StoreaBill\Admin\Settings::after_save( $settings, $current_section);
+			\Vendidero\StoreaBill\Admin\Settings::after_save( $settings, $current_section );
 		}
 	}
 
 	protected function get_breadcrumb() {
-		$breadcrumb  = parent::get_breadcrumb();
+		$breadcrumb = parent::get_breadcrumb();
 
 		if ( class_exists( '\Vendidero\StoreaBill\Admin\Settings' ) ) {
 			$breadcrumb = \Vendidero\StoreaBill\Admin\Settings::filter_breadcrumb( $breadcrumb );

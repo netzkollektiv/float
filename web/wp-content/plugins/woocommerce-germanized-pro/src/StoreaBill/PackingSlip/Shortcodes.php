@@ -7,28 +7,34 @@ defined( 'ABSPATH' ) || exit;
 class Shortcodes extends \Vendidero\StoreaBill\Document\Shortcodes {
 
 	public function get_shortcodes() {
-		$shortcodes = array(
-			'shipment'              => array( $this, 'shipment_data' ),
-			'order'                 => array( $this, 'order_data' ),
-			'if_shipment'           => array( $this, 'if_shipment_data' ),
-			'if_order'              => array( $this, 'if_order_data' ),
-			'return_reasons'        => array( $this, 'return_reasons_data' ),
-			'order_item'            => array( $this, 'order_item_data' ),
+		$shortcodes = array_merge(
+			parent::get_shortcodes(),
+			array(
+				'shipment'       => array( $this, 'shipment_data' ),
+				'order'          => array( $this, 'order_data' ),
+				'if_shipment'    => array( $this, 'if_shipment_data' ),
+				'if_order'       => array( $this, 'if_order_data' ),
+				'return_reasons' => array( $this, 'return_reasons_data' ),
+				'order_item'     => array( $this, 'order_item_data' ),
+			)
 		);
 
 		return apply_filters( 'storeabill_packing_slip_shortcodes', $shortcodes, $this );
 	}
 
 	public function return_reasons_data( $atts ) {
-		$atts = wp_parse_args( $atts, array(
-			'format' => 'plain',
-		) );
+		$atts = wp_parse_args(
+			$atts,
+			array(
+				'format' => 'plain',
+			)
+		);
 
 		$reasons = wc_gzd_get_return_shipment_reasons();
 		$content = '';
 		$count   = 0;
 
-		foreach( $reasons as $reason ) {
+		foreach ( $reasons as $reason ) {
 			$count++;
 
 			if ( 'list' !== $atts['format'] && $count > 1 ) {
@@ -143,6 +149,6 @@ class Shortcodes extends \Vendidero\StoreaBill\Document\Shortcodes {
 	}
 
 	public function supports( $document_type ) {
-		return in_array( $document_type, array( 'packing_slip' ) );
+		return in_array( $document_type, array( 'packing_slip' ), true );
 	}
 }

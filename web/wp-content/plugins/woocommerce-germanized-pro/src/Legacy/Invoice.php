@@ -72,7 +72,7 @@ class Invoice extends Pdf {
 
 	public function mark_as_sent() {
 		if ( ! $this->document->get_date_sent() ) {
-			$this->document->set_date_sent( current_time( 'timestamp', true ) );
+			$this->document->set_date_sent( time() );
 			$this->document->save();
 		}
 	}

@@ -2,6 +2,7 @@
 
 if (!class_exists('XmlExportCustomRecord')) {
     final class XmlExportCustomRecord {
+		private static $engine = false;
 
         private $default_fields = [];
 
@@ -35,10 +36,14 @@ if (!class_exists('XmlExportCustomRecord')) {
             }
         }
 
-        public static function prepare_data($record, $exportOptions, $xmlWriter = false, $implode_delimiter, $preview) {
+        public static function prepare_data($record, $exportOptions, $xmlWriter, $implode_delimiter, $preview) {
+
             $article = array();
 
-            if (wp_all_export_is_compatible() && isset($exportOptions['is_generate_import']) && $exportOptions['is_generate_import'] && $exportOptions['import_id']) {
+            if (
+                $exportOptions['is_generate_import'] && wp_all_export_is_compatible()
+                && (!isset($exportOptions['enable_real_time_exports']) || !$exportOptions['enable_real_time_exports']) && $exportOptions['import_id']
+            ){
                 $postRecord = new PMXI_Post_Record();
                 $postRecord->clear();
                 $postRecord->getBy(array(
@@ -50,7 +55,8 @@ if (!class_exists('XmlExportCustomRecord')) {
                     $postRecord->set(array(
                         'post_id' => $record->id,
                         'import_id' => $exportOptions['import_id'],
-                        'unique_key' => $record->id
+                        'unique_key' => $record->id,
+                        'product_key' => ''
                     ))->save();
                 }
                 unset($postRecord);
@@ -75,7 +81,7 @@ if (!class_exists('XmlExportCustomRecord')) {
                 $fieldPhp = $exportOptions['cc_php'][$ID];
                 $fieldCode = $exportOptions['cc_code'][$ID];
                 $fieldType = $exportOptions['cc_type'][$ID];
-                $fieldOptions = $exportOptions['cc_options'][$ID];
+                $fieldOptions = isset($exportOptions['cc_options']) ? $exportOptions['cc_options'][$ID] : [];
                 $fieldSettings = empty($exportOptions['cc_settings'][$ID]) ? $fieldOptions : $exportOptions['cc_settings'][$ID];
 
                 if (empty($fieldName) or empty($fieldType) or !is_numeric($ID)) continue;
@@ -103,10 +109,17 @@ if (!class_exists('XmlExportCustomRecord')) {
                     $combineMultipleFieldsValue = stripslashes($combineMultipleFieldsValue);
                     $snippetParser = new \Wpae\App\Service\SnippetParser();
                     $snippets = $snippetParser->parseSnippets($combineMultipleFieldsValue);
-                    $engine = new XmlExportEngine(XmlExportEngine::$exportOptions);
-                    $engine->init_available_data();
-                    $engine->init_additional_data();
-                    $snippets = $engine->get_fields_options($snippets);
+
+                    // Re-use the engine object if we've already initialized it as it's costly.
+	                if(!is_object(self::$engine)){
+
+		                self::$engine = new XmlExportEngine(XmlExportEngine::$exportOptions);
+		                self::$engine->init_available_data();
+		                self::$engine->init_additional_data();
+
+	                }
+
+                    $snippets = self::$engine->get_fields_options($snippets);
 
                     $articleData = self::prepare_data($record, $snippets, $xmlWriter, $implode_delimiter, $preview);
 
@@ -117,13 +130,14 @@ if (!class_exists('XmlExportCustomRecord')) {
                         $combineMultipleFieldsValue = trim(preg_replace('~[\r\n]+~', ' ', htmlspecialchars($combineMultipleFieldsValue)));
                     }
 
+
                     wp_all_export_write_article($article, $element_name, pmxe_filter($combineMultipleFieldsValue, $fieldSnipped));
 
                 } else {
 
 
                     $addon = GF_Export_Add_On::get_instance();
-                    $addon->add_on->handle_element($article, $element_name, $fieldValue, $record, $fieldSnipped);
+                    $addon->add_on->handle_element($article, $element_name, $fieldValue, $record, $fieldSnipped, $preview);
 
                 }
 
@@ -150,6 +164,169 @@ if (!class_exists('XmlExportCustomRecord')) {
         }
 
         public static function prepare_import_template( $exportOptions, &$templateOptions, $element_name, $ID) {
+
+            $rapid_addon = \GF_Export_Add_On::get_instance()->add_on;
+
+            $element_slug = $exportOptions['cc_label'][$ID];
+
+            $element_location = $rapid_addon->get_element_location($element_slug);
+
+            $element_data = $rapid_addon->get_data_element_by_slug($element_slug);
+
+            if($element_location === 'meta') {
+
+                if(isset($element_data['consent']) && $element_data['consent']) {
+
+                    $element_name_in_file = $element_data['element_meta_key'];
+                    $element_name_in_file = explode(".", $element_name_in_file);
+                    $element_name_in_file = $element_name_in_file[0];
+
+                    if($exportOptions['export_to'] === 'csv') {
+                        $templateOptions['pmgi']['fields'][$element_name_in_file] = '{consentconsent[1]}';
+                        $templateOptions['pmgi']['is_multiple_field_value'][$element_name_in_file] = 'no';
+                    }
+                    else {
+                        $templateOptions['pmgi']['fields'][$element_name_in_file] = '{Consent_Consent[1]}';
+                        $templateOptions['pmgi']['is_multiple_field_value'][$element_name_in_file] = 'no';
+                    }
+                } else {
+                    if ($exportOptions['export_to'] === 'csv') {
+
+                        $element_value = '{' . $element_name . '[1]}';
+
+                        if (isset($templateOptions['pmgi']['fields']) && is_array($templateOptions['pmgi']['fields']) && in_array($element_value, $templateOptions['pmgi']['fields'])) {
+                            $field_order = 2;
+
+                            while (in_array('{' . $element_name . '_' . $field_order . '[1]}', $templateOptions['pmgi']['fields'])) {
+                                $field_order++;
+                            }
+
+                            $templateOptions['pmgi']['fields'][$element_data['element_meta_key']] = '{' . $element_name . '_' . $field_order . '[1]}';
+                        } else {
+                            $templateOptions['pmgi']['fields'][$element_data['element_meta_key']] = $element_value;
+                        }
+
+                        $templateOptions['pmgi']['is_multiple_field_value'][$element_data['element_meta_key']] = 'no';
+
+                    } else {
+
+
+                        $element_name = str_replace(' ', '', $element_data['element_label']);
+
+                        $element_name = str_replace(['-', '/'], '-', $element_name);
+
+                        $i = 1;
+
+                        if(isset($templateOptions['pmgi']['fields']) && is_array($templateOptions['pmgi']['fields'])) {
+                            while (in_array('{' . $element_name . '[' . $i . ']}', $templateOptions['pmgi']['fields'])) {
+                                $i++;
+                            }
+                        }
+
+                        $templateOptions['pmgi']['fields'][$element_data['element_meta_key']] = '{' . str_replace('-', '_', $element_name) . '[' . $i . ']}';
+                        $templateOptions['pmgi']['is_multiple_field_value'][$element_data['element_meta_key']] = 'no';
+
+                    }
+                }
+
+
+            } else if ($element_location === 'related_table') {
+
+                switch ($element_slug) {
+
+                    case 'user_name':
+                        $templateOptions['pmgi']['notes'][0]['username'] =  '{' . $element_name . '[1]}';
+                        break;
+
+                    case 'value':
+                        $templateOptions['pmgi']['notes'][0]['note_text'] =  '{' . $element_name . '[1]}';
+                        break;
+
+                    case 'note_type':
+                        $templateOptions['pmgi']['notes'][0]['note_type'] =  '{' . $element_name . '[1]}';
+                        break;
+
+                    case 'sub_type':
+                        $templateOptions['pmgi']['notes'][0]['note_sub_type'] =  '{' . $element_name . '[1]}';
+                        break;
+
+                }
+
+                if(strpos($element_slug, 'date_created') === 0) {
+                    $templateOptions['pmgi']['notes'][0]['date'] =  '{' . $element_name . '[1]}';
+
+                }
+
+            } else if ($element_location === 'main_table') {
+
+                if($exportOptions['export_to'] === 'csv') {
+
+                    $other_entry_data = [
+                        'datecreated',
+                        'dateupdated',
+                        'starred',
+                        'read',
+                        'ip',
+                        'sourceurl',
+                        'useragent',
+                        'createdbyuserid',
+                        'status'
+                    ];
+                } else {
+                    $other_entry_data = [
+                        'DateCreated',
+                        'DateUpdated',
+                        'Starred',
+                        'Read',
+                        'IP',
+                        'SourceURL',
+                        'UserAgent',
+                        'CreatedByUserID',
+                        'Status'
+                    ];
+                }
+
+                if(in_array($element_name, $other_entry_data)) {
+
+                    if($element_name === 'sourceurl' || $element_name === 'SourceURL') {
+                        $wpai_element_name = 'source_url';
+                    } else if ($element_name === 'useragent' || $element_name === 'UserAgent') {
+                        $wpai_element_name = 'user_agent';
+                    } else if ($element_name === 'createdbyuserid' || $element_name === 'CreatedByUserID') {
+                        $wpai_element_name = 'created_by';
+                    }
+                    else if ($element_name === 'datecreated' || $element_name === 'DateCreated') {
+                        $wpai_element_name = 'date_created';
+                    }
+                    else if ($element_name === 'dateupdated' || $element_name === 'DateUpdated') {
+                        $wpai_element_name = 'date_updated';
+                    }
+
+                    else {
+                        $wpai_element_name = str_replace('_', '', strtolower($element_name));
+                    }
+
+                    if(in_array($element_name, ['starred', 'read', 'status']) || in_array($element_name, ['Starred', 'Read', 'Status'])) {
+                        $templateOptions['pmgi'][strtolower($wpai_element_name)] = 'xpath';
+                        $templateOptions['pmgi'][strtolower($element_name). "_xpath"] = '{' . $element_name . '[1]}';
+                    } else {
+                        $templateOptions['pmgi'][strtolower($wpai_element_name)] = '{' . $element_name . '[1]}';
+                        $templateOptions['is_update_' . $exportOptions['cc_type'][$ID]] = 1;
+                    }
+
+                }
+
+                if ($element_name === 'id'){
+
+                    if ($element_name == 'ID' && !$ID && $exportOptions['export_to'] == 'csv' && $exportOptions['export_to_sheet'] != 'csv') {
+                        $element_name = 'id';
+                    }
+
+                    $templateOptions['unique_key'] = '{' . $element_name . '[1]}';
+                    $templateOptions['tmp_unique_key'] = '{' . $element_name . '[1]}';
+                    $templateOptions['single_product_id'] = '{' . $element_name . '[1]}';
+                }
+            }
 
             return;
         }

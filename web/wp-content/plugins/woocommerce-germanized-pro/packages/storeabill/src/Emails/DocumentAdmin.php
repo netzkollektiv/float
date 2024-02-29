@@ -62,7 +62,7 @@ class DocumentAdmin extends Document {
 
 	protected function get_additional_form_fields() {
 		return array(
-			'recipient'       => array(
+			'recipient' => array(
 				'title'       => _x( 'Recipient(s)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'type'        => 'text',
 				/* translators: %s: WP admin email */

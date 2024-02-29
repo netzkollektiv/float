@@ -22,9 +22,9 @@ use \Vendidero\StoreaBill\Document\Factory;
 function sab_get_document_statuses( $document_type = '', $include_hidden = true ) {
 
 	$document_statuses = array(
-		'draft'      => _x( 'Draft', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'closed'     => _x( 'Closed', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'archived'   => _x( 'Archived', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'draft'    => _x( 'Draft', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'closed'   => _x( 'Closed', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'archived' => _x( 'Archived', 'storeabill-core', 'woocommerce-germanized-pro' ),
 	);
 
 	if ( ! empty( $document_type ) ) {
@@ -76,9 +76,9 @@ function sab_get_document_status_name( $status, $type = '' ) {
 function sab_get_document_notice_types() {
 
 	$document_notice_types = array(
-		'info'       => _x( 'Info', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'error'      => _x( 'Error', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'manual'     => _x( 'Manual', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'info'   => _x( 'Info', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'error'  => _x( 'Error', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'manual' => _x( 'Manual', 'storeabill-core', 'woocommerce-germanized-pro' ),
 	);
 
 	/**
@@ -96,8 +96,9 @@ function sab_get_document_item_type_title( $item_type ) {
 	$mappings = array(
 		'accounting_product'  => _x( 'Product', 'storeabill-core', 'woocommerce-germanized-pro' ),
 		'accounting_fee'      => _x( 'Fee', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'accounting-shipping' => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'accounting_tax'      => _x( 'Tax', 'storeabill-core', 'woocommerce-germanized-pro' )
+		'accounting_shipping' => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'accounting_tax'      => _x( 'Tax', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		'accounting_voucher'  => _x( 'Voucher', 'storeabill-core', 'woocommerce-germanized-pro' ),
 	);
 
 	$title = $item_type;
@@ -136,33 +137,35 @@ function sab_register_document_type( $type, $args = array() ) {
 	 * @param array  $args          Array of arguments for registering a document type.
 	 * @param string $document_type Document type key.
 	 */
-	$args = apply_filters( "storeabill_register_document_type_args", $args, $type );
+	$args = apply_filters( 'storeabill_register_document_type_args', $args, $type );
 
 	// Register for SAB usage.
 	$document_type_args = array(
-		'class_name'                => '\Vendidero\StoreaBill\Invoice\Simple',
-		'exclude_from_count'        => false,
-		'labels'                    => array(),
-		'group'                     => 'others',
-		'statuses'                  => sab_get_document_statuses(),
-		'statuses_hidden'           => array(),
-		'default_status'            => 'draft',
-		'preview_class_name'        => '\Vendidero\StoreaBill\Invoice\SimplePreview',
-		'admin_table_class_name'    => '\Vendidero\StoreaBill\Invoice\SimpleTable',
-		'email_class_name'          => '\Vendidero\StoreaBill\Emails\Document',
-		'admin_email_class_name'    => '\Vendidero\StoreaBill\Emails\DocumentAdmin',
-		'default_template'          => 'default',
-		'total_types'               => array(),
-		'supports'                  => array(),
-		'api_endpoint'              => '',
-		'additional_blocks'         => array(),
-		'default_line_item_types'   => array(),
-		'available_line_item_types' => array(),
-		'barcode_code_types'        => array(),
-		'shortcodes'                => array(),
-		'date_types'                => array(),
-		'exporters'                 => array(
-			'file' => '\Vendidero\StoreaBill\Document\FileExporter'
+		'class_name'                 => '\Vendidero\StoreaBill\Invoice\Simple',
+		'exclude_from_count'         => false,
+		'labels'                     => array(),
+		'group'                      => 'others',
+		'statuses'                   => sab_get_document_statuses(),
+		'statuses_hidden'            => array(),
+		'default_status'             => 'draft',
+		'preview_class_name'         => '\Vendidero\StoreaBill\Invoice\SimplePreview',
+		'admin_table_class_name'     => '\Vendidero\StoreaBill\Invoice\SimpleTable',
+		'email_class_name'           => '\Vendidero\StoreaBill\Emails\Document',
+		'admin_email_class_name'     => '\Vendidero\StoreaBill\Emails\DocumentAdmin',
+		'default_template'           => 'default',
+		'total_types'                => array(),
+		'supports'                   => array(),
+		'api_endpoint'               => '',
+		'additional_blocks'          => array(),
+		'default_line_item_types'    => array(),
+		'additional_line_item_types' => array(),
+		'main_line_item_types'       => array(),
+		'barcode_code_types'         => array(),
+		'shortcodes'                 => array(),
+		'date_types'                 => array(),
+		'document_type'              => $type,
+		'exporters'                  => array(
+			'file' => '\Vendidero\StoreaBill\Document\FileExporter',
 		),
 	);
 
@@ -176,127 +179,166 @@ function sab_register_document_type( $type, $args = array() ) {
 	$args = array_intersect_key( $args, $document_type_args );
 	$args = wp_parse_args( $args, $document_type_args );
 
-	$args['labels'] = wp_parse_args( $args['labels'], array(
-		'singular' => '',
-		'plural'   => '',
-	) );
+	$args['labels'] = wp_parse_args(
+		$args['labels'],
+		array(
+			'singular' => '',
+			'plural'   => '',
+		)
+	);
 
-	$args['shortcodes'] = wp_parse_args( $args['shortcodes'], array(
-		'document'      => array(),
-		'document_item' => array(),
-		'setting'       => array(),
-	) );
+	$args['shortcodes'] = wp_parse_args(
+		$args['shortcodes'],
+		array(
+			'document'      => array(),
+			'document_item' => array(),
+			'setting'       => array(),
+		)
+	);
 
-	$args['date_types'] = array_merge( array(
-		'date' => _x( 'Date', 'storeabill-core', 'woocommerce-germanized-pro' )
-	), $args['date_types'] );
+	$args['date_types'] = array_merge(
+		array(
+			'date' => _x( 'Date', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		),
+		$args['date_types']
+	);
 
 	/**
 	 * Default document shortcodes
 	 */
-	$args['shortcodes']['document'] = array_merge( array(
+	$args['shortcodes']['document'] = array_merge(
 		array(
-			'shortcode'        => 'document?data=formatted_number',
-			'title'            => _x( 'Formatted document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			array(
+				'shortcode' => 'document?data=formatted_number',
+				'title'     => _x( 'Formatted document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode' => 'document?data=number',
+				'title'     => _x( 'Document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode' => 'document?data=formatted_full_name',
+				'title'     => _x( 'Recipient full name', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode' => 'document?data=first_name',
+				'title'     => _x( 'Recipient first name', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode' => 'document?data=last_name',
+				'title'     => _x( 'Recipient last name', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode'        => 'document?data=current_page_no',
+				'title'            => _x( 'Current page number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'headerFooterOnly' => true,
+			),
+			array(
+				'shortcode'        => 'document?data=total_pages',
+				'title'            => _x( 'Total pages', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'headerFooterOnly' => true,
+			),
 		),
-		array(
-			'shortcode'        => 'document?data=number',
-			'title'            => _x( 'Document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		),
-		array(
-			'shortcode'        => 'document?data=formatted_full_name',
-			'title'            => _x( 'Recipient full name', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		),
-		array(
-			'shortcode'        => 'document?data=first_name',
-			'title'            => _x( 'Recipient first name', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		),
-		array(
-			'shortcode'        => 'document?data=last_name',
-			'title'            => _x( 'Recipient last name', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		),
-		array(
-			'shortcode'        => 'document?data=current_page_no',
-			'title'            => _x( 'Current page number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'headerFooterOnly' => true,
-		),
-		array(
-			'shortcode'        => 'document?data=total_pages',
-			'title'            => _x( 'Total pages', 'storeabill-core', 'woocommerce-germanized-pro' ),
-			'headerFooterOnly' => true,
-		)
-	), $args['shortcodes']['document'] );
+		$args['shortcodes']['document']
+	);
 
 	/**
 	 * Default setting shortcodes
 	 */
-	$args['shortcodes']['setting'] = array_merge( array(
+	$args['shortcodes']['setting'] = array_merge(
 		array(
-			'shortcode'        => 'setting?data=bank_account_holder',
-			'title'            => _x( 'Bank account holder', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			array(
+				'shortcode' => 'setting?data=bank_account_holder',
+				'title'     => _x( 'Bank account holder', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode' => 'setting?data=bank_account_bank_name',
+				'title'     => _x( 'Bank name', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode' => 'setting?data=bank_account_iban',
+				'title'     => _x( 'IBAN', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			array(
+				'shortcode' => 'setting?data=bank_account_bic',
+				'title'     => _x( 'BIC', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
 		),
-		array(
-			'shortcode'        => 'setting?data=bank_account_bank_name',
-			'title'            => _x( 'Bank name', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		),
-		array(
-			'shortcode'        => 'setting?data=bank_account_iban',
-			'title'            => _x( 'IBAN', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		),
-		array(
-			'shortcode'        => 'setting?data=bank_account_bic',
-			'title'            => _x( 'BIC', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		),
-	), $args['shortcodes']['setting'] );
+		$args['shortcodes']['setting']
+	);
 
 	/**
 	 * Default barcode code data
 	 */
-	$args['barcode_code_types'] = array_merge( array(
-		'document?data=formatted_number' => _x( 'Formatted document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-		'document?data=number'           => _x( 'Document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
-	), $args['barcode_code_types'] );
+	$args['barcode_code_types'] = array_merge(
+		array(
+			'document?data=formatted_number' => _x( 'Formatted document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'document?data=number'           => _x( 'Document number', 'storeabill-core', 'woocommerce-germanized-pro' ),
+		),
+		$args['barcode_code_types']
+	);
 
 	if ( 'accounting' === $args['group'] ) {
+		$args['barcode_code_types'] = array_merge(
+			array(
+				'document?data=total' => _x( 'Total', 'storeabill-barcode-data', 'woocommerce-germanized-pro' ),
+			),
+			$args['barcode_code_types']
+		);
 
-		$args['barcode_code_types'] = array_merge( array(
-			'document?data=total' => _x( 'Total', 'storeabill-barcode-data', 'woocommerce-germanized-pro' ),
-		), $args['barcode_code_types'] );
+		$args['additional_blocks'] = array_merge(
+			$args['additional_blocks'],
+			array(
+				'storeabill/reverse-charge-notice',
+				'storeabill/third-country-notice',
+				'storeabill/shipping-address',
+			)
+		);
 
-		$args['additional_blocks'] = array_merge( $args['additional_blocks'], array(
-			'storeabill/reverse-charge-notice',
-			'storeabill/third-country-notice',
-			'storeabill/shipping-address'
-		) );
-
-		if ( empty( $args['default_line_item_types'] ) ) {
-			$args['default_line_item_types'] = array( 'product' );
+		if ( empty( $args['main_line_item_types'] ) ) {
+			$args['main_line_item_types'] = array( 'product' );
 		}
 
-		if ( empty( $args['available_line_item_types'] ) ) {
-			$args['available_line_item_types'] = array( 'product', 'fee', 'shipping' );
+		if ( empty( $args['default_line_item_types'] ) ) {
+			$args['default_line_item_types'] = array( 'product', 'fee' );
+		}
+
+		if ( empty( $args['additional_line_item_types'] ) ) {
+			$args['additional_line_item_types'] = array( 'fee', 'voucher', 'shipping' );
 		}
 
 		$args['supports'] = array_values( array_merge( $args['supports'], array( 'items', 'totals', 'item_totals', 'discounts' ) ) );
 
 		$defaults = array(
-			'total' => array(
+			'total'                         => array(
 				'title' => _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'subtotal' => array(
+			'subtotal'                      => array(
 				'title' => _x( 'Total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Total (Before discounts)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'discount' => array(
-				'title' => _x( 'Discount %s', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'discount'                      => array(
+				'title' => _x( 'Discount: %s', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Discount', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'discount_net' => array(
-				'title' => _x( 'Discount %s', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'discount_net'                  => array(
+				'title' => _x( 'Discount: %s', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Discount (net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'additional_costs_discount' => array(
+			'voucher'                       => array(
+				'title' => _x( 'Voucher total', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'desc'  => _x( 'Voucher', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			'voucher_net'                   => array(
+				'title' => _x( 'Voucher total', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'desc'  => _x( 'Voucher total (net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			'vouchers'                      => array(
+				'title' => _x( 'Voucher: %s', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'desc'  => _x( 'Vouchers', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			'additional_costs_discount'     => array(
 				'title' => _x( 'Discount', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Discount (None line items)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
@@ -304,77 +346,85 @@ function sab_register_document_type( $type, $args = array() ) {
 				'title' => _x( 'Discount', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Discount (None line items, net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'shipping' => array(
+			'shipping'                      => array(
 				'title' => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'shipping_subtotal' => array(
+			'shipping_subtotal'             => array(
 				'title' => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Shipping (Before discounts)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'shipping_net' => array(
+			'shipping_net'                  => array(
 				'title' => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Shipping (net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'shipping_subtotal_net' => array(
+			'shipping_subtotal_net'         => array(
 				'title' => _x( 'Shipping', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Shipping (Before discounts, net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'fee' => array(
+			'fee'                           => array(
 				'title' => _x( 'Fee total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Fee total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'fee_subtotal' => array(
+			'fee_subtotal'                  => array(
 				'title' => _x( 'Fee total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Fee total (Before discounts)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'fee_net' => array(
+			'fee_net'                       => array(
 				'title' => _x( 'Fee total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Fee total (net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'fee_subtotal_net' => array(
+			'fee_subtotal_net'              => array(
 				'title' => _x( 'Fee total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Fee total (Before discounts, net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'fees' => array(
+			'fees'                          => array(
 				'title' => _x( 'Fee: %s', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Fees', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'line_subtotal' => array(
+			'line_subtotal'                 => array(
 				'title' => _x( 'Subtotal', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Subtotal', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'line_subtotal_net' => array(
+			'line_subtotal_net'             => array(
 				'title' => _x( 'Subtotal', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'desc'  => _x( 'Subtotal (net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'line_subtotal_after' => array(
+			'line_subtotal_after'           => array(
 				'title' => _x( 'Subtotal', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'  => _x( 'Subtotal (After discounts)', 'storeabill-core', 'woocommerce-germanized-pro' )
+				'desc'  => _x( 'Subtotal (After discounts)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'line_subtotal_after_net' => array(
+			'line_subtotal_after_net'       => array(
 				'title' => _x( 'Subtotal', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'  => _x( 'Subtotal (After discounts, net)', 'storeabill-core', 'woocommerce-germanized-pro' )
+				'desc'  => _x( 'Subtotal (After discounts, net)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'taxes' => array(
+			'taxes'                         => array(
 				'title' => _x( 'Tax %s %%', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'  => _x( 'Taxes', 'storeabill-core', 'woocommerce-germanized-pro' )
+				'desc'  => _x( 'Taxes', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'net' => array(
+			'shipping_taxes'                => array(
+				'title' => _x( 'Shipping Tax %s %%', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'desc'  => _x( 'Shipping Taxes', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			'fee_taxes'                     => array(
+				'title' => _x( 'Fee Tax %s %%', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'desc'  => _x( 'Fee Taxes', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			),
+			'net'                           => array(
 				'title' => _x( 'Net', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'  => _x( 'Net total', 'storeabill-core', 'woocommerce-germanized-pro' )
+				'desc'  => _x( 'Net total', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'nets' => array(
+			'nets'                          => array(
 				'title' => _x( 'Net %s %%', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'  => _x( 'Net totals per tax rate', 'storeabill-core', 'woocommerce-germanized-pro' )
+				'desc'  => _x( 'Net totals per tax rate', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'subtotal_net' => array(
-				'title'       => _x( 'Net', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'        => _x( 'Net total (Before discounts)', 'storeabill-core', 'woocommerce-germanized-pro' ),
+			'subtotal_net'                  => array(
+				'title' => _x( 'Net', 'storeabill-core', 'woocommerce-germanized-pro' ),
+				'desc'  => _x( 'Net total (Before discounts)', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
-			'gross_tax_shares' => array(
+			'gross_tax_shares'              => array(
 				'title' => _x( 'Gross %s %%', 'storeabill-core', 'woocommerce-germanized-pro' ),
-				'desc'  => _x( 'Gross total per tax rate', 'storeabill-core', 'woocommerce-germanized-pro' )
+				'desc'  => _x( 'Gross total per tax rate', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			),
 		);
 
@@ -382,6 +432,17 @@ function sab_register_document_type( $type, $args = array() ) {
 			$args['total_types'] = $defaults;
 		}
 	}
+
+	if ( empty( $args['default_line_item_types'] ) ) {
+		$args['default_line_item_types'] = $args['main_line_item_types'];
+	}
+
+	if ( empty( $args['main_line_item_types'] ) ) {
+		$args['main_line_item_types'] = $args['default_line_item_types'];
+	}
+
+	$args['additional_line_item_types'] = array_diff( $args['additional_line_item_types'], $args['main_line_item_types'] );
+	$args['line_item_types']            = array_unique( array_merge( $args['main_line_item_types'], $args['additional_line_item_types'] ) );
 
 	$sab_document_types[ $type ] = (object) apply_filters( 'storeabill_register_document_type_parsed_args', $args, $type );
 
@@ -411,7 +472,7 @@ function sab_get_document_type( $type ) {
 
 function sab_document_type_supports( $type, $supports ) {
 	if ( $document_type = sab_get_document_type( $type ) ) {
-		return in_array( $supports, $document_type->supports );
+		return in_array( $supports, $document_type->supports, true );
 	}
 
 	return false;
@@ -485,7 +546,7 @@ function sab_remove_document_item_type_prefix( $maybe_prefixed_type, $document_t
 		if ( substr( $maybe_prefixed_type, 0, ( strlen( $group ) + 1 ) ) === $group . '_' ) {
 			$maybe_prefixed_type = substr( $maybe_prefixed_type, strlen( $group ) + 1 );
 		}
- 	}
+	}
 
 	return $maybe_prefixed_type;
 }
@@ -603,7 +664,7 @@ function sab_duplicate_document_template( $template_id ) {
 function sab_get_document_template_status_name( $status ) {
 	$label = _x( 'Draft', 'storeabill-core', 'woocommerce-germanized-pro' );
 
-	if( 'publish' === $status ) {
+	if ( 'publish' === $status ) {
 		$label = _x( 'Published', 'storeabill-core', 'woocommerce-germanized-pro' );
 	}
 
@@ -617,31 +678,34 @@ function sab_get_document_templates( $document_types = array(), $include_drafts 
 
 	$document_types = array_filter( $document_types );
 
-	$query_args = wp_parse_args( $args, array(
-		'post_type'      => 'document_template',
-		'post_status'    => $include_drafts ? array( 'publish', 'draft', 'auto-draft' ) : array( 'publish' ),
-		'posts_per_page' => -1,
-		'post_parent'    => 0,
-		'meta_query'     => array(
-			array(
-				'key'     => '_template_name',
-				'compare' => 'EXISTS'
+	$query_args = wp_parse_args(
+		$args,
+		array(
+			'post_type'      => 'document_template',
+			'post_status'    => $include_drafts ? array( 'publish', 'draft', 'auto-draft' ) : array( 'publish' ),
+			'posts_per_page' => -1,
+			'post_parent'    => 0,
+			'meta_query'     => array(
+				array(
+					'key'     => '_template_name',
+					'compare' => 'EXISTS',
+				),
 			),
-		),
-	) );
+		)
+	);
 
 	if ( ! empty( $document_types ) ) {
 		$query_args['meta_query'][] = array(
 			'key'     => '_document_type',
 			'value'   => $document_types,
-			'compare' => 'IN'
+			'compare' => 'IN',
 		);
 	}
 
 	$query     = new WP_Query( $query_args );
 	$templates = array();
 
-	foreach( $query->posts as $post ) {
+	foreach ( $query->posts as $post ) {
 		$templates[] = sab_get_document_template( $post->ID );
 	}
 
@@ -656,6 +720,7 @@ function sab_create_document_template( $document_type, $editor_template = 'defau
 	if ( $editor_tpl = \Vendidero\StoreaBill\Editor\Helper::get_editor_template( $document_type, $editor_template ) ) {
 		$template->set_props( $editor_tpl::get_template_data() );
 		$template->set_template_name( $editor_tpl::get_name() );
+		$template->set_line_item_types( (array) sab_get_document_type( $document_type )->default_line_item_types );
 
 		if ( $set_html ) {
 			$template->set_content( $editor_tpl::get_html() );
@@ -711,7 +776,7 @@ function sab_get_document_preview( $document_type, $is_editor_preview = false ) 
 	$classname = '';
 	$instance  = false;
 	$args      = array(
-		'is_editor_preview' => $is_editor_preview
+		'is_editor_preview' => $is_editor_preview,
 	);
 
 	if ( $type = sab_get_document_type( $document_type ) ) {
@@ -744,30 +809,30 @@ function sab_get_document_default_color() {
 
 function sab_get_document_font_sizes() {
 	return array(
-		'tiny' => array(
+		'tiny'   => array(
 			'name' => _x( 'Tiny', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			'size' => 10,
-			'slug' => 'tiny'
+			'slug' => 'tiny',
 		),
-		'small' => array(
+		'small'  => array(
 			'name' => _x( 'Small', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			'size' => 11,
-			'slug' => 'small'
+			'slug' => 'small',
 		),
 		'normal' => array(
 			'name' => _x( 'Normal', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			'size' => sab_get_document_default_font_size(),
-			'slug' => 'normal'
+			'slug' => 'normal',
 		),
 		'medium' => array(
 			'name' => _x( 'Medium', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			'size' => 14,
-			'slug' => 'medium'
+			'slug' => 'medium',
 		),
-		'large' => array(
+		'large'  => array(
 			'name' => _x( 'Large', 'storeabill-core', 'woocommerce-germanized-pro' ),
 			'size' => 18,
-			'slug' => 'large'
+			'slug' => 'large',
 		),
 	);
 }
@@ -777,11 +842,11 @@ function sab_get_document_font_size( $slug ) {
 
 	if ( is_numeric( $slug ) ) {
 		return $slug;
-	} elseif ( preg_match('~[0-9]+~', $slug ) ) {
+	} elseif ( preg_match( '~[0-9]+~', $slug ) ) {
 		/**
 		 * Support font size strings that contain units (e.g. px, mm, cm)
 		 */
-		$number = absint( preg_replace('/[^0-9]/', '', $slug ) );
+		$number = absint( preg_replace( '/[^0-9]/', '', $slug ) );
 
 		if ( empty( $number ) ) {
 			return $font_sizes['normal']['size'];
@@ -810,7 +875,7 @@ function sab_get_document_type_label( $type, $label_type = 'singular' ) {
 		$label = array_key_exists( $label_type, $document_type->labels ) ? $document_type->labels[ $label_type ] : $document_type->labels['plural'];
 	}
 
-	return apply_filters( "storeabill_document_type_label", $label, $type, $label_type );
+	return apply_filters( 'storeabill_document_type_label', $label, $type, $label_type );
 }
 
 /**
@@ -842,7 +907,7 @@ function sab_upload_document( $filename, $stream, $relative = true, $force_overr
 			$GLOBALS['storeabill_forced_filename'] = $filename;
 		}
 
-		$tmp = wp_upload_bits( $filename,null, $stream );
+		$tmp = wp_upload_bits( $filename, null, $stream );
 
 		if ( $force_override ) {
 			remove_filter( 'wp_unique_filename', '_sab_keep_force_filename', 250 );
@@ -860,6 +925,10 @@ function sab_upload_document( $filename, $stream, $relative = true, $force_overr
 
 			return $path;
 		} else {
+			if ( isset( $tmp['error'] ) && ! empty( $tmp['error'] ) ) {
+				\Vendidero\StoreaBill\Package::extended_log( $tmp['error'] );
+			}
+
 			throw new Exception( _x( 'Error while uploading document.', 'storabill-core', 'storeabill' ) );
 		}
 	} catch ( Exception $e ) {
@@ -870,7 +939,7 @@ function sab_upload_document( $filename, $stream, $relative = true, $force_overr
 function sab_get_documents_counts( $type ) {
 	$counts = array();
 
-	foreach( array_keys( sab_get_document_statuses( $type ) ) as $status ) {
+	foreach ( array_keys( sab_get_document_statuses( $type ) ) as $status ) {
 		$counts[ $status ] = sab_get_document_count( $type, $status );
 	}
 
@@ -901,7 +970,8 @@ function sab_get_document_count( $type, $status ) {
 		}
 
 		wp_cache_set( $cache_key, $count, 'counts' );
-	} catch( Exception $e ) {}
+	} catch ( Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+	}
 
 	return $count;
 }

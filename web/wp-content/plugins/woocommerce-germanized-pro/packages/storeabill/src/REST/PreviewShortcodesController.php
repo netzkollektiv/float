@@ -48,15 +48,15 @@ class PreviewShortcodesController extends Controller {
 					'callback'            => array( $this, 'get_shortcode' ),
 					'permission_callback' => array( $this, 'get_items_permissions_check' ),
 					'args'                => array(
-						'query' => array(
-							"type"              => "string",
-							"default"           => "",
-							"validate_callback" => "rest_validate_request_arg",
+						'query'         => array(
+							'type'              => 'string',
+							'default'           => '',
+							'validate_callback' => 'rest_validate_request_arg',
 						),
 						'document_type' => array(
-							"type"              => "string",
-							"default"           => 'invoice',
-							"validate_callback" => "rest_validate_request_arg",
+							'type'              => 'string',
+							'default'           => 'invoice',
+							'validate_callback' => 'rest_validate_request_arg',
 						),
 					),
 				),
@@ -93,7 +93,7 @@ class PreviewShortcodesController extends Controller {
 
 			// Setup total e.g. first tax rate for total taxes.
 			if ( ! isset( $GLOBALS['document_total'] ) && is_callable( array( $document, 'get_totals' ) ) ) {
-				$url = parse_url( $query );
+				$url = wp_parse_url( $query );
 
 				parse_str( ( isset( $url['query'] ) ? $url['query'] : '' ), $query_result );
 
@@ -110,9 +110,9 @@ class PreviewShortcodesController extends Controller {
 			if ( ! empty( $shortcode_str ) ) {
 				$result['shortcode'] = $shortcode_str;
 
-				$query               = add_query_arg( array( 'is_editor_preview' => 'yes' ), $query );
-				$execute_shortcode   = sab_query_to_shortcode( $query );
-				$result['content']   = apply_filters( "storeabill_{$document_type}_editor_preview_shortcode_result", do_shortcode( $execute_shortcode ), $shortcode_str, $query );
+				$query             = add_query_arg( array( 'is_editor_preview' => 'yes' ), $query );
+				$execute_shortcode = sab_query_to_shortcode( $query );
+				$result['content'] = apply_filters( "storeabill_{$document_type}_editor_preview_shortcode_result", do_shortcode( $execute_shortcode ), $shortcode_str, $query );
 			}
 		}
 

@@ -22,6 +22,6 @@ class ProductItem extends DocumentItem {
 	protected $internal_meta_keys = array(
 		'_sku',
 		'_price',
-		'_total'
+		'_total',
 	);
 }

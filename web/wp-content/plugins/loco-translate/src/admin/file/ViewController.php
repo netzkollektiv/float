@@ -22,9 +22,9 @@ class Loco_admin_file_ViewController extends Loco_admin_file_BaseController {
      * {@inheritdoc}
      */
     public function getHelpTabs(){
-        return array (
-            __('Overview','default') => $this->viewSnippet('tab-file-view'),
-        );
+        return  [
+            __('Overview') => $this->viewSnippet('tab-file-view'),
+        ];
     }
 
 
@@ -36,21 +36,22 @@ class Loco_admin_file_ViewController extends Loco_admin_file_BaseController {
         // file must exist for editing
         /* @var Loco_fs_File $file */
         $file = $this->get('file');
-        $name = $file->basename();
+        $this->setFileTitle($file);
         $type = strtolower( $file->extension() );
-        $this->set('title', $name );
 
         if( $fail = $this->getFileError($file) ){
             return $fail; 
         }
 
         // Establish if file belongs to a configured project
+        $bundle = null;
+        $project = null;
         try {
             $bundle = $this->getBundle();
             $project = $this->getProject();
         }
         catch( Exception $e ){
-            $project = null;
+            Loco_error_AdminNotices::debug( $e->getMessage() );
         }    
             
         // Parse data before rendering, so we know it's a valid Gettext format
@@ -73,21 +74,20 @@ class Loco_admin_file_ViewController extends Loco_admin_file_BaseController {
         
         // else is a PO or POT file 
         $this->enqueueScript('poview');//->enqueueScript('min/highlight');
-        $lines = preg_split('/(?:\\n|\\r\\n?)/', Loco_gettext_Data::ensureUtf8( $file->getContents() ) );
+        $lines = preg_split('/\\n|\\r\\n?/', Loco_gettext_Data::ensureUtf8( $file->getContents() ) );
         $this->set( 'lines', $lines );
         
         // ajax parameters required for pulling reference sources
-        $this->set('js', new Loco_mvc_ViewParams( array (
+        $this->set('js', new Loco_mvc_ViewParams(  [
             'popath' => $this->get('path'),
-            'nonces' => array(
+            'nonces' => [
                 'fsReference' => wp_create_nonce('fsReference'),
-            ),
-            'project' => $bundle ? array (
+            ],
+            'project' => $bundle ?  [
                 'bundle' => $bundle->getId(),
                 'domain' => $project ? $project->getId() : '',
-            ) : null,
-        ) ) ); 
-
+            ] : null,
+        ] ) );
         
         // treat as PO if file name has locale
         if( $this->getLocale() ){

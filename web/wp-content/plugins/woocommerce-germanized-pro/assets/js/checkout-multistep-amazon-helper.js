@@ -46,7 +46,9 @@ window.germanized = window.germanized || {};
 		onStepChanged: function() {
 			var self = germanized.multistep_checkout_amazon_compatibility;
 
-			$( '.woocommerce-gzdp-checkout-verify-data .addresses address' ).text( self.params.managed_by );
+			if ( self.isAmazonPayment() ) {
+				$( '.woocommerce-gzdp-checkout-verify-data .addresses address' ).text( self.params.managed_by );
+			}
 		},
 	};
 

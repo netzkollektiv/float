@@ -79,7 +79,7 @@ class Journal extends Data {
 	 * @return string
 	 */
 	protected function get_general_hook_prefix() {
-		return "storeabill_journal_";
+		return 'storeabill_journal_';
 	}
 
 	public function get_name( $context = 'view' ) {
@@ -144,18 +144,18 @@ class Journal extends Data {
 		/**
 		 * Compare local times and watch for changes.
 		 */
-		switch( $reset_interval ) {
-			case "yearly":
-				$needs_reset = ( $when->date_i18n( 'Y' ) != $reset_date->date_i18n( 'Y' ) );
+		switch ( $reset_interval ) {
+			case 'yearly':
+				$needs_reset = ( $reset_date->date_i18n( 'Y' ) !== $when->date_i18n( 'Y' ) );
 				break;
-			case "monthly":
-				$needs_reset = ( $when->date_i18n( 'm' ) != $reset_date->date_i18n( 'm' ) );
+			case 'monthly':
+				$needs_reset = ( $reset_date->date_i18n( 'm' ) !== $when->date_i18n( 'm' ) );
 				break;
-			case "weekly":
-				$needs_reset = ( $when->date_i18n( 'W' ) != $reset_date->date_i18n( 'W' ) );
+			case 'weekly':
+				$needs_reset = ( $reset_date->date_i18n( 'W' ) !== $when->date_i18n( 'W' ) );
 				break;
-			case "daily":
-				$needs_reset = ( $when->date_i18n( 'd' ) != $reset_date->date_i18n( 'd' ) );
+			case 'daily':
+				$needs_reset = ( $reset_date->date_i18n( 'd' ) !== $when->date_i18n( 'd' ) );
 				break;
 			default:
 				$needs_reset = false;

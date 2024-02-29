@@ -45,9 +45,12 @@ class MpdfRenderer implements PDF {
 	 * @throws DocumentRenderException
 	 */
 	public function __construct( $args ) {
-		$args = wp_parse_args( $args, array(
-			'template' => false,
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'template' => false,
+			)
+		);
 
 		$this->set_template( $args['template'] );
 
@@ -63,19 +66,22 @@ class MpdfRenderer implements PDF {
 
 	protected function setup_mpdf( $default_args = array() ) {
 		$font_data = $this->get_font_data();
-		$args      = wp_parse_args( $default_args, array(
-			'setAutoTopMargin'    => 'stretch',
-			'setAutoBottomMargin' => 'stretch',
-			'tempDir'             => $this->get_tmp_directory(),
-			'mode'                => 'utf-8',
-			'fontDir'             => $font_data['dir'],
-			'fontdata'            => $font_data['data'],
-			'fonttrans'           => $font_data['translations'],
-			'default_font'        => $this->get_template()->get_default_font()['name'],
-			'debug'               => defined( 'SAB_PDF_DEBUG_MODE' ) ? SAB_PDF_DEBUG_MODE : false,
-			'autoArabic'          => true,
-			'autoLangToFont'      => true,
-		) );
+		$args      = wp_parse_args(
+			$default_args,
+			array(
+				'setAutoTopMargin'    => 'stretch',
+				'setAutoBottomMargin' => 'stretch',
+				'tempDir'             => $this->get_tmp_directory(),
+				'mode'                => 'utf-8',
+				'fontDir'             => $font_data['dir'],
+				'fontdata'            => $font_data['data'],
+				'fonttrans'           => $font_data['translations'],
+				'default_font'        => $this->get_template()->get_default_font()['name'],
+				'debug'               => defined( 'SAB_PDF_DEBUG_MODE' ) ? SAB_PDF_DEBUG_MODE : false,
+				'autoArabic'          => true,
+				'autoLangToFont'      => true,
+			)
+		);
 
 		$pdf = new Mpdf( apply_filters( 'storeabill_mpdf_setup_args', $args, $default_args, $this ) );
 
@@ -101,7 +107,7 @@ class MpdfRenderer implements PDF {
 			'regular'     => 'R',
 			'bold'        => 'B',
 			'italic'      => 'I',
-			'bold_italic' => 'BI'
+			'bold_italic' => 'BI',
 		);
 
 		return array_key_exists( $variant, $mappings ) ? $mappings[ $variant ] : 'R';
@@ -115,9 +121,12 @@ class MpdfRenderer implements PDF {
 		$font_translations = $defaultFontConfig['fonttrans'];
 
 		$result = array(
-			'dir'          => array_merge( $font_dirs, array(
-				UploadManager::get_font_path(),
-			) ),
+			'dir'          => array_merge(
+				$font_dirs,
+				array(
+					UploadManager::get_font_path(),
+				)
+			),
 			'data'         => array(),
 			'translations' => $font_translations,
 		);
@@ -126,7 +135,7 @@ class MpdfRenderer implements PDF {
 		 * Include standard fonts as fallback
 		 */
 		if ( $default_font = Fonts::get_default_font() ) {
-			foreach( $default_font->get_files( 'pdf' ) as $variant => $file_name ) {
+			foreach ( $default_font->get_files( 'pdf' ) as $variant => $file_name ) {
 				$path = $default_font->get_local_file( $variant, 'pdf' );
 
 				if ( file_exists( $path ) ) {
@@ -153,9 +162,8 @@ class MpdfRenderer implements PDF {
 				$embed = new Embed( $fonts, $template->get_font_display_types(), 'pdf' );
 				$files = array();
 
-				foreach( $embed->get_fonts() as $font_name => $embed_font_data ) {
-
-					$files[ $font_name ] = array(
+				foreach ( $embed->get_fonts() as $font_name => $embed_font_data ) {
+					$files[ Fonts::clean_font_name( $font_name ) ] = array(
 						'R'  => basename( $embed_font_data['files']['regular'] ),
 						'I'  => basename( $embed_font_data['files']['italic'] ),
 						'B'  => basename( $embed_font_data['files']['bold'] ),
@@ -163,7 +171,7 @@ class MpdfRenderer implements PDF {
 					);
 
 					$result['translations'] += array(
-						Fonts::clean_font_family( $embed_font_data['family'] ) => $embed_font_data['name'],
+						Fonts::clean_font_family( $embed_font_data['family'] ) => Fonts::clean_font_name( $embed_font_data['name'] ),
 					);
 				}
 
@@ -230,9 +238,9 @@ class MpdfRenderer implements PDF {
 		}
 
 		if ( $templates['first_page'] && ! $templates['default'] ) {
-			$this->pdf->SetDocTemplate( $templates['first_page'],false );
-		} elseif( $templates['default'] ) {
-			$this->pdf->SetDocTemplate( $templates['default'],true );
+			$this->pdf->SetDocTemplate( $templates['first_page'], false );
+		} elseif ( $templates['default'] ) {
+			$this->pdf->SetDocTemplate( $templates['default'], true );
 		}
 	}
 
@@ -252,7 +260,7 @@ class MpdfRenderer implements PDF {
 		$html_tags = array(
 			'<!--nextpage-->'        => '<pagebreak>',
 			'<!--current_page_no-->' => '{PAGENO}',
-			'<!--total_pages_no-->'  => '{nb}'
+			'<!--total_pages_no-->'  => '{nb}',
 		);
 
 		$content = str_replace( array_keys( $html_tags ), array_values( $html_tags ), $content );
@@ -362,7 +370,7 @@ class MpdfRenderer implements PDF {
 		 * Remove empty paragraph tags before rendering to prevent spacings within empty
 		 * if_document shortcodes.
 		 */
-		$html = preg_replace( "/<p[^>]*>(?:\s|&nbsp;)*<\/p>/", '', $html );
+		$html = preg_replace( '/<p[^>]*>(?:\s|&nbsp;)*<\/p>/', '', $html );
 
 		return $html;
 	}
@@ -380,7 +388,7 @@ class MpdfRenderer implements PDF {
 			sab_clean_buffers();
 
 			$this->pdf->Output( $filename, Destination::INLINE );
-		} catch( \Exception $e ) {
+		} catch ( \Exception $e ) {
 			$this->handle_error( $e, array( $this, 'output' ), array( $filename ) );
 		}
 	}
@@ -435,11 +443,13 @@ class MpdfRenderer implements PDF {
 		 * @see https://mpdf.github.io/reference/mpdf-functions/setprotection.html
 		 */
 		if ( apply_filters( 'storeabill_encrypt_pdf_files', false, $this ) ) {
-			$this->pdf->setProtection( array(
-				'copy',
-				'print',
-				'print-highres'
-			) );
+			$this->pdf->setProtection(
+				array(
+					'copy',
+					'print',
+					'print-highres',
+				)
+			);
 		}
 
 		do_action( 'storeabill_mpdf_render_pdf', $this, $this->pdf );
@@ -463,7 +473,7 @@ class MpdfRenderer implements PDF {
 
 			$this->setup( array(), false );
 			call_user_func_array( $callback, $args );
-		} elseif( is_a( $e, 'Mpdf\Exception\FontException' ) ) {
+		} elseif ( is_a( $e, 'Mpdf\Exception\FontException' ) ) {
 			$this->remove_custom_font();
 
 			Package::log( sprintf( 'The font is not supported for template %s.', $this->get_template()->get_id() ) );
@@ -484,7 +494,7 @@ class MpdfRenderer implements PDF {
 			$this->render();
 
 			return $this->pdf->Output( 'doc.pdf', Destination::STRING_RETURN );
-		} catch( \Exception $e ) {
+		} catch ( \Exception $e ) {
 			$this->handle_error( $e, array( $this, 'stream' ) );
 
 			return false;

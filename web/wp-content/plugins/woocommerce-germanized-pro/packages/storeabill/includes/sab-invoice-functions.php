@@ -100,7 +100,7 @@ function sab_get_invoice_payment_status_name( $status ) {
 function sab_get_invoice_payment_statuses_counts( $type = 'simple' ) {
 	$counts = array();
 
-	foreach( array_keys( sab_get_invoice_payment_statuses() ) as $status ) {
+	foreach ( array_keys( sab_get_invoice_payment_statuses() ) as $status ) {
 		$counts[ $status ] = sab_get_invoice_payment_status_count( $type, $status );
 	}
 
@@ -130,7 +130,8 @@ function sab_get_invoice_payment_status_count( $type, $status ) {
 		}
 
 		wp_cache_set( $cache_key, $count, 'counts' );
-	} catch( Exception $e ) {}
+	} catch ( Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+	}
 
 	return $count;
 }
@@ -161,15 +162,18 @@ function sab_invoice_has_line_total_after_discounts( $invoice ) {
 	if ( $template = $invoice->get_template() ) {
 
 		if ( $total_block = $template->get_block( 'storeabill/item-totals' ) ) {
-			foreach( $total_block['innerBlocks'] as $total_row ) {
-				$attributes = wp_parse_args( $total_row['attrs'], array(
-					'totalType'   => '',
-					'hideIfEmpty' => false,
-					'heading'     => '',
-					'content'     => '{total}',
-				) );
+			foreach ( $total_block['innerBlocks'] as $total_row ) {
+				$attributes = wp_parse_args(
+					$total_row['attrs'],
+					array(
+						'totalType'   => '',
+						'hideIfEmpty' => false,
+						'heading'     => '',
+						'content'     => '{total}',
+					)
+				);
 
-				if ( in_array( $attributes['totalType'], array( 'line_subtotal_after', 'line_subtotal_after_net' ) ) ) {
+				if ( in_array( $attributes['totalType'], array( 'line_subtotal_after', 'line_subtotal_after_net' ), true ) ) {
 					return true;
 				}
 			}
@@ -180,8 +184,46 @@ function sab_invoice_has_line_total_after_discounts( $invoice ) {
 }
 
 function sab_get_invoice_discount_types() {
-	return array(
-		'single_purpose' => _x( 'Single-purpose', 'storeabill-discount-type', 'woocommerce-germanized-pro' ),
-		'multi_purpose'  => _x( 'Multipurpose', 'storeabill-discount-type', 'woocommerce-germanized-pro' )
+	return apply_filters(
+		'storeabill_invoice_discount_types',
+		array(
+			'single_purpose' => _x( 'Single-purpose', 'storeabill-discount-type', 'woocommerce-germanized-pro' ),
+			'multi_purpose'  => _x( 'Multipurpose', 'storeabill-discount-type', 'woocommerce-germanized-pro' ),
+			'promotion'      => '',
+		)
 	);
+}
+
+/**
+ * Make sure to automatically transform total types from the invoice template
+ * to the right total type for very special cases, e.g. vouchers.
+ *
+ * @param string $total_type
+ * @param Invoice $invoice
+ */
+function sab_map_invoice_total_type( $total_type, $invoice ) {
+	/**
+	 * Check whether to use subtotals (before discounts) or totals (after discounts) for fees, shipping.
+	 */
+	if ( in_array( $total_type, array( 'fee', 'shipping', 'fee_net', 'shipping_net' ), true ) ) {
+		$template  = $invoice->get_template();
+		$item_type = str_replace( '_net', '', $total_type );
+
+		/**
+		 * Use subtotals in case the item type is not shown as line item type
+		 * e.g. discounts cannot be removed for shipping and fees before showing totals.
+		 */
+		if ( ! in_array( $item_type, $template->get_line_item_types(), true ) ) {
+			$total_type = $item_type . '_subtotal' . ( strpos( $total_type, '_net' ) !== false ? '_net' : '' );
+		}
+	} elseif ( in_array( $total_type, array( 'discount' ), true ) ) {
+		/**
+		 * Replace default discount with the additional costs discount (e.g. for shipping and fees).
+		 */
+		if ( sab_invoice_has_line_total_after_discounts( $invoice ) ) {
+			$total_type = 'additional_costs_discount';
+		}
+	}
+
+	return $total_type;
 }

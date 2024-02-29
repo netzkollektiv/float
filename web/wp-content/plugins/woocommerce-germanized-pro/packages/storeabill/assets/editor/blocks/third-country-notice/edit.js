@@ -33,6 +33,10 @@ function ThirdCountryNoticeEdit( {
         [ fontSize.class ]: fontSize.class,
     } );
 
+    const visibilityClasses = classnames( 'notice notice-warning sab-visibility-notice', className, {
+        [ `has-text-align-${ align }` ]: align
+    } );
+
     const ref = useRef();
 
     const {
@@ -64,7 +68,7 @@ function ThirdCountryNoticeEdit( {
                 </PanelBody>
             </InspectorControls>
             { InspectorControlsColorPanel }
-            <span className="notice notice-warning sab-visibility-notice">{ _x( 'Conditional visibility', 'storeabill-core', 'storeabill' ) }</span>
+            <span className={ visibilityClasses }>{ _x( 'Conditional visibility', 'storeabill-core', 'storeabill' ) }</span>
             <TextColor>
                 <RichText
                     tagName="p"

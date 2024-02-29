@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 interface TotalsContainable {
 
 	/**
-	 * @return \Vendidero\StoreaBill\Total[]
+	 * @return \Vendidero\StoreaBill\Document\Total[]
 	 */
 	public function get_totals();
 }

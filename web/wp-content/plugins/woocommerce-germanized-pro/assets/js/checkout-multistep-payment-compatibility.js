@@ -16,16 +16,55 @@ window.germanized = window.germanized || {};
             $( document.body )
                 .on( 'wc_gzdp_step_changed', this.onStepChanged )
                 .on( 'updated_checkout', this.onUpdateCheckout );
+
+            $( 'form.checkout' ).on( 'checkout_place_order', this.onCheckoutPlaceOrderEvent );
         },
 
-        isActivated : function() {
+        onCheckoutPlaceOrderEvent: function() {
+            var self          = germanized.multistep_checkout_payment_compatibility,
+                $currentStep  = $( '.step-wrapper-active' ),
+                currentStepId = $currentStep.data( 'id' );
+
+            /**
+             * On submitting the payment step: Listen to the checkout_error event to
+             * check whether the current payment gateway produces error messages (e.g. through JS CC form validation).
+             * In case an empty error message is returned (e.g. as a response to our custom AJAX failure event on step trigger)
+             * pass on to the third step by manually forcing to change the step and remove the error message.
+             */
+            if ( 'payment' === currentStepId && self.needsPaymentStepBlock() ) {
+                $( document.body ).on( 'checkout_error', function() {
+                    var $currentStep  = $( '.step-wrapper-active' ),
+                        currentStepId = $currentStep.data( 'id' );
+
+                    if ( 'payment' === currentStepId && ! germanized.multistep_checkout.checkoutHasErrors() && self.needsPaymentStepBlock() ) {
+                        $( '.woocommerce-NoticeGroup-checkout, .woocommerce-error, .woocommerce-message' ).remove();
+                        $( '.step-order' ).trigger( 'change', $( '.step-order' ) );
+                    }
+                } );
+            }
+        },
+
+        needsPaymentStepBlock: function() {
             var self    = germanized.multistep_checkout_payment_compatibility,
-                $form   = $( 'form.woocommerce-checkout' ),
-                $method = $form.find( 'input[name=payment_method]:checked' ),
-                method  = $method.length > 0 ? $method.val() : false,
+                method  = self.getCurrentPaymentMethod();
+
+            return ( false !== method && $.inArray( method, self.params.extended_gateways ) !== -1 );
+        },
+
+        getCurrentPaymentMethod: function() {
+            var self    = germanized.multistep_checkout_payment_compatibility,
+                $form   = $( 'form.checkout' ),
+                $method = $form.find( 'input[name=payment_method]:checked' );
+
+            return $method.length > 0 ? $method.val() : false;
+        },
+
+        isActivated: function() {
+            var self    = germanized.multistep_checkout_payment_compatibility,
+                method  = self.getCurrentPaymentMethod(),
                 force   = Boolean( Number( self.params.force_enable ) );
 
-            if ( $method.length > 0 && ( $.inArray( method, self.params.gateways ) !== -1 || 'placeholder' === method || true === force ) ) {
+            if ( false !== method && ( $.inArray( method, self.params.gateways ) !== -1 || 'placeholder' === method || true === force ) ) {
                 return true;
             }
 
@@ -35,7 +74,7 @@ window.germanized = window.germanized || {};
         maybeAddPlaceholderCheckbox: function( stepId ) {
             var self     = germanized.multistep_checkout_payment_compatibility,
                 $wrapper = $( '.step-wrapper-active' ),
-                $form    = $( 'form.woocommerce-checkout' );
+                $form   = $( 'form.checkout' );
 
             if ( $form.find( '.wc-gzdp-cc-terms-placeholder' ).length > 0 ) {
                 $form.find( '.wc-gzdp-cc-terms-placeholder' ).remove();
@@ -45,14 +84,33 @@ window.germanized = window.germanized || {};
              * Temporarily append a terms placeholder checkbox to
              * improve compatibility with payment plugins explicitly checking for terms
              */
-            if ( 'payment' === stepId && self.isActivated() ) {
-                $form.prepend( '<input class="wc-gzdp-cc-terms-placeholder" type="checkbox" name="terms" value="1" style="display: none" checked />' );
+            if ( self.isActivated() ) {
+                if ( 'payment' === stepId ) {
+                    $form.prepend( '<input class="wc-gzdp-cc-terms-placeholder" type="checkbox" name="terms" value="1" style="display: none" checked />' );
+                } else if ( stepId === 'order' ) {
+                    $form.find( '.wc-gzdp-cc-terms-placeholder' ).remove();
+                }
             }
         },
 
         onUpdateCheckout: function() {
             var self = germanized.multistep_checkout_payment_compatibility,
-                $wrapper = $( '.step-wrapper-active' );
+                $wrapper = $( '.step-wrapper-active' ),
+                currentStepId = $wrapper.data( 'id' ),
+                $form         = $( 'form.checkout' );
+
+            self.maybeInitPaymentPlaceholders( currentStepId );
+
+            /**
+             * After the checkout has been updated, Woo resets payment methods in wc_checkout_form.init_payment_methods()
+             * Need to trigger the click event on our placeholder to make sure the placeholder method is selected.
+             */
+            if ( self.isActivated() ) {
+                if ( currentStepId === 'address' ) {
+                    $form.find( '.wc-gzdp-payment-method-placeholder' ).prop( 'checked', true );
+                    $form.find( '.wc-gzdp-payment-method-placeholder' ).trigger( 'click' );
+                }
+            }
 
             self.maybeAddPlaceholderCheckbox( $wrapper.data( 'id' ) );
         },
@@ -64,35 +122,35 @@ window.germanized = window.germanized || {};
         onStepChanged: function() {
             var self = germanized.multistep_checkout_payment_compatibility,
                 $currentStep = $( '.step-wrapper-active' ),
-                $form = $( 'form.woocommerce-checkout' ),
                 currentStepId = $currentStep.data( 'id' );
 
+            self.maybeInitPaymentPlaceholders( currentStepId );
             self.maybeAddPlaceholderCheckbox( currentStepId );
-
-            if ( self.isActivated() && currentStepId === 'payment' ) {
-                var current = $form.find( ".wc-gzdp-payment-method-placeholder" ).data( 'current' );
-
-                if ( current && $form.find( 'input#' + current ).length > 0 ) {
-                    $form.find( 'input#' + current ).trigger( 'change' );
-                }
-
-                $form.find( ".wc-gzdp-payment-method-placeholder" ).remove();
-            } else if ( currentStepId === 'order' ) {
-                $form.find( '.wc-gzdp-cc-terms-placeholder' ).remove();
-            }
         },
 
         maybeInitPaymentPlaceholders: function( stepId ) {
-            var self = germanized.multistep_checkout_payment_compatibility;
+            var self     = germanized.multistep_checkout_payment_compatibility,
+                $current = $( 'input[name=payment_method]:not(.wc-gzdp-payment-method-placeholder):checked' ),
+                $form   = $( 'form.checkout' );
 
-            if ( self.isActivated() && stepId !== 'payment' ) {
-                var $current = $( 'input[name=payment_method]:checked' ),
-                    $form    = $( 'form.woocommerce-checkout' );
-
-                if ( $form.find( '.wc-gzdp-payment-method-placeholder' ).length === 0 ) {
+            if ( self.isActivated() ) {
+                if ( stepId === 'address' ) {
                     var id = $current.length > 0 ? $current.attr( 'id' ) : '';
 
-                    $form.append( '<input type="radio" style="display: none;" name="payment_method" data-current="' + id + '" class="wc-gzdp-payment-method-placeholder" value="placeholder" checked="checked" />' );
+                    if ( $form.find( '.wc-gzdp-payment-method-placeholder' ).length === 0 ) {
+                        $form.append( '<input type="radio" style="display: none;" name="payment_method" data-current="' + id + '" id="payment_method_wc_gzdp_payment_method_placeholder" class="wc-gzdp-payment-method-placeholder" value="placeholder" checked="checked" />' );
+                    } else if ( id && typeof id !== 'undefined' ) {
+                        $form.find( '.wc-gzdp-payment-method-placeholder' ).data( 'current', id );
+                    }
+                } else if ( $form.find( ".wc-gzdp-payment-method-placeholder" ).length > 0 ) {
+                    var current = $form.find( ".wc-gzdp-payment-method-placeholder" ).data( 'current' );
+
+                    if ( current && typeof current !== 'undefined' && $form.find( 'input#' + current ).length > 0 ) {
+                        $form.find( 'input#' + current ).prop( 'checked', true );
+                        $form.find( 'input#' + current ).trigger( 'click' );
+                    }
+
+                    $form.find( ".wc-gzdp-payment-method-placeholder" ).remove();
                 }
             }
         },

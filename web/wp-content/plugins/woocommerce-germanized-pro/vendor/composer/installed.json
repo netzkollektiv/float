@@ -36,12 +36,12 @@
             },
             "installation-source": "dist",
             "autoload": {
-                "classmap": [
-                    "src/AutoloadGenerator.php"
-                ],
                 "psr-4": {
                     "Automattic\\Jetpack\\Autoloader\\": "src"
-                }
+                },
+                "classmap": [
+                    "src/AutoloadGenerator.php"
+                ]
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
@@ -208,18 +208,78 @@
             "install-path": "./installers"
         },
         {
-            "name": "vendidero/storeabill",
-            "version": "v1.8.1",
-            "version_normalized": "1.8.1.0",
+            "name": "league/iso3166",
+            "version": "4.2.1",
+            "version_normalized": "4.2.1.0",
             "source": {
                 "type": "git",
-                "url": "git@github.com:vendidero/storeabill.git",
-                "reference": "b1816a97f62836710b174bb47b015e4373e6d80d"
+                "url": "https://github.com/thephpleague/iso3166.git",
+                "reference": "74a08ffe08d4e0dd8ab0aac8c34ea5a641d57669"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vendidero/storeabill/zipball/b1816a97f62836710b174bb47b015e4373e6d80d",
-                "reference": "b1816a97f62836710b174bb47b015e4373e6d80d",
+                "url": "https://api.github.com/repos/thephpleague/iso3166/zipball/74a08ffe08d4e0dd8ab0aac8c34ea5a641d57669",
+                "reference": "74a08ffe08d4e0dd8ab0aac8c34ea5a641d57669",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.5"
+            },
+            "time": "2023-01-31T16:08:51+00:00",
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "3.x-dev"
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "League\\ISO3166\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Rob Bast",
+                    "email": "rob.bast@gmail.com"
+                }
+            ],
+            "description": "ISO 3166-1 PHP Library",
+            "homepage": "https://github.com/thephpleague/iso3166",
+            "keywords": [
+                "3166",
+                "3166-1",
+                "ISO 3166",
+                "countries",
+                "iso",
+                "library"
+            ],
+            "support": {
+                "issues": "https://github.com/thephpleague/iso3166/issues",
+                "source": "https://github.com/thephpleague/iso3166"
+            },
+            "install-path": "../league/iso3166"
+        },
+        {
+            "name": "vendidero/storeabill",
+            "version": "v2.1.1",
+            "version_normalized": "2.1.1.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:vendidero/storeabill.git",
+                "reference": "4d0023fb0c67b788d15e0800248e0a12cd46df9b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vendidero/storeabill/zipball/4d0023fb0c67b788d15e0800248e0a12cd46df9b",
+                "reference": "4d0023fb0c67b788d15e0800248e0a12cd46df9b",
                 "shasum": ""
             },
             "require": {
@@ -227,9 +287,11 @@
             },
             "require-dev": {
                 "bamarni/composer-bin-plugin": "^1.4",
-                "phpunit/phpunit": "7.5.14"
+                "phpunit/phpunit": "7.5.14",
+                "woocommerce/woocommerce-sniffs": "^0.1.0",
+                "yoast/phpunit-polyfills": "^1.0"
             },
-            "time": "2021-10-15T14:52:34+00:00",
+            "time": "2023-05-10T09:12:04+00:00",
             "type": "wordpress-plugin",
             "extra": {
                 "bamarni-bin": {
@@ -239,7 +301,7 @@
             "installation-source": "dist",
             "autoload": {
                 "psr-4": {
-                    "Vendidero\\StoreaBill\\": "src",
+                    "Vendidero\\StoreaBill\\": "src/",
                     "Vendidero\\StoreaBill\\Vendor\\": "lib/packages/"
                 },
                 "psr-0": {
@@ -263,6 +325,15 @@
                 ],
                 "bin": [
                     "echo 'bin not installed'"
+                ],
+                "phpcs": [
+                    "phpcs -s -p"
+                ],
+                "phpcs-pre-commit": [
+                    "phpcs -s -p -n"
+                ],
+                "phpcbf": [
+                    "phpcbf -p"
                 ]
             },
             "license": [
@@ -274,26 +345,28 @@
         },
         {
             "name": "vendidero/storeabill-lexoffice",
-            "version": "v1.1.5",
-            "version_normalized": "1.1.5.0",
+            "version": "v1.2.6",
+            "version_normalized": "1.2.6.0",
             "source": {
                 "type": "git",
                 "url": "git@github.com:vendidero/storeabill-lexoffice.git",
-                "reference": "da1f4b53aa89818d7b84312b5ba6f3498bb6340e"
+                "reference": "b650bc912cfa66eec2f53fe6fa80375f13772e24"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vendidero/storeabill-lexoffice/zipball/da1f4b53aa89818d7b84312b5ba6f3498bb6340e",
-                "reference": "da1f4b53aa89818d7b84312b5ba6f3498bb6340e",
+                "url": "https://api.github.com/repos/vendidero/storeabill-lexoffice/zipball/b650bc912cfa66eec2f53fe6fa80375f13772e24",
+                "reference": "b650bc912cfa66eec2f53fe6fa80375f13772e24",
                 "shasum": ""
             },
             "require": {
                 "automattic/jetpack-autoloader": "^2.6.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^6.5.14"
+                "phpunit/phpunit": "7.5.14",
+                "woocommerce/woocommerce-sniffs": "^0.1.3",
+                "yoast/phpunit-polyfills": "^1.0"
             },
-            "time": "2021-10-11T12:45:42+00:00",
+            "time": "2023-03-14T11:19:42+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "autoload": {
@@ -307,6 +380,15 @@
                 ],
                 "post-update-cmd": [
                     "composer dump-autoload"
+                ],
+                "phpcs": [
+                    "phpcs -s -p"
+                ],
+                "phpcs-pre-commit": [
+                    "phpcs -s -p -n"
+                ],
+                "phpcbf": [
+                    "phpcbf -p"
                 ]
             },
             "license": [
@@ -318,26 +400,28 @@
         },
         {
             "name": "vendidero/storeabill-sevdesk",
-            "version": "v1.1.2",
-            "version_normalized": "1.1.2.0",
+            "version": "v1.1.9",
+            "version_normalized": "1.1.9.0",
             "source": {
                 "type": "git",
                 "url": "git@github.com:vendidero/storeabill-sevdesk.git",
-                "reference": "5121560fc151b307fb462b12aed6d14fc5166e88"
+                "reference": "75f62bf215f77cc75de899bb1467a38ec9b08615"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vendidero/storeabill-sevdesk/zipball/5121560fc151b307fb462b12aed6d14fc5166e88",
-                "reference": "5121560fc151b307fb462b12aed6d14fc5166e88",
+                "url": "https://api.github.com/repos/vendidero/storeabill-sevdesk/zipball/75f62bf215f77cc75de899bb1467a38ec9b08615",
+                "reference": "75f62bf215f77cc75de899bb1467a38ec9b08615",
                 "shasum": ""
             },
             "require": {
                 "automattic/jetpack-autoloader": "^2.6.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^6.5.14"
+                "phpunit/phpunit": "7.5.14",
+                "woocommerce/woocommerce-sniffs": "^0.1.3",
+                "yoast/phpunit-polyfills": "^1.0"
             },
-            "time": "2021-09-16T09:55:18+00:00",
+            "time": "2023-05-10T09:10:22+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "autoload": {
@@ -351,6 +435,15 @@
                 ],
                 "post-update-cmd": [
                     "composer dump-autoload"
+                ],
+                "phpcs": [
+                    "phpcs -s -p"
+                ],
+                "phpcs-pre-commit": [
+                    "phpcs -s -p -n"
+                ],
+                "phpcbf": [
+                    "phpcbf -p"
                 ]
             },
             "license": [
@@ -362,31 +455,34 @@
         },
         {
             "name": "vendidero/woocommerce-germanized-dpd",
-            "version": "v1.0.2",
-            "version_normalized": "1.0.2.0",
+            "version": "v1.2.4",
+            "version_normalized": "1.2.4.0",
             "source": {
                 "type": "git",
                 "url": "git@github.com:vendidero/woocommerce-germanized-dpd.git",
-                "reference": "b5ab028959672b2c9b9c3a6e00b6846a6915cd87"
+                "reference": "7e1112824bf9352aeb092c8fc0d3cb2afee909e8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-dpd/zipball/b5ab028959672b2c9b9c3a6e00b6846a6915cd87",
-                "reference": "b5ab028959672b2c9b9c3a6e00b6846a6915cd87",
+                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-dpd/zipball/7e1112824bf9352aeb092c8fc0d3cb2afee909e8",
+                "reference": "7e1112824bf9352aeb092c8fc0d3cb2afee909e8",
                 "shasum": ""
             },
             "require": {
-                "automattic/jetpack-autoloader": "^2.6.0"
+                "automattic/jetpack-autoloader": "^2.6.0",
+                "league/iso3166": "^4.1.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "6.5.14"
+                "phpunit/phpunit": "7.5.14",
+                "woocommerce/woocommerce-sniffs": "^0.1.3",
+                "yoast/phpunit-polyfills": "^1.0"
             },
-            "time": "2021-09-02T15:40:53+00:00",
+            "time": "2023-05-10T09:14:32+00:00",
             "type": "wordpress-plugin",
             "installation-source": "dist",
             "autoload": {
                 "psr-4": {
-                    "Vendidero\\Germanized\\DPD\\": "src"
+                    "Vendidero\\Germanized\\DPD\\": "src/"
                 }
             },
             "scripts": {
@@ -395,6 +491,15 @@
                 ],
                 "post-update-cmd": [
                     "composer dump-autoload"
+                ],
+                "phpcs": [
+                    "phpcs -s -p"
+                ],
+                "phpcs-pre-commit": [
+                    "phpcs -s -p -n"
+                ],
+                "phpcbf": [
+                    "phpcbf -p"
                 ]
             },
             "license": [
@@ -403,6 +508,61 @@
             "description": "The Germanized DPD implementation.",
             "homepage": "https://github.com/vendidero/woocommerce-germanized-dpd",
             "install-path": "../../packages/woocommerce-germanized-dpd"
+        },
+        {
+            "name": "vendidero/woocommerce-germanized-gls",
+            "version": "v1.0.2",
+            "version_normalized": "1.0.2.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:vendidero/woocommerce-germanized-gls.git",
+                "reference": "5720e5e74cc6402c54fbb85e186a0e34fb3af986"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vendidero/woocommerce-germanized-gls/zipball/5720e5e74cc6402c54fbb85e186a0e34fb3af986",
+                "reference": "5720e5e74cc6402c54fbb85e186a0e34fb3af986",
+                "shasum": ""
+            },
+            "require": {
+                "automattic/jetpack-autoloader": "^2.6.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "7.5.14",
+                "woocommerce/woocommerce-sniffs": "^0.1.3",
+                "yoast/phpunit-polyfills": "^1.0"
+            },
+            "time": "2023-04-05T10:43:38+00:00",
+            "type": "wordpress-plugin",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Vendidero\\Germanized\\GLS\\": "src/"
+                }
+            },
+            "scripts": {
+                "post-install-cmd": [
+                    "composer dump-autoload"
+                ],
+                "post-update-cmd": [
+                    "composer dump-autoload"
+                ],
+                "phpcs": [
+                    "phpcs -s -p"
+                ],
+                "phpcs-pre-commit": [
+                    "phpcs -s -p -n"
+                ],
+                "phpcbf": [
+                    "phpcbf -p"
+                ]
+            },
+            "license": [
+                "GPL-3.0-or-later"
+            ],
+            "description": "The Germanized GLS implementation.",
+            "homepage": "https://github.com/vendidero/woocommerce-germanized-gls",
+            "install-path": "../../packages/woocommerce-germanized-gls"
         }
     ],
     "dev": false,

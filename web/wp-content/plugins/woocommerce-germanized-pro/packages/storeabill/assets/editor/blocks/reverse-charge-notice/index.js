@@ -25,6 +25,10 @@ const settings = {
             "type": 'string',
             "source": 'html',
             "selector": 'p',
+            "default": _x( 'Tax free intracommunity despatch/delivery.', 'storeabill-core', 'storeabill' )
+        },
+        "virtualNotice": {
+            "type": "string",
             "default": _x( 'Tax liability of the recipient of the services.', 'storeabill-core', 'storeabill' )
         },
         "align": {

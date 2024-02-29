@@ -6,6 +6,7 @@
  * @version 1.0.0
  */
 namespace Vendidero\StoreaBill\Document;
+
 use Vendidero\StoreaBill\Data;
 
 use WC_Data;
@@ -56,10 +57,10 @@ class Notice extends Data {
 	 * @var array
 	 */
 	protected $data = array(
-		'date_created'          => null,
-		'type'                  => '',
-		'document_id'           => '',
-		'text'                  => '',
+		'date_created' => null,
+		'type'         => '',
+		'document_id'  => '',
+		'text'         => '',
 	);
 
 	/**
@@ -100,7 +101,7 @@ class Notice extends Data {
 	 * @return string
 	 */
 	protected function get_hook_prefix() {
-		return "storeabill_document_notice_get_";
+		return 'storeabill_document_notice_get_';
 	}
 
 	public function get_key() {

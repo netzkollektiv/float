@@ -67,6 +67,6 @@ interface TaxContainable {
 	public function get_tax_rate();
 
 	public function get_tax_rate_key();
-	
+
 	public function round_tax_at_subtotal();
 }

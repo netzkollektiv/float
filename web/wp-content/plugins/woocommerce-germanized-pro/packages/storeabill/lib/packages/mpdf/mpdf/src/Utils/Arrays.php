@@ -2,7 +2,7 @@
 /**
  * @license GPL-2.0-only
  *
- * Modified by storeabill on 06-July-2021 using Strauss.
+ * Modified by storeabill on 31-March-2023 using Strauss.
  * @see https://github.com/BrianHenryIE/strauss
  */
 
@@ -84,11 +84,19 @@ class Arrays
 			$combinations[] = $combination;
 
 			$anotherCombination = false;
+			$resetFromIndex = -1;
 			for ($i = $k - 1; $i >= 0; $i--) {
 				if ($indexes[$i] < $maxIndexes[$i]) {
 					$indexes[$i]++;
 					$anotherCombination = true;
 					break;
+				}
+				$resetFromIndex = $i;
+			}
+
+			if ($resetFromIndex > 0) {
+				for ($i = $resetFromIndex; $i < $k; $i++) {
+					$indexes[$i] = $indexes[$i - 1] + 1;
 				}
 			}
 		} while ($anotherCombination);

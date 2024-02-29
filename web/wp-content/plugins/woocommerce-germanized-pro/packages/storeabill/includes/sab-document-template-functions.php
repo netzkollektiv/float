@@ -19,12 +19,12 @@ function sab_document_body_class() {
 	global $document;
 
 	$classes = array(
-		'type-' .   $document->get_type(),
+		'type-' . $document->get_type(),
 		'status-' . $document->get_status(),
 	);
 
 	// Separates classes with a single space, collates classes for body element
-	echo 'class="' . join( ' ', apply_filters( 'storeabill_document_body_class', $classes ) ) . '"';
+	echo 'class="' . esc_attr( join( ' ', apply_filters( 'storeabill_document_body_class', $classes ) ) ) . '"';
 }
 
 function sab_document_enqueue_scripts() {
@@ -58,13 +58,13 @@ function sab_document_register_styles() {
 		}';
 	}
 
-	foreach( sab_get_document_font_sizes() as $type => $size ) {
+	foreach ( sab_get_document_font_sizes() as $type => $size ) {
 		$inline_css .= '.has-' . sanitize_key( $size['slug'] ) . '-font-size {
 			font-size: ' . esc_attr( $size['size'] ) . 'px;
 		} ';
 	}
 
-	foreach( sab_get_color_names() as $name => $hex ) {
+	foreach ( sab_get_color_names() as $name => $hex ) {
 		$inline_css .= '.has-' . sanitize_key( $name ) . '-color {
 			color: ' . esc_attr( $hex ) . ';
 		} ';

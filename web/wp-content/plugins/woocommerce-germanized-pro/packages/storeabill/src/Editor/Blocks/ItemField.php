@@ -60,14 +60,14 @@ class ItemField extends ItemTableColumnBlock {
 		/**
 		 * @var Item $document_item
 		 */
-		$document_item  = $GLOBALS['document_item'];
-		$attributes     = $this->parse_attributes( $attributes );
-		$classes        = array_merge( sab_generate_block_classes( $attributes ), array( 'sab-item-field' ) );
-		$classes        = array_diff( $classes, array( 'without-has-border-color' ) );
-		$styles         = sab_generate_block_styles( $attributes );
+		$document_item = $GLOBALS['document_item'];
+		$attributes    = $this->parse_attributes( $attributes );
+		$classes       = array_merge( sab_generate_block_classes( $attributes ), array( 'sab-item-field' ) );
+		$classes       = array_diff( $classes, array( 'without-has-border-color' ) );
+		$styles        = sab_generate_block_styles( $attributes );
 
 		$attributes['placeholder'] = empty( $attributes['placeholder'] ) ? '&nbsp;' : $attributes['placeholder'];
 
-		return $this->wrap( '<table style="' . sab_print_styles( $styles, false ) . '" class="' . sab_print_html_classes( $classes, false ) . '"><tr><td class="placeholder">' . $attributes['placeholder'] . '</td></tr></table>', $attributes );
+		return $this->wrap( '<table style="' . sab_print_styles( $styles, false ) . '" class="' . sab_print_html_classes( $classes, false ) . '"><tr><td class="placeholder">' . wp_kses_post( $attributes['placeholder'] ) . '</td></tr></table>', $attributes );
 	}
 }

@@ -57,23 +57,26 @@ class LegalPages {
 
 	public static function maybe_register_visitor_download() {
 		if ( apply_filters( 'woocommerce_gzdp_allow_visitor_legal_page_download', false ) ) {
-			add_shortcode( "gzdp_download_legal_page", array( __CLASS__, 'download_shortcode' ) );
+			add_shortcode( 'gzdp_download_legal_page', array( __CLASS__, 'download_shortcode' ) );
 			add_filter( 'user_has_cap', array( __CLASS__, 'visitor_has_capability' ), 10, 3 );
 		}
 	}
 
 	public static function download_shortcode( $atts = array(), $content = '' ) {
-		$atts = wp_parse_args( $atts, array(
-			'force'   => 'no',
-			'type'    => 'terms',
-			'classes' => 'link',
-			'target'  => '_blank'
-		) );
+		$atts = wp_parse_args(
+			$atts,
+			array(
+				'force'   => 'no',
+				'type'    => 'terms',
+				'classes' => 'link',
+				'target'  => '_blank',
+			)
+		);
 
 		$id = self::get_legal_page_id_by_type( $atts['type'] );
 
 		if ( $id && ( $legal_page = self::get_legal_page( $id ) ) ) {
-			$content       = empty( $content ) ? sprintf( _x( "Download %s", 'legal-page', 'woocommerce-germanized-pro' ), $legal_page->get_title( false ) ) : $content;
+			$content       = empty( $content ) ? sprintf( _x( 'Download %s', 'legal-page', 'woocommerce-germanized-pro' ), $legal_page->get_title( false ) ) : $content;
 			$download_link = $legal_page->get_download_url( wc_string_to_bool( $atts['force'] ) );
 
 			return '<a target="' . esc_attr( $atts['target'] ) . '" class="' . esc_attr( $atts['classes'] ) . '" href="' . esc_url( $download_link ) . '">' . $content . '</a>';
@@ -97,7 +100,7 @@ class LegalPages {
 				$document = sab_get_document( $args[2], 'post_document' );
 
 				if ( $document && ! $document->is_editable() ) {
-					$allcaps["view_post_document"] = true;
+					$allcaps['view_post_document'] = true;
 				}
 			}
 		}
@@ -124,7 +127,7 @@ class LegalPages {
 			wp_die();
 		}
 
-		if ( ! wp_verify_nonce( isset( $_GET['_wpnonce'] ) ? $_GET['_wpnonce'] : '', 'wc-gzdp-remove-legal-first-page' ) ) {
+		if ( ! wp_verify_nonce( ( isset( $_GET['_wpnonce'] ) ? wp_unslash( $_GET['_wpnonce'] ) : '' ), 'wc-gzdp-remove-legal-first-page' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			wp_die();
 		}
 
@@ -134,7 +137,7 @@ class LegalPages {
 			$first_page->delete( true );
 		}
 
-		wp_safe_redirect( admin_url( 'admin.php?page=wc-settings&tab=germanized-emails&section=attachments' ) );
+		wp_safe_redirect( esc_url_raw( admin_url( 'admin.php?page=wc-settings&tab=germanized-emails&section=attachments' ) ) );
 		exit();
 	}
 
@@ -143,7 +146,7 @@ class LegalPages {
 			wp_die();
 		}
 
-		if ( ! wp_verify_nonce( isset( $_GET['_wpnonce'] ) ? $_GET['_wpnonce'] : '', 'wc-gzdp-add-legal-first-page' ) ) {
+		if ( ! wp_verify_nonce( isset( $_GET['_wpnonce'] ) ? wp_unslash( $_GET['_wpnonce'] ) : '', 'wc-gzdp-add-legal-first-page' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			wp_die();
 		}
 
@@ -154,12 +157,12 @@ class LegalPages {
 			$tpl->set_parent_id( $template->get_id() );
 			$tpl->save();
 
-			wp_safe_redirect( $tpl->get_edit_url() );
+			wp_safe_redirect( esc_url_raw( $tpl->get_edit_url() ) );
 			exit();
 		} else {
 			$tpl = $template->get_first_page();
 
-			wp_safe_redirect( $tpl->get_edit_url() );
+			wp_safe_redirect( esc_url_raw( $tpl->get_edit_url() ) );
 			exit();
 		}
 	}
@@ -167,7 +170,7 @@ class LegalPages {
 	public static function on_save_page( $post_id, $post, $update ) {
 		$pages = self::get_legal_page_ids();
 
-		if ( ! $post || wp_is_post_revision( $post_id ) || 'page' !== $post->post_type || ! in_array( $post_id, $pages ) ) {
+		if ( ! $post || wp_is_post_revision( $post_id ) || 'page' !== $post->post_type || ! in_array( $post_id, $pages, true ) ) {
 			return;
 		}
 
@@ -197,7 +200,7 @@ class LegalPages {
 						'shortcode'        => 'document?data=total_pages',
 						'title'            => __( 'Total pages', 'woocommerce-germanized-pro' ),
 						'headerFooterOnly' => true,
-					)
+					),
 				),
 			);
 		}
@@ -207,10 +210,15 @@ class LegalPages {
 
 	public static function remove_blocks( $block_types, $document_type, $template ) {
 		if ( 'post_document' === $document_type ) {
-			$block_types = array_values( array_diff( $block_types, array(
-				'storeabill/address',
-				'storeabill/document-title',
-			) ) );
+			$block_types = array_values(
+				array_diff(
+					$block_types,
+					array(
+						'storeabill/address',
+						'storeabill/document-title',
+					)
+				)
+			);
 		}
 
 		return $block_types;
@@ -223,30 +231,36 @@ class LegalPages {
 	}
 
 	public static function register_data_store( $stores ) {
-		return array_merge( $stores, array(
-			'post_document' => '\Vendidero\Germanized\Pro\StoreaBill\DataStores\PostDocument'
-		) );
+		return array_merge(
+			$stores,
+			array(
+				'post_document' => '\Vendidero\Germanized\Pro\StoreaBill\DataStores\PostDocument',
+			)
+		);
 	}
 
 	public static function register_document_type() {
-		sab_register_document_type( 'post_document', array(
-			'group'                     => 'posts',
-			'api_endpoint'              => 'posts',
-			'labels'                    => array(
-				'singular' => __( 'Post', 'woocommerce-germanized-pro' ),
-				'plural'   => __( 'Posts', 'woocommerce-germanized-pro' ),
-			),
-			'class_name'                => '\Vendidero\Germanized\Pro\StoreaBill\PostDocument',
-			'preview_class_name'        => '\Vendidero\Germanized\Pro\StoreaBill\PostDocument\Preview',
-			'default_line_item_types'   => array(),
-			'available_line_item_types' => array(),
-			'supports'                  => array(),
-			'default_status'            => 'closed',
-			'additional_blocks'         => array(
-				'storeabill/post-content',
-				'storeabill/post-title'
+		sab_register_document_type(
+			'post_document',
+			array(
+				'group'                     => 'posts',
+				'api_endpoint'              => 'posts',
+				'labels'                    => array(
+					'singular' => __( 'Post', 'woocommerce-germanized-pro' ),
+					'plural'   => __( 'Posts', 'woocommerce-germanized-pro' ),
+				),
+				'class_name'                => '\Vendidero\Germanized\Pro\StoreaBill\PostDocument',
+				'preview_class_name'        => '\Vendidero\Germanized\Pro\StoreaBill\PostDocument\Preview',
+				'default_line_item_types'   => array(),
+				'available_line_item_types' => array(),
+				'supports'                  => array(),
+				'default_status'            => 'closed',
+				'additional_blocks'         => array(
+					'storeabill/post-content',
+					'storeabill/post-title',
+				),
 			)
-		) );
+		);
 	}
 
 	public static function register_default_template_path( $default_path, $template_name ) {
@@ -287,12 +301,12 @@ class LegalPages {
 	public static function register_dynamic_blocks( $blocks ) {
 		$blocks['post-content'] = array(
 			'title'           => __( 'Post Content', 'woocommerce-germanized-pro' ),
-			'render_callback' => array( __CLASS__, 'render_post_content_block' )
+			'render_callback' => array( __CLASS__, 'render_post_content_block' ),
 		);
 
 		$blocks['post-title'] = array(
 			'title'           => __( 'Post Title', 'woocommerce-germanized-pro' ),
-			'render_callback' => array( __CLASS__, 'render_post_title_block' )
+			'render_callback' => array( __CLASS__, 'render_post_title_block' ),
 		);
 
 		return $blocks;
@@ -307,7 +321,11 @@ class LegalPages {
 		$legal_pages = wc_gzd_get_legal_pages();
 
 		$settings = array(
-			array( 'title' => '', 'type' => 'title', 'id' => 'email_attachment_options' ),
+			array(
+				'title' => '',
+				'type'  => 'title',
+				'id'    => 'email_attachment_options',
+			),
 		);
 
 		foreach ( $pages as $legal_page_type => $post_id ) {
@@ -318,37 +336,48 @@ class LegalPages {
 
 			$title    = array_key_exists( $legal_page_type, $legal_pages ) ? $legal_pages[ $legal_page_type ] : '';
 			$url      = self::get_legal_page_pdf_url( $legal_page_type );
-			$settings = array_merge( $settings, array(
-
+			$settings = array_merge(
+				$settings,
 				array(
-					'title' 	=> $title,
-					'desc' 		=> $url ? sprintf( __( 'Send <a href="%1$s" target="_blank">%2$s</a> as PDF attachment instead of plain text', 'woocommerce-germanized-pro' ), $url, $title ) : sprintf( __( 'Send %s as PDF attachment instead of plain text', 'woocommerce-germanized-pro' ), $title ),
-					'id' 		=> 'woocommerce_gzdp_legal_page_' . $legal_page_type . '_enabled',
-					'default'	=> 'no',
-					'type' 		=> 'gzd_toggle',
-				),
 
-				array(
-					'title' 	=> _x( 'Attachment', 'legal-page', 'woocommerce-germanized-pro' ),
-					'desc' 		=> '<div class="wc-gzd-additional-desc">' . sprintf( _x( 'You might want to manually upload a pre-created PDF file as attachment for your %s. Leave empty to use the automatically generated document.', 'legal-page', 'woocommerce-germanized-pro' ), $title ) . '</div>',
-					'id' 		=> 'woocommerce_gzdp_legal_page_' . $legal_page_type . '_pdf',
-					'default'	=> '',
-					'custom_attributes' => array(
-						'data-show_if_woocommerce_gzdp_legal_page_' . $legal_page_type . '_enabled' => '',
+					array(
+						'title'   => $title,
+						'desc'    => $url ? sprintf( __( 'Send <a href="%1$s" target="_blank">%2$s</a> as PDF attachment instead of plain text', 'woocommerce-germanized-pro' ), esc_url( $url ), $title ) : sprintf( __( 'Send %s as PDF attachment instead of plain text', 'woocommerce-germanized-pro' ), $title ),
+						'id'      => 'woocommerce_gzdp_legal_page_' . $legal_page_type . '_enabled',
+						'default' => 'no',
+						'type'    => 'gzd_toggle',
 					),
-					'data-type' => 'application/pdf',
-					'type' 		=> 'gzdp_attachment',
+
+					array(
+						'title'             => _x( 'Attachment', 'legal-page', 'woocommerce-germanized-pro' ),
+						'desc'              => '<div class="wc-gzd-additional-desc">' . sprintf( _x( 'You might want to manually upload a pre-created PDF file as attachment for your %s. Leave empty to use the automatically generated document.', 'legal-page', 'woocommerce-germanized-pro' ), $title ) . '</div>',
+						'id'                => 'woocommerce_gzdp_legal_page_' . $legal_page_type . '_pdf',
+						'default'           => '',
+						'custom_attributes' => array(
+							'data-show_if_woocommerce_gzdp_legal_page_' . $legal_page_type . '_enabled' => '',
+						),
+						'data-type'         => 'application/pdf',
+						'type'              => 'gzdp_attachment',
+					),
 				)
-			) );
+			);
 		}
 
-		$settings = array_merge( $settings, array( array( 'type' => 'sectionend', 'id' => 'email_attachment_options' ) ) );
+		$settings = array_merge(
+			$settings,
+			array(
+				array(
+					'type' => 'sectionend',
+					'id'   => 'email_attachment_options',
+				),
+			)
+		);
 
 		return $settings;
 	}
 
 	protected static function regenerate_legal_pages( $defer = false ) {
-		foreach( self::get_legal_page_ids( false ) as $legal_page_type => $page_id ) {
+		foreach ( self::get_legal_page_ids( false ) as $legal_page_type => $page_id ) {
 
 			if ( ! get_post( $page_id ) ) {
 				continue;
@@ -367,20 +396,27 @@ class LegalPages {
 	}
 
 	public static function get_legal_page_ids( $ignore_empty = true ) {
-		$pages = wc_gzd_get_email_attachment_order();
+		try {
+			$func = new \ReflectionFunction( 'wc_gzd_get_email_attachment_order' );
+			$num  = $func->getNumberOfParameters();
+		} catch ( \Exception $e ) {
+			$num = 0;
+		}
+
+		$pages = $num >= 1 ? wc_gzd_get_email_attachment_order( true ) : wc_gzd_get_email_attachment_order();
 		$ids   = array();
 
 		foreach ( $pages as $page => $title ) {
 			$id = wc_get_page_id( $page );
 
-			if ( $id == -1 && $ignore_empty ) {
+			if ( -1 === $id && $ignore_empty ) {
 				continue;
 			}
 
 			$ids[ $page ] = wc_get_page_id( $page );
 		}
 
-		return $ids;
+		return apply_filters( 'woocommerce_gzdp_legal_page_ids', $ids );
 	}
 
 	public static function get_legal_page_pdf_url( $type ) {
@@ -396,7 +432,7 @@ class LegalPages {
 		}
 
 		return $url;
- 	}
+	}
 
 	public static function refresh_legal_page( $id, $defer = false ) {
 		if ( ! is_numeric( $id ) ) {
@@ -462,8 +498,8 @@ class LegalPages {
 			return $id;
 		}
 
-		foreach( self::get_legal_page_ids() as $legal_type => $legal_page_id ) {
-			if ( $id == $legal_page_id ) {
+		foreach ( self::get_legal_page_ids() as $legal_type => $legal_page_id ) {
+			if ( (int) $id === (int) $legal_page_id ) {
 				$legal_page_types[] = $legal_type;
 			}
 		}
@@ -474,8 +510,8 @@ class LegalPages {
 	public static function get_legal_page_id_by_type( $type ) {
 		$id = 0;
 
-		foreach( self::get_legal_page_ids() as $legal_type => $legal_page_id ) {
-			if ( $legal_type == $type ) {
+		foreach ( self::get_legal_page_ids() as $legal_type => $legal_page_id ) {
+			if ( (string) $legal_type === (string) $type ) {
 				$id = $legal_page_id;
 				break;
 			}
@@ -492,7 +528,7 @@ class LegalPages {
 				$templates = get_option( "woocommerce_gzd_mail_attach_{$page}" );
 			}
 
-			if ( 'yes' === get_option( "woocommerce_gzdp_legal_page_{$page}_enabled" ) && in_array( $mail_id, $templates ) ) {
+			if ( 'yes' === get_option( "woocommerce_gzdp_legal_page_{$page}_enabled" ) && in_array( $mail_id, $templates, true ) ) {
 
 				if ( self::has_legal_page_manual_attachment( $page ) ) {
 					$attachments[] = self::get_legal_page_manual_attachment_path( $page );
@@ -553,7 +589,7 @@ class LegalPages {
 			$legal_page_types = self::get_legal_page_types( $id );
 		}
 
-		foreach( $legal_page_types as $legal_page_type ) {
+		foreach ( $legal_page_types as $legal_page_type ) {
 			$id           = self::get_legal_page_id_by_type( $legal_page_type );
 			$current_page = self::get_legal_page( $id );
 
@@ -583,9 +619,11 @@ class LegalPages {
 	 * @return boolean|PostDocument
 	 */
 	public static function get_legal_page( $post_id ) {
-		$query = new Query( array(
-			'reference_id' => $post_id
-		) );
+		$query = new Query(
+			array(
+				'reference_id' => $post_id,
+			)
+		);
 
 		$pages = $query->get_posts();
 		$page  = false;

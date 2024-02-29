@@ -45,9 +45,9 @@ class ItemSku extends ItemTableColumnBlock {
 		$output        = '';
 
 		if ( is_callable( array( $document_item, 'get_sku' ) ) ) {
-			$output    = $document_item->get_sku();
+			$output = $document_item->get_sku();
 		}
 
-		return $this->wrap( $this->replace_placeholder( $content, $output ), $attributes );
+		return $this->wrap( $this->replace_placeholder( $content, wp_kses_post( $output ) ), $attributes );
 	}
 }

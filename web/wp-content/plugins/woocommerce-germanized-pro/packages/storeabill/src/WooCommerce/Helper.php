@@ -41,8 +41,20 @@ class Helper {
 
 		/**
 		 * In case a refund is created - make sure our invoices/cancellations are adjusted accordingly.
+		 * Use a lower priority to allow creating cancellations before the refund notification has been triggered.
 		 */
-		add_action( 'woocommerce_order_refunded', array( __CLASS__, 'sync_order_refund' ), 10, 2 );
+		add_action( 'woocommerce_order_partially_refunded', array( __CLASS__, 'sync_order_refund' ), 5, 2 );
+		add_action( 'woocommerce_order_fully_refunded', array( __CLASS__, 'sync_order_refund' ), 5, 2 );
+
+		/**
+		 * Listen to hooks triggered before creating refund payments.
+		 */
+		add_action( 'woocommerce_create_refund', array( __CLASS__, 'observe_refund_comments' ), 10, 1 );
+
+		/**
+		 * Observe order customer id changes
+		 */
+		add_action( 'woocommerce_before_order_object_save', array( __CLASS__, 'observe_customer_changes' ), 10 );
 
 		/**
 		 * Validate the order upon saving.
@@ -53,6 +65,21 @@ class Helper {
 		 * Register order status update hooks on init.
 		 */
 		add_action( 'init', array( __CLASS__, 'register_order_status_hooks' ), 50 );
+
+		/**
+		 * For some actions, e.g. saving order items via WP Admin, Woo does not trigger
+		 * a tax recalculation. This may easily lead to broken order state which ultimately
+		 * leads to cancellations being created. To overcome this issue force a tax recalculation
+		 * in case a valid AJAX request is detected during wc_save_order_items().
+		 *
+		 * @see wc_save_order_items()
+		 */
+		add_action(
+			'woocommerce_before_save_order_items',
+			function() {
+				add_action( 'woocommerce_order_after_calculate_totals', array( __CLASS__, 'maybe_trigger_tax_recalculation' ), 10, 2 );
+			}
+		);
 
 		/**
 		 * Customer panel downloads
@@ -72,6 +99,7 @@ class Helper {
 		 * Add latest invoices to default Woo invoice mail if existent.
 		 */
 		add_filter( 'woocommerce_email_attachments', array( __CLASS__, 'attach_invoice_to_mail' ), 10, 4 );
+		add_filter( 'storeabill_send_invoice_cancellation_to_customer', array( __CLASS__, 'disable_auto_sending_refunds' ), 10, 2 );
 
 		add_filter( 'user_has_cap', array( __CLASS__, 'customer_has_capability' ), 10, 3 );
 
@@ -83,8 +111,71 @@ class Helper {
 		add_filter( 'woocommerce_admin_order_preview_get_order_details', array( __CLASS__, 'add_order_preview_data' ), 10, 2 );
 		add_action( 'woocommerce_admin_order_preview_start', array( __CLASS__, 'render_order_preview' ), 10 );
 
+		/**
+		 * Sync transaction meta data
+		 */
+		add_filter( 'storeabill_woo_order_transaction_id', array( __CLASS__, 'sync_transaction_id' ), 10, 2 );
+
 		Automation::init();
 		Server::init();
+	}
+
+	/**
+	 * @param boolean $and_taxes
+	 * @param \WC_Order $order
+	 *
+	 * @return void
+	 */
+	public static function maybe_trigger_tax_recalculation( $and_taxes, $order ) {
+		// Prevent infinite loops
+		remove_action( 'woocommerce_order_after_calculate_totals', array( __CLASS__, 'maybe_trigger_tax_recalculation' ), 10 );
+
+		if ( did_action( 'woocommerce_order_before_calculate_taxes' ) ) {
+			return;
+		}
+
+		$actions = array(
+			'woocommerce_save_order_items',
+			'woocommerce_add_order_item',
+			'woocommerce_add_order_shipping',
+			'woocommerce_add_order_fee',
+			'woocommerce_remove_order_item',
+		);
+
+		if ( isset( $_REQUEST['action'] ) && in_array( sab_clean( wp_unslash( $_REQUEST['action'] ) ), $actions, true ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$calculate_tax_args = array(
+				'country'  => isset( $_POST['country'] ) ? sab_strtoupper( sab_clean( wp_unslash( $_POST['country'] ) ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				'state'    => isset( $_POST['state'] ) ? sab_strtoupper( sab_clean( wp_unslash( $_POST['state'] ) ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				'postcode' => isset( $_POST['postcode'] ) ? sab_strtoupper( sab_clean( wp_unslash( $_POST['postcode'] ) ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				'city'     => isset( $_POST['city'] ) ? sab_strtoupper( sab_clean( wp_unslash( $_POST['city'] ) ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			);
+
+			\Vendidero\StoreaBill\Package::extended_log( 'Triggered tax recalculation while saving items' );
+
+			$order->calculate_taxes( $calculate_tax_args );
+
+			\Vendidero\StoreaBill\Package::extended_log( 'Triggered calculate totals while saving items' );
+
+			$order->calculate_totals( false );
+		}
+	}
+
+	/**
+	 * @param $transaction_id
+	 * @param Order $order
+	 *
+	 * @return string
+	 */
+	public static function sync_transaction_id( $transaction_id, $order ) {
+		/**
+		 * Mollie uses a separate payment id which is used during mollie exports (e.g. CSV, DATEV).
+		 * For improved matching, use the payment id instead of the default transaction id.
+		 */
+		if ( strstr( $order->get_payment_method(), 'mollie_' ) && 'ord_' === substr( $transaction_id, 0, 4 ) && $order->get_meta( '_mollie_payment_id' ) ) {
+			$transaction_id = $order->get_meta( '_mollie_payment_id' );
+		}
+
+		return $transaction_id;
 	}
 
 	public static function render_order_preview() {
@@ -125,8 +216,11 @@ class Helper {
 
 			if ( $latest = $sab_order->get_latest_finalized_invoice() ) {
 				if ( current_user_can( 'read_invoice', $latest->get_id() ) ) {
-					$data['latest_invoice_number']       = $latest->get_title( false );
-					$data['latest_invoice_download_url'] = $latest->get_download_url();
+					$data['latest_invoice_number'] = $latest->get_title( false );
+
+					if ( $latest->has_file() ) {
+						$data['latest_invoice_download_url'] = $latest->get_download_url();
+					}
 				}
 			}
 		}
@@ -136,7 +230,7 @@ class Helper {
 
 	public static function is_woo_rest_request( $is_request ) {
 		$rest_prefix = trailingslashit( rest_get_url_prefix() );
-		$request_uri = esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 
 		// Check if the request is to the WC API endpoints.
 		$storeabill = ( false !== strpos( $request_uri, $rest_prefix . 'sab/' ) );
@@ -159,14 +253,14 @@ class Helper {
 	 */
 	public static function customer_has_capability( $allcaps, $caps, $args ) {
 		if ( isset( $caps[0] ) ) {
-			foreach( sab_get_document_types() as $document_type ) {
+			foreach ( sab_get_document_types() as $document_type ) {
 				if ( 'view_' . $document_type === $caps[0] && self::document_type_supports_customer_download( $document_type ) ) {
 					$user_id     = intval( $args[1] );
 					$document    = sab_get_document( $args[2], $document_type );
 					$customer_id = $document->get_customer_id();
 
 					if ( $document && ! $document->is_editable() && ( ! empty( $user_id ) && ! empty( $customer_id ) && $user_id === $customer_id ) ) {
-						$allcaps["view_{$document_type}"] = true;
+						$allcaps[ "view_{$document_type}" ] = true;
 					}
 
 					break;
@@ -177,8 +271,24 @@ class Helper {
 	}
 
 	/**
+	 * @param boolean $send_by_mail
+	 * @param Cancellation $cancellation
+	 *
+	 * @return boolean
+	 */
+	public static function disable_auto_sending_refunds( $send_by_mail, $cancellation ) {
+		if ( $cancellation->get_refund_order_id() && ( did_action( 'woocommerce_order_partially_refunded' ) || did_action( 'woocommerce_order_fully_refunded' ) ) ) {
+			$send_by_mail = false;
+		}
+
+		return $send_by_mail;
+	}
+
+	/**
 	 * In case a finalized invoice exists, attach the (latest) invoice file
 	 * to the default Woo customer invoice mail.
+	 *
+	 * Attach the matching cancellation to the refund email too.
 	 *
 	 * @param $attachments
 	 * @param $email_id
@@ -202,6 +312,25 @@ class Helper {
 					}
 				}
 			}
+		} elseif ( apply_filters( 'storeabill_woo_attach_invoice_cancellation_refund_to_email', ( in_array( $email_id, array( 'customer_refunded_order', 'customer_partially_refunded_order' ), true ) ), $email_id, $object, $email ) ) {
+			if ( is_a( $object, 'WC_Order' ) && is_a( $email, 'WC_Email_Customer_Refunded_Order' ) && is_a( $email->refund, 'WC_Order_Refund' ) ) {
+				if ( $order = self::get_order( $object ) ) {
+					$cancellations         = $order->get_finalized_cancellations();
+					$refund                = $email->refund;
+					$matching_cancellation = false;
+
+					foreach ( $cancellations as $cancellation ) {
+						if ( (int) $cancellation->get_refund_order_id() === $refund->get_id() ) {
+							$matching_cancellation = $cancellation;
+							break;
+						}
+					}
+
+					if ( $matching_cancellation && $matching_cancellation->has_file() ) {
+						$attachments[] = $matching_cancellation->get_path();
+					}
+				}
+			}
 		}
 
 		return $attachments;
@@ -214,27 +343,29 @@ class Helper {
 			return;
 		}
 
-		if ( isset( $_GET['s'] ) && ! isset( $wp->query_vars['s'] ) ) {
-			$wp->query_vars['s'] = wc_clean( $_GET['s'] );
+		if ( isset( $_GET['s'] ) && ! isset( $wp->query_vars['s'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$wp->query_vars['s'] = sab_clean( wp_unslash( $_GET['s'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
 
 		if ( empty( $wp->query_vars['s'] ) ) {
 			return;
 		}
 
-		$invoices = sab_get_invoices( array(
-			'reference_type' => 'woocommerce',
-			'limit'          => 5,
-			'orderby'        => 'date_created',
-			'order'          => 'ASC',
-			'type'           => array( 'invoice', 'invoice_cancellation' ),
-			'search'         => '*' . $wp->query_vars['s'] . '*',
-			'search_columns' => array( 'document_formatted_number', 'document_number' )
-		) );
+		$invoices = sab_get_invoices(
+			array(
+				'reference_type' => 'woocommerce',
+				'limit'          => 5,
+				'orderby'        => 'date_created',
+				'order'          => 'ASC',
+				'type'           => array( 'invoice', 'invoice_cancellation' ),
+				'search'         => '*' . $wp->query_vars['s'] . '*',
+				'search_columns' => array( 'document_formatted_number', 'document_number' ),
+			)
+		);
 
 		$post_ids = array();
 
-		foreach( $invoices as $invoice ) {
+		foreach ( $invoices as $invoice ) {
 			$post_ids[] = $invoice->get_reference_id();
 		}
 
@@ -287,7 +418,16 @@ class Helper {
 			}
 
 			if ( ! empty( $documents ) ) {
-				sab_get_template( 'myaccount/download.php', array( 'documents' => $documents, 'document_title' => sab_get_document_type_label( 'invoice', 'plural' ) ) );
+				sab_get_template(
+					'myaccount/download.php',
+					array(
+						'documents'      => $documents,
+						'document_title' => sab_get_document_type_label(
+							'invoice',
+							'plural'
+						),
+					)
+				);
 			}
 		}
 	}
@@ -298,9 +438,9 @@ class Helper {
 	 */
 	public static function customer_panel_actions( $actions, $order ) {
 		if ( $sab_order = self::get_order( $order ) ) {
-			foreach( $sab_order->get_finalized_documents() as $document ) {
-				if ( self::document_type_supports_customer_download( $document->get_type() ) && current_user_can( "view_{$document->get_type()}", $document->get_id() ) ) {
-					$actions["sab_document_{$document->get_id()}"] = array(
+			foreach ( $sab_order->get_finalized_documents() as $document ) {
+				if ( self::document_type_supports_customer_download( $document->get_type() ) && $document->has_file() && current_user_can( "view_{$document->get_type()}", $document->get_id() ) ) {
+					$actions[ "sab_document_{$document->get_id()}" ] = array(
 						'url'  => $document->get_download_url( apply_filters( 'storeabill_woo_customer_force_document_download', false ) ),
 						'name' => apply_filters( 'storeabill_woo_customer_document_name', $document->get_title(), $document ),
 					);
@@ -337,23 +477,78 @@ class Helper {
 	}
 
 	public static function register_order_status_hooks() {
-		foreach( wc_get_is_paid_statuses() as $status ) {
+		foreach ( wc_get_is_paid_statuses() as $status ) {
 			add_action( "woocommerce_order_status_{$status}", array( __CLASS__, 'sync_order_payment' ), 20 );
 		}
 	}
 
+	/**
+	 * Observe whether the customer_id for an order changes and sync finalized invoices
+	 * to allow invoice downloads for the corresponding customer.
+	 *
+	 * @param \WC_Order $order
+	 *
+	 * @return void
+	 */
+	public static function observe_customer_changes( $order ) {
+		if ( $sab_order = self::get_order( $order ) ) {
+			if ( in_array( 'customer_id', array_keys( $sab_order->get_order()->get_changes() ), true ) ) {
+				$customer_id = $sab_order->get_order()->get_customer_id();
+
+				if ( ! empty( $customer_id ) ) {
+					foreach ( $sab_order->get_finalized_invoices() as $invoice ) {
+						if ( $invoice->get_customer_id() !== $customer_id ) {
+							$old_customer_id = $invoice->get_customer_id();
+							$invoice->set_customer_id( $customer_id );
+
+							do_action( 'storeabill_invoice_customer_id_changed', $invoice, $customer_id, $old_customer_id );
+
+							$invoice->save();
+						}
+					}
+				}
+			}
+		}
+	}
+
 	public static function validate_order( $order ) {
-	    /*
-	     * Make sure validation works on clean order data, e.g. fresh instance from DB.
-	     *
-	     * Some plugins like Woo Subscriptions add order items through functions like wc_add_order_item which does not
-	     * register the order item via the $order->add_item() method. That may lead to items missing while using the current $order instance
-	     * through the order save hook which ultimately leads to items being cancelled from a valid invoice.
-	     */
-	    $order_id = ! is_numeric( $order ) ? $order->get_id() : $order;
+		$stack    = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 10 ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace
+		$validate = true;
+
+		/**
+		 * Do not validate orders while WC_Order::update_taxes() is called to prevent
+		 * unnecessary cancellations being generated during bad order states.
+		 *
+		 * @see WC_Order::update_taxes()
+		 */
+		foreach ( $stack as $backtrace ) {
+			if ( ! isset( $backtrace['class'], $backtrace['function'] ) ) {
+				continue;
+			}
+
+			if ( 'WC_Abstract_Order' === $backtrace['class'] && 'update_taxes' === $backtrace['function'] ) {
+				$validate = false;
+				break;
+			}
+		}
+
+		Package::extended_log( sprintf( 'Validating order #%s? %s', $order->get_id(), sab_bool_to_string( $validate ) ) );
+
+		/*
+		 * Make sure validation works on clean order data, e.g. fresh instance from DB.
+		 *
+		 * Some plugins like Woo Subscriptions add order items through functions like wc_add_order_item which does not
+		 * register the order item via the $order->add_item() method. That may lead to items missing while using the current $order instance
+		 * through the order save hook which ultimately leads to items being cancelled from a valid invoice.
+		 */
+		$order_id = ! is_numeric( $order ) ? $order->get_id() : $order;
+
+		if ( ! apply_filters( 'storeabill_woo_order_validate', $validate, $order_id ) ) {
+			return;
+		}
 
 		if ( $sab_order = self::get_order( $order_id ) ) {
-			$sab_order->validate();
+			$sab_order->validate( array( 'created_via' => 'automation' ) );
 		}
 	}
 
@@ -362,9 +557,62 @@ class Helper {
 	 * @param $refund_id
 	 */
 	public static function sync_order_refund( $order_id, $refund_id ) {
+		global $wp_filter;
+
 		if ( $sab_order = self::get_order( $order_id ) ) {
 			$sab_order->validate();
 		}
+
+		/**
+		 * Remove the anonymous woocommerce_new_order_note_data filter by its specific priority.
+		 */
+		if ( isset( $wp_filter['woocommerce_new_order_note_data'] ) && isset( $wp_filter['woocommerce_new_order_note_data']->callbacks[991] ) ) {
+			array_pop( $wp_filter['woocommerce_new_order_note_data']->callbacks[991] );
+		}
+	}
+
+	/**
+	 * @param \WC_Order_Refund $refund
+	 *
+	 * @return void
+	 */
+	public static function observe_refund_comments( $refund ) {
+		/**
+		 * During wc_refund_payment many payment gateways create order notes that contain
+		 * details to the payment linked to the refund. As Woo does not (yet) offer a way to store the
+		 * transaction id for a refund, let's try to find the transaction id based on a regex and save it
+		 * as meta in the refund.
+		 */
+		add_filter(
+			'woocommerce_new_order_note_data',
+			function( $comment_data, $args ) use ( $refund ) {
+				if ( ! $args['is_customer_note'] ) {
+					if ( $order = self::get_order( $args['order_id'] ) ) {
+						$content        = $comment_data['comment_content'];
+						$regex          = '';
+						$payment_method = $order->get_payment_method();
+
+						if ( strstr( $payment_method, 'mollie_' ) ) {
+							$regex = '/\b(tr_)([\da-zA-Z]){6,}\b/';
+						} elseif ( strstr( $payment_method, 'paypal' ) ) {
+							$regex = '/\b[\dA-Z]{17}\b/';
+						}
+
+						$regex = apply_filters( 'storeabill_woo_order_refund_payment_transaction_id_regex', $regex, $payment_method, $refund, $order );
+
+						if ( ! empty( $regex ) && ! empty( $content ) ) {
+							if ( preg_match( $regex, $content, $match ) ) {
+								$refund->update_meta_data( '_sab_matched_refund_transaction_id', sab_clean( trim( $match[0] ) ) );
+							}
+						}
+					}
+				}
+
+				return $comment_data;
+			},
+			991,
+			2
+		);
 	}
 
 	/**
@@ -385,7 +633,7 @@ class Helper {
 			$synced = false;
 
 			if ( $sab_order->is_paid() ) {
-				foreach( $sab_order->get_invoices() as $invoice ) {
+				foreach ( $sab_order->get_invoices() as $invoice ) {
 					if ( ! $invoice->is_paid() ) {
 						$invoice->set_payment_status( 'complete' );
 						$invoice->set_payment_method_name( $sab_order->get_order()->get_payment_method() );
@@ -418,13 +666,13 @@ class Helper {
 			 * Germanized rounds tax shares on a per position basis (in older versions).
 			 */
 			if ( 'woocommerce' === $reference_item->get_reference_type() ) {
-			    if ( $document = $item->get_document() ) {
-			        if ( $order = $document->get_order() ) {
-			           if ( $order->allow_round_split_taxes_at_subtotal() ) {
-			               return $enable;
-			           }
-			        }
-			    }
+				if ( $document = $item->get_document() ) {
+					if ( $order = $document->get_order() ) {
+						if ( $order->allow_round_split_taxes_at_subtotal() ) {
+							return $enable;
+						}
+					}
+				}
 
 				return false;
 			}
@@ -460,8 +708,8 @@ class Helper {
 		$blacklist    = apply_filters( 'storeabill_woo_order_transactional_email_ids_blacklist', array() );
 		$order_emails = array();
 
-		foreach( $emails as $email ) {
-			if ( ( in_array( $email->id, $whitelist ) || strpos( $email->id, 'order' ) !== false ) && ! in_array( $email->id, $blacklist ) ) {
+		foreach ( $emails as $email ) {
+			if ( ( in_array( $email->id, $whitelist, true ) || strpos( $email->id, 'order' ) !== false ) && ! in_array( $email->id, $blacklist, true ) ) {
 				$order_emails[] = $email;
 			}
 		}
@@ -486,10 +734,13 @@ class Helper {
 	 * @return Invoice[]
 	 */
 	public static function get_invoices( $order_id, $query_args = array() ) {
-		$args = wp_parse_args( array(
-			'status' => array( 'closed', 'cancelled' ),
-			'type'   => array( 'simple', 'cancellation' )
-		), $query_args );
+		$args = wp_parse_args(
+			array(
+				'status' => array( 'closed', 'cancelled' ),
+				'type'   => array( 'simple', 'cancellation' ),
+			),
+			$query_args
+		);
 
 		$args['reference_id']   = $order_id;
 		$args['reference_type'] = 'woocommerce';
@@ -505,13 +756,18 @@ class Helper {
 
 	/**
 	 * @param \WC_Order_Item $order_item
+	 * @param Order $order
 	 *
 	 * @return OrderItem
 	 */
-	public static function get_order_item( $order_item ) {
+	public static function get_order_item( $order_item, $order ) {
 		// Remove _accounting item type prefix.
 		$document_item_type = str_replace( 'accounting_', '', self::get_document_item_type( $order_item->get_type() ) );
 		$classname          = '\Vendidero\StoreaBill\WooCommerce\OrderItem' . ucfirst( $document_item_type );
+
+		if ( 'fee' === $order_item->get_type() && $order->fee_is_voucher( $order_item ) ) {
+			$classname = '\Vendidero\StoreaBill\WooCommerce\OrderItemVoucher';
+		}
 
 		if ( ! class_exists( $classname ) ) {
 			$classname = '\Vendidero\StoreaBill\WooCommerce\OrderItem';
@@ -525,7 +781,7 @@ class Helper {
 			'line_item' => 'accounting_product',
 			'fee'       => 'accounting_fee',
 			'shipping'  => 'accounting_shipping',
-			'tax'       => 'accounting_tax'
+			'tax'       => 'accounting_tax',
 		);
 
 		$type = 'accounting_product';
@@ -535,5 +791,13 @@ class Helper {
 		}
 
 		return $type;
+	}
+
+	public static function is_hpos_enabled() {
+		if ( ! is_callable( array( '\Automattic\WooCommerce\Utilities\OrderUtil', 'custom_orders_table_usage_is_enabled' ) ) ) {
+			return false;
+		}
+
+		return \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
 	}
 }

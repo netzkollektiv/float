@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\StoreaBill\WooCommerce;
+
 use Vendidero\StoreaBill\Document\Attribute;
 use Vendidero\StoreaBill\Document\Item;
 use Vendidero\StoreaBill\Interfaces\SyncableReferenceItem;
@@ -81,12 +82,15 @@ class OrderItem implements SyncableReferenceItem {
 	 * @param Item $document_item
 	 */
 	public function sync( &$document_item, $args = array() ) {
-		$args = wp_parse_args( $args, array(
-			'quantity'       => 1,
-			'reference_id'   => $this->get_id(),
-			'name'           => $this->get_name(),
-			'attributes'     => $this->get_attributes( $document_item )
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'quantity'     => 1,
+				'reference_id' => $this->get_id(),
+				'name'         => $this->get_name(),
+				'attributes'   => $this->get_attributes( $document_item ),
+			)
+		);
 
 		$document_item->set_props( $args );
 	}
@@ -94,25 +98,29 @@ class OrderItem implements SyncableReferenceItem {
 	/**
 	 * @param Item $document_item
 	 *
-	 * @return array
+	 * @return Attribute[]
 	 */
 	public function get_attributes( $document_item ) {
 		do_action( 'storeabill_woo_order_item_before_retrieve_attributes', $document_item, $this );
 		$meta = $this->order_item->get_formatted_meta_data( apply_filters( "{$this->get_hook_prefix()}hide_meta_prefix", '_', $this ), apply_filters( "{$this->get_hook_prefix()}include_all_meta", false, $this, $document_item ) );
 		do_action( 'storeabill_woo_order_item_after_retrieve_attributes', $document_item, $this );
 
+		$meta = apply_filters( "{$this->get_hook_prefix()}order_item_meta_to_sync", $meta, $this, $document_item );
+
 		$attributes = array();
 		$order      = 0;
 
-		foreach( $meta as $entry ) {
+		foreach ( $meta as $entry ) {
 			$order ++;
 
-			$attributes[] = new Attribute( array(
-				'key'   => $entry->key,
-				'value' => str_replace( array( '<p>', '</p>' ), '', $entry->display_value ),
-				'label' => $entry->display_key,
-				'order' => $order,
-			) );
+			$attributes[] = new Attribute(
+				array(
+					'key'   => $entry->key,
+					'value' => str_replace( array( '<p>', '</p>' ), '', $entry->display_value ),
+					'label' => $entry->display_key,
+					'order' => $order,
+				)
+			);
 		}
 
 		return $attributes;
@@ -134,7 +142,7 @@ class OrderItem implements SyncableReferenceItem {
 	public function is_callable( $method ) {
 		if ( method_exists( $this, $method ) ) {
 			return true;
-		} elseif( is_callable( array( $this->get_order_item(), $method ) ) ) {
+		} elseif ( is_callable( array( $this->get_order_item(), $method ) ) ) {
 			return true;
 		}
 

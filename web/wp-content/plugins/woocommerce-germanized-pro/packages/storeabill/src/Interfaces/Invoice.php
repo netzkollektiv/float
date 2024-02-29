@@ -41,5 +41,11 @@ interface Invoice extends Summable {
 
 	public function is_oss();
 
+	public function is_eu();
+
+	public function is_eu_vat();
+
+	public function is_third_country();
+
 	public function is_eu_cross_border_taxable();
 }

@@ -27,11 +27,17 @@ abstract class SyncHandler implements ExternalSync {
 	abstract public static function get_name();
 
 	public static function get_admin_url() {
-		return add_query_arg( array( 'sync_handler_name' => static::get_name(), 'section' => 'sync_handlers' ), \Vendidero\StoreaBill\Admin\Settings::get_admin_url() );
+		return add_query_arg(
+			array(
+				'sync_handler_name' => static::get_name(),
+				'section'           => 'sync_handlers',
+			),
+			\Vendidero\StoreaBill\Admin\Settings::get_admin_url()
+		);
 	}
 
 	public static function is_object_type_supported( $type ) {
-		return in_array( $type, static::get_supported_object_types() ) ? true : false;
+		return in_array( $type, static::get_supported_object_types(), true ) ? true : false;
 	}
 
 	public static function get_help_link() {
@@ -115,7 +121,7 @@ abstract class SyncHandler implements ExternalSync {
 						'is_manual'                => $auth->is_manual_authorization(),
 						'authorization_input_name' => $this->get_setting_field_key( 'authorization_code' ),
 						'description'              => $auth->get_description(),
-						'handler_label'            => static::get_title()
+						'handler_label'            => static::get_title(),
 					);
 				} else {
 					$settings['auth'] = array(
@@ -130,13 +136,13 @@ abstract class SyncHandler implements ExternalSync {
 					);
 				}
 			}
-		} elseif( 'token' === $auth->get_type() ) {
+		} elseif ( 'token' === $auth->get_type() ) {
 			$settings['token'] = array(
 				'title'       => _x( 'Token', 'storeabill-core', 'woocommerce-germanized-pro' ),
 				'type'        => 'password',
 				'description' => '<a href="' . esc_url( $auth->get_token_url() ) . '" target="_blank" class="button button-secondary sab-auth-token-url">' . _x( 'Retrieve token', 'storeabill-core', 'woocommerce-germanized-pro' ) . '</a><div class="sab-additional-desc">' . $auth->get_description() . '</div>',
 				'desc_tip'    => false,
-				'default'     => ''
+				'default'     => '',
 			);
 		}
 
@@ -153,22 +159,22 @@ abstract class SyncHandler implements ExternalSync {
 			$disconnect_key = $this->get_setting_field_key( 'disconnect' );
 			$is_disabled    = ! $this->is_enabled();
 
-			if ( $auth->is_manual_authorization() && isset( $_POST[ $connect_key ] ) && ! empty( $_POST[ $connect_key ] ) ) {
-				$key    = sab_clean( wp_unslash( $_POST[ $connect_key ] ) );
+			if ( $auth->is_manual_authorization() && isset( $_POST[ $connect_key ] ) && ! empty( $_POST[ $connect_key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$key    = sab_clean( wp_unslash( $_POST[ $connect_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 				$result = $auth->auth( $key );
 
 				if ( is_wp_error( $result ) ) {
-					foreach( $result->get_error_messages() as $message ) {
+					foreach ( $result->get_error_messages() as $message ) {
 						$this->add_setting_error( $message );
 					}
 				}
 			}
 
-			if ( $auth->is_connected() && ( isset( $_POST[ $disconnect_key ] ) && 'yes' === $_POST[ $disconnect_key ] ) || $is_disabled ) {
+			if ( $auth->is_connected() && ( isset( $_POST[ $disconnect_key ] ) && 'yes' === $_POST[ $disconnect_key ] ) || $is_disabled ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 				$result = $auth->disconnect();
 
 				if ( is_wp_error( $result ) ) {
-					foreach( $result->get_error_messages() as $message ) {
+					foreach ( $result->get_error_messages() as $message ) {
 						$this->add_setting_error( $message );
 					}
 				}
@@ -181,7 +187,7 @@ abstract class SyncHandler implements ExternalSync {
 	}
 
 	public function is_syncable( $object ) {
-		if ( ! in_array( $object->get_type(), static::get_supported_object_types() ) ) {
+		if ( ! in_array( $object->get_type(), static::get_supported_object_types(), true ) ) {
 			return false;
 		}
 
@@ -193,7 +199,7 @@ abstract class SyncHandler implements ExternalSync {
 				'0.0.1-legacy-incomplete-placeholder',
 			);
 
-			if ( in_array( $object->get_meta( '_legacy_version' ), $unsupported_versions ) ) {
+			if ( in_array( $object->get_meta( '_legacy_version' ), $unsupported_versions, true ) ) {
 				return false;
 			}
 		}
@@ -202,6 +208,6 @@ abstract class SyncHandler implements ExternalSync {
 			return false;
 		}
 
-		return true;
+		return apply_filters( "{$this->get_hook_prefix()}is_syncable", true, $object );
 	}
 }

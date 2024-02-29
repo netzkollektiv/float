@@ -3,15 +3,16 @@
 namespace Vendidero\StoreaBill\Invoice;
 
 use Vendidero\StoreaBill\Document\BulkActionHandler;
+use Vendidero\StoreaBill\Utilities\CacheHelper;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Shipment Order
  *
- * @class 		WC_GZD_Shipment_Order
- * @version		1.0.0
- * @author 		Vendidero
+ * @class       WC_GZD_Shipment_Order
+ * @version     1.0.0
+ * @author      Vendidero
  */
 class BulkFinalize extends BulkActionHandler {
 
@@ -24,12 +25,13 @@ class BulkFinalize extends BulkActionHandler {
 
 		if ( ! empty( $current ) ) {
 			foreach ( $current as $invoice_id ) {
+				CacheHelper::prevent_caching();
 
 				if ( $invoice = sab_get_invoice( $invoice_id ) ) {
 					if ( ! $invoice->is_finalized() ) {
 
 						/**
-						 * Sync before finalizeing.
+						 * Sync before finalizing.
 						 */
 						if ( $order = $invoice->get_order() ) {
 							$order->sync( $invoice );
@@ -38,7 +40,7 @@ class BulkFinalize extends BulkActionHandler {
 						$result = $invoice->finalize();
 
 						if ( is_wp_error( $result ) ) {
-							foreach( $result->get_error_messages() as $error ) {
+							foreach ( $result->get_error_messages() as $error ) {
 								/* translators: 1: invoice title 2: error message */
 								$this->add_notice( sprintf( _x( '%1$s error: %2$s', 'storeabill-core', 'woocommerce-germanized-pro' ), $invoice->get_title(), $error ), 'error' );
 							}

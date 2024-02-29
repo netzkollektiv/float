@@ -74,7 +74,7 @@ trait ExternalSyncable {
 		/**
 		 * Force updating last updated value
 		 */
-		$data['last_updated'] = $sync_data->get_last_updated() ? $sync_data->get_last_updated()->getTimestamp() : null;
+		$data['last_updated']                    = $sync_data->get_last_updated() ? $sync_data->get_last_updated()->getTimestamp() : null;
 		$external_sync_handlers[ $handler_name ] = $data;
 
 		$this->set_external_sync_handlers( $external_sync_handlers );

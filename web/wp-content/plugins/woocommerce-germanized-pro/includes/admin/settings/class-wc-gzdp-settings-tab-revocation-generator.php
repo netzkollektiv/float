@@ -7,9 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Adds Germanized Term Generator settings.
  *
- * @class 		WC_GZDP_Settings_Tab_Terms_Generator
- * @version		3.0.0
- * @author 		Vendidero
+ * @class       WC_GZDP_Settings_Tab_Terms_Generator
+ * @version     3.0.0
+ * @author      Vendidero
  */
 class WC_GZDP_Settings_Tab_Revocation_Generator extends WC_GZDP_Settings_Tab_Generator {
 

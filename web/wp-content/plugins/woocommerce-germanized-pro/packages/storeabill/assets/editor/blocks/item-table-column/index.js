@@ -42,6 +42,10 @@ function blockTypeFilter( settings, name ) {
 
     itemTableColumn.supports.lightBlockWrapper = false;
 
+    if ( itemTableColumn.supports.hasOwnProperty( '__experimentalBorder' ) ) {
+        delete itemTableColumn.supports.__experimentalBorder;
+    }
+
     itemTableColumn.attributes = {
         "align": {
             "type": "string",
@@ -49,6 +53,20 @@ function blockTypeFilter( settings, name ) {
         },
         "width": {
             "type": "number",
+        },
+        "isDisabled": {
+            "type": "boolean",
+            "default": false,
+        },
+        "fontSize": {
+            "type": "string"
+        },
+        "customFontSize": {
+            "type": "string"
+        },
+        "itemType": {
+            "type": "string",
+            "default": "",
         },
         "headingTextColor": {
             "type": "string"

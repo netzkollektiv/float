@@ -12,9 +12,11 @@
  *
  * @see https://vendidero.de/dokument/template-struktur-templates-im-theme-ueberschreiben
  * @package Germanized/Pro/Templates
- * @version 1.0.1
+ * @version 1.0.3
  */
-if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly
+}
 ?>
 
 <?php
@@ -23,15 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  */
 do_action( 'woocommerce_gzdp_checkout_before_privacy_policy' );
 ?>
-
 <p class="form-row legal data-privacy validate-required">
-	<label for="gzdp-privacy-policy" class="woocommerce-form__label woocommerce-form__label-for-checkbox checkbox">
-		<?php if ( get_option( 'woocommerce_gzdp_checkout_privacy_policy_checkbox' ) === 'yes' ) : ?>
+	<label for="gzdp-privacy-policy" class="woocommerce-form__label <?php echo esc_attr( ( 'yes' === get_option( 'woocommerce_gzdp_checkout_privacy_policy_checkbox' ) ? 'woocommerce-form__label-for-checkbox checkbox' : '' ) ); ?>">
+		<?php if ( 'yes' === get_option( 'woocommerce_gzdp_checkout_privacy_policy_checkbox' ) ) : ?>
 			<input type="checkbox" class="woocommerce-form__input woocommerce-form__input-checkbox input-checkbox" name="gzdp_privacy_policy" id="gzdp-privacy-policy" />
 		<?php endif; ?>
-		<span class="woocommerce-gzdp-multistep-privacy-policy-checkbox-text"><?php echo wc_gzdp_get_privacy_policy_text(); ?></span>
-		<?php if ( get_option( 'woocommerce_gzdp_checkout_privacy_policy_checkbox' ) === 'yes' ) : ?>
-            &nbsp;<abbr class="required" title="<?php echo esc_attr__( 'required', 'woocommerce-germanized-pro' ); ?>">*</abbr>
+		<span class="woocommerce-gzdp-multistep-privacy-policy-checkbox-text"><?php echo wp_kses_post( wc_gzdp_get_privacy_policy_text() ); ?></span>
+		<?php if ( 'yes' === get_option( 'woocommerce_gzdp_checkout_privacy_policy_checkbox' ) ) : ?>
+			&nbsp;<abbr class="required" title="<?php echo esc_attr__( 'required', 'woocommerce-germanized-pro' ); ?>">*</abbr>
 		<?php endif; ?>
 	</label>
 </p>

@@ -19,7 +19,7 @@ class SyncData {
 	public function __construct( $handler_name, $args = array() ) {
 		$this->handler_name = $handler_name;
 
-		foreach( $args as $key => $arg ) {
+		foreach ( $args as $key => $arg ) {
 			$this->set( $key, $arg );
 		}
 	}
@@ -60,7 +60,7 @@ class SyncData {
 
 	public function set_last_updated( $date ) {
 		if ( is_numeric( $date ) ) {
-			$date = gmdate("Y-m-d\TH:i:s\Z", $date );
+			$date = gmdate( 'Y-m-d\TH:i:s\Z', $date );
 		}
 
 		$this->last_updated = sab_string_to_datetime( $date );

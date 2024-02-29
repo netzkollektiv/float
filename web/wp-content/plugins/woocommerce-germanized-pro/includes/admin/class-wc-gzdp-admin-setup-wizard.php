@@ -37,15 +37,15 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 		 * @since 2.2.0
 		 */
 		public function __construct() {
-		    if ( did_action( 'plugins_loaded' ) ) {
-		        $this->load();
-		    } else {
-		        add_action( 'plugins_loaded', array( $this, 'load' ) );
-		    }
+			if ( did_action( 'plugins_loaded' ) ) {
+				$this->load();
+			} else {
+				add_action( 'plugins_loaded', array( $this, 'load' ) );
+			}
 		}
 
 		public function load() {
-		    if ( current_user_can( 'manage_options' ) ) {
+			if ( current_user_can( 'manage_options' ) ) {
 				add_action( 'admin_menu', array( $this, 'admin_menus' ), 20 );
 				add_action( 'admin_init', array( $this, 'initialize' ), 10 );
 				add_action( 'admin_init', array( $this, 'setup_wizard' ), 20 );
@@ -56,14 +56,14 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 		}
 
 		protected function is_legacy_import_update() {
-		    $is_import = get_option( '_wc_gzdp_needs_legacy_invoice_import' );
+			$is_import = get_option( '_wc_gzdp_needs_legacy_invoice_import' );
 
-		    return $is_import;
+			return $is_import;
 		}
 
 		public function initialize() {
 			$default_steps = array(
-				'activation'  => array(
+				'activation' => array(
 					'name'    => __( 'Activation', 'woocommerce-germanized-pro' ),
 					'view'    => 'activation.php',
 					'handler' => array( $this, 'wc_gzdp_setup_activation_save' ),
@@ -73,47 +73,47 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 						'activation'     => sprintf( __( 'Sorry, Germanized could not be activated. Please see the <a href="%s" target="_blank">install instructions</a> for assistance.', 'woocommerce-germanized-pro' ), 'https://vendidero.de/dokument/woocommerce-germanized-pro-installieren' ),
 					),
 				),
-				'invoice' 	  => array(
-					'name'    => __( 'Invoices', 'woocommerce-germanized-pro' ),
-					'view'    => $this->is_legacy_import_update() ? 'legacy-import.php' : 'invoice.php',
-					'handler' => array( $this, 'wc_gzdp_setup_invoice_save' ),
-					'order'   => 2,
-					'errors'  => array(),
+				'invoice'    => array(
+					'name'        => __( 'Invoices', 'woocommerce-germanized-pro' ),
+					'view'        => $this->is_legacy_import_update() ? 'legacy-import.php' : 'invoice.php',
+					'handler'     => array( $this, 'wc_gzdp_setup_invoice_save' ),
+					'order'       => 2,
+					'errors'      => array(),
 					'button_next' => $this->is_legacy_import_update() ? __( 'Start import', 'woocommerce-germanized-pro' ) : __( 'Enable Invoicing', 'woocommerce-germanized-pro' ),
 				),
-				'support' 	  => array(
+				'support'    => array(
 					'name'    => __( 'Support', 'woocommerce-germanized-pro' ),
 					'view'    => 'support.php',
 					'handler' => array( $this, 'wc_gzdp_setup_support_save' ),
 					'order'   => 3,
 					'errors'  => array(),
 				),
-				'ready' 	           => array(
+				'ready'      => array(
 					'name'             => __( 'Ready', 'woocommerce-germanized-pro' ),
 					'view'             => 'ready.php',
 					'order'            => 4,
-					'errors'  	       => array(),
+					'errors'           => array(),
 					'button_next'      => __( 'Go to settings', 'woocommerce-germanized-pro' ),
 					'button_next_link' => admin_url( 'admin.php?page=wc-settings&tab=germanized' ),
 				),
 			);
 
 			if ( $this->is_legacy_import_update() ) {
-			    unset( $default_steps['activation'] );
-			    $order = 1;
+				unset( $default_steps['activation'] );
+				$order = 1;
 
-			    foreach( $default_steps as $key => $step ) {
-			        $default_steps[ $key ]['order'] = $order++;
-			    }
+				foreach ( $default_steps as $key => $step ) {
+					$default_steps[ $key ]['order'] = $order++;
+				}
 			}
 
-			$this->steps  = $default_steps;
-			$this->step   = isset( $_REQUEST['step'] ) ? sanitize_key( $_REQUEST['step'] ) : current( array_keys( $this->steps ) ); // WPCS: CSRF ok, input var ok.
+			$this->steps = $default_steps;
+			$this->step  = isset( $_REQUEST['step'] ) ? sanitize_key( wp_unslash( $_REQUEST['step'] ) ) : current( array_keys( $this->steps ) );
 
 			// Check if a step has been skipped and maybe delete som tmp options
-			if ( isset( $_GET['skip'] ) && isset( $_GET['_wpnonce'] ) && wp_verify_nonce( $_GET['_wpnonce'], 'wc-gzdp-setup-skip' ) ) {
+			if ( isset( $_GET['skip'] ) && isset( $_GET['_wpnonce'] ) && wp_verify_nonce( wp_unslash( $_GET['_wpnonce'] ), 'wc-gzdp-setup-skip' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				$skipped_step = sanitize_key( $_GET['skip'] );
- 			}
+			}
 		}
 
 		/**
@@ -135,12 +135,12 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 		}
 
 		private function is_setup_wizard() {
-			return ( isset( $_GET['page'] ) && 'wc-gzdp-setup' === $_GET['page'] );
+			return ( isset( $_GET['page'] ) && 'wc-gzdp-setup' === $_GET['page'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
 
 		public function get_error_message( $step = false ) {
-			if ( isset( $_GET['error'] ) ) {
-				$error_key 	  = sanitize_key( $_GET['error'] );
+			if ( isset( $_GET['error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				$error_key    = sanitize_key( wp_unslash( $_GET['error'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				$current_step = $this->get_step( $step );
 
 				if ( isset( $current_step['errors'][ $error_key ] ) ) {
@@ -180,17 +180,17 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 				return false;
 			}
 
-			return admin_url( 'admin.php?page=wc-gzdp-setup&step='  . $key );
+			return admin_url( 'admin.php?page=wc-gzdp-setup&step=' . $key );
 		}
 
 		public function get_next_step() {
 			$current = $this->get_step();
 			$next    = $this->step;
 
-			if ( $current['order'] < sizeof( $this->steps ) ) {
+			if ( $current['order'] < count( $this->steps ) ) {
 				$order_next = $current['order'] + 1;
 
-				foreach( $this->steps as $step_key => $step ) {
+				foreach ( $this->steps as $step_key => $step ) {
 					if ( $step['order'] === $order_next ) {
 						$next = $step_key;
 					}
@@ -201,7 +201,7 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 		}
 
 		protected function header() {
-			set_current_screen();
+			set_current_screen( 'wc-gzdp-setup' );
 			?>
 			<!DOCTYPE html>
 			<html <?php language_attributes(); ?>>
@@ -215,19 +215,19 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 				<?php do_action( 'admin_head' ); ?>
 			</head>
 			<body class="wc-gzdp-setup wp-core-ui wc-gzdp-setup-step-<?php echo esc_attr( $this->step ); ?>">
-			    <div class="logo-wrapper"><div class="logo"></div></div>
+				<div class="wc-gzdp-setup-header"><div class="logo-wrapper"><div class="logo"></div></div>
 			<?php
 		}
 
 		protected function steps() {
-			$output_steps      = $this->steps;
+			$output_steps = $this->steps;
 			?>
 			<ul class="step wc-gzdp-steps">
 				<?php
 				foreach ( $output_steps as $step_key => $step ) {
 					?>
 					<li class="step-item <?php echo $step_key === $this->step ? 'active' : ''; ?>">
-						<a href="<?php echo $this->get_step_url( $step_key ) ?>"><?php echo esc_html( $step['name'] ); ?></a>
+						<a href="<?php echo esc_url( $this->get_step_url( $step_key ) ); ?>"><?php echo esc_html( $step['name'] ); ?></a>
 					</li>
 					<?php
 				}
@@ -238,26 +238,29 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 
 		protected function content() {
 			?>
-			<form class="wc-gzdp-setup-form" method="post" action="<?php echo admin_url( 'admin-post.php' ); ?>">
+			<form class="wc-gzdp-setup-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<div class="wc-gzdp-setup-content">
 
 				<?php if ( $error_message = $this->get_error_message() ) : ?>
 					<div id="message" class="error inline">
-						<p><?php echo $error_message; ?></p>
+						<p><?php echo wp_kses_post( $error_message ); ?></p>
 					</div>
 				<?php endif; ?>
 
-				<?php if ( ! empty( $this->steps[ $this->step ]['view'] ) ) {
+				<?php
+				if ( ! empty( $this->steps[ $this->step ]['view'] ) ) {
 					if ( file_exists( WC_GERMANIZED_PRO_ABSPATH . 'includes/admin/views/setup/' . $this->steps[ $this->step ]['view'] ) ) {
 
 						// Extract the variables to a local namespace
-						extract( array(
-							'steps'  => $this->steps,
-							'step'   => $this->step,
-							'wizard' => $this
-						) );
+						extract( // phpcs:ignore WordPress.PHP.DontExtract.extract_extract
+							array(
+								'steps'  => $this->steps,
+								'step'   => $this->step,
+								'wizard' => $this,
+							)
+						);
 
-						include( 'views/setup/' . $this->steps[ $this->step ]['view'] );
+						include 'views/setup/' . $this->steps[ $this->step ]['view'];
 					}
 				}
 
@@ -274,20 +277,20 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 
 					<?php wp_nonce_field( 'wc-gzdp-setup' ); ?>
 
-					<?php if ( $current['order'] < sizeof( $this->steps ) ) : ?>
-						<a class="wc-gzdp-setup-link wc-gzdp-setup-link-skip" href="<?php echo wp_nonce_url( add_query_arg( array( 'skip' => esc_attr( $this->step ) ), $this->get_step_url( $this->get_next_step() ) ), 'wc-gzdp-setup-skip' ); ?>"><?php esc_html_e( 'Skip Step', 'woocommerce-germanized-pro' ); ?></a>
+					<?php if ( $current['order'] < count( $this->steps ) ) : ?>
+						<a class="wc-gzdp-setup-link wc-gzdp-setup-link-skip" href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'skip' => esc_attr( $this->step ) ), $this->get_step_url( $this->get_next_step() ) ), 'wc-gzdp-setup-skip' ) ); ?>"><?php esc_html_e( 'Skip Step', 'woocommerce-germanized-pro' ); ?></a>
 					<?php endif; ?>
 
 					<?php if ( isset( $current['button_next_link'] ) && ! empty( $current['button_next_link'] ) ) : ?>
-						<a class="button button-primary wc-gzdp-setup-link" href="<?php echo esc_url( $current['button_next_link'] ); ?>"><?php echo isset( $current['button_next'] ) ? esc_attr( $current['button_next'] ) : esc_attr__( 'Continue', 'woocommerce-germanized-pro' ); ?></a>
-					<?php else: ?>
-						<button class="button button-primary wc-gzdp-setup-link" type="submit"><?php echo isset( $current['button_next'] ) ? esc_attr( $current['button_next'] ) : esc_attr__( 'Continue', 'woocommerce-germanized-pro' ); ?></button>
+						<a class="button button-primary wc-gzdp-setup-link wc-gzd-button" href="<?php echo esc_url( $current['button_next_link'] ); ?>"><?php echo isset( $current['button_next'] ) ? esc_attr( $current['button_next'] ) : esc_attr__( 'Continue', 'woocommerce-germanized-pro' ); ?></a>
+					<?php else : ?>
+						<button class="button button-primary wc-gzdp-setup-link wc-gzd-button" type="submit"><?php echo isset( $current['button_next'] ) ? esc_attr( $current['button_next'] ) : esc_attr__( 'Continue', 'woocommerce-germanized-pro' ); ?></button>
 					<?php endif; ?>
 
 				</div>
 
 				<div class="escape">
-					<a href="<?php echo admin_url(); ?>"><?php _e( 'Return to WP Admin', 'woocommerce-germanized-pro' ); ?></a>
+					<a href="<?php echo esc_url( admin_url() ); ?>"><?php esc_html_e( 'Return to WP Admin', 'woocommerce-germanized-pro' ); ?></a>
 				</div>
 			</div>
 			</form>
@@ -309,7 +312,7 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 			return $plugins;
 		}
 
-		private function install_plugin( $plugin_to_install_id, $plugin_to_install ) {
+		private function install_plugin( $plugin_to_install_id, $plugin_to_install, $network_wide = true ) {
 
 			if ( ! empty( $plugin_to_install['repo-slug'] ) ) {
 				require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -380,12 +383,12 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 
 						$result = $upgrader->install_package(
 							array(
-								'source'                      => $working_dir,
-								'destination'                 => WP_PLUGIN_DIR,
-								'clear_destination'           => false,
+								'source'            => $working_dir,
+								'destination'       => WP_PLUGIN_DIR,
+								'clear_destination' => false,
 								'abort_if_destination_exists' => false,
-								'clear_working'               => true,
-								'hook_extra'                  => array(
+								'clear_working'     => true,
+								'hook_extra'        => array(
 									'type'   => 'plugin',
 									'action' => 'install',
 								),
@@ -411,7 +414,7 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 				// Activate this thing.
 				if ( $activate ) {
 					try {
-						$result = activate_plugin( $installed ? $installed_plugins[ $plugin_file ] : $plugin_slug . '/' . $plugin_file );
+						$result = activate_plugin( $installed ? $installed_plugins[ $plugin_file ] : $plugin_slug . '/' . $plugin_file, '', $network_wide );
 
 						if ( is_wp_error( $result ) ) {
 							throw new Exception( $result->get_error_message() );
@@ -426,7 +429,7 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 		}
 
 		public function save() {
-			if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'wc-gzdp-setup' ) ) {
+			if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( wp_unslash( $_POST['_wpnonce'] ), 'wc-gzdp-setup' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				wp_die();
 			} elseif ( ! current_user_can( 'manage_options' ) ) {
 				wp_die();
@@ -442,12 +445,12 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 		}
 
 		public function wc_gzdp_setup_activation_save() {
-			$license_key = isset( $_POST['license_key'] ) ? sanitize_text_field( $_POST['license_key'] ) : '';
-			$error 	     = false;
-			$redirect 	 = $this->get_step_url( $this->get_next_step() );
+			$license_key = isset( $_POST['license_key'] ) ? wc_clean( wp_unslash( $_POST['license_key'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$error       = false;
+			$redirect    = $this->get_step_url( $this->get_next_step() );
 			$current_url = $this->get_step_url( $this->step );
 
-			if ( isset( $_POST['license_key'] ) && empty( $license_key ) ) {
+			if ( isset( $_POST['license_key'] ) && empty( $license_key ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 				$error = 'activation';
 			}
 
@@ -491,30 +494,30 @@ if ( ! class_exists( 'WC_GZDP_Admin_Setup_Wizard' ) ) :
 				$redirect = add_query_arg( array( 'success' => true ), $redirect );
 			}
 
-			wp_safe_redirect( $redirect );
+			wp_safe_redirect( esc_url_raw( $redirect ) );
 			exit();
 		}
 
 		public function wc_gzdp_setup_invoice_save() {
-			$redirect 	 = $this->get_step_url( $this->get_next_step() );
+			$redirect    = $this->get_step_url( $this->get_next_step() );
 			$current_url = $this->get_step_url( $this->step );
 
 			if ( $this->is_legacy_import_update() ) {
-			    $import_after = isset( $_POST['import_after'] ) ? absint( $_POST['import_after'] ) : date_i18n( 'Y' );
-		        WC_GZDP_Install::start_legacy_invoice_import( $import_after );
+				$import_after = isset( $_POST['import_after'] ) ? absint( $_POST['import_after'] ) : date_i18n( 'Y' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				WC_GZDP_Install::start_legacy_invoice_import( $import_after );
 			} else {
-			    update_option( 'woocommerce_gzdp_invoice_enable', 'yes' );
+				update_option( 'woocommerce_gzdp_invoice_enable', 'yes' );
 			}
 
-			wp_safe_redirect( $redirect );
+			wp_safe_redirect( esc_url_raw( $redirect ) );
 			exit();
 		}
 
 		public function wc_gzdp_setup_support_save() {
-			$redirect 	 = $this->get_step_url( $this->get_next_step() );
+			$redirect    = $this->get_step_url( $this->get_next_step() );
 			$current_url = $this->get_step_url( $this->step );
 
-			wp_safe_redirect( $redirect );
+			wp_safe_redirect( esc_url_raw( $redirect ) );
 			exit();
 		}
 	}

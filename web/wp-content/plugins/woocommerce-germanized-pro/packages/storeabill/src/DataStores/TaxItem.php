@@ -32,8 +32,8 @@ class TaxItem extends DocumentItem {
 	protected function format_update_value( $document, $prop ) {
 		$value = parent::format_update_value( $document, $prop );
 
-		switch( $prop ) {
-			case "round_tax_at_subtotal":
+		switch ( $prop ) {
+			case 'round_tax_at_subtotal':
 				$value = sab_bool_to_string( $value );
 				break;
 		}

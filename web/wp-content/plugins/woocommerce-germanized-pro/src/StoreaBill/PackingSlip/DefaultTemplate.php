@@ -11,14 +11,17 @@ defined( 'ABSPATH' ) || exit;
 class DefaultTemplate extends Template {
 
 	public static function get_template_data() {
-		return apply_filters( self::get_hook_prefix() . 'data', array(
-			'margins' => array(
-				'top'    => '1',
-				'left'   => '1',
-				'right'  => '1',
-				'bottom' => '1',
+		return apply_filters(
+			self::get_hook_prefix() . 'data',
+			array(
+				'margins' => array(
+					'top'    => '1',
+					'left'   => '1',
+					'right'  => '1',
+					'bottom' => '1',
+				),
 			)
-		) );
+		);
 	}
 
 	public static function get_screenshot_url() {
@@ -46,8 +49,8 @@ class DefaultTemplate extends Template {
 	}
 
 	protected static function has_price_column() {
-	    return apply_filters( self::get_hook_prefix() . 'has_price_column', true );
-    }
+		return apply_filters( self::get_hook_prefix() . 'has_price_column', true );
+	}
 
 	public static function get_html() {
 		$heading_bg_color = sab_hex_lighter( self::get_light_color(), 70 );
@@ -55,12 +58,12 @@ class DefaultTemplate extends Template {
 		ob_start();
 		?>
 		<!-- wp:storeabill/document-styles /-->
-		<?php echo self::get_default_header(); ?>
+		<?php echo self::get_default_header(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
 		<!-- wp:storeabill/address -->
 		<div class="wp-block-storeabill-address sab-document-address has-text-align-left">
 			<p class="address-heading">
-				<span style="font-size:10px" class="has-inline-text-size"><span style="color:<?php echo esc_attr( self::get_light_color() ); ?>" class="has-inline-color"><?php echo apply_filters( self::get_hook_prefix() . 'address_header', Countries::get_formatted_base_address( ' - ' ) ); ?></span></span>
+				<span style="font-size:10px" class="has-inline-text-size"><span style="color:<?php echo esc_attr( self::get_light_color() ); ?>" class="has-inline-color"><?php echo wp_kses_post( apply_filters( self::get_hook_prefix() . 'address_header', Countries::get_formatted_base_address( ' - ' ) ) ); ?></span></span>
 			</p>
 			<p class="address-content">
 				<span class="placeholder-content" contenteditable="false"><span class="editor-placeholder"></span>{content}</span>
@@ -73,7 +76,7 @@ class DefaultTemplate extends Template {
 		<!-- /wp:spacer -->
 
 		<!-- wp:storeabill/document-title {"customFontSize":"25"} -->
-		<p class="has-text-align-left" style="font-size:25px"><strong><?php echo apply_filters( self::get_hook_prefix() . 'document_title', strtoupper( __( 'Packing Slip', 'woocommerce-germanized-pro' ) ) ); ?></strong></p>
+		<p class="has-text-align-left" style="font-size:25px"><strong><?php echo esc_html( apply_filters( self::get_hook_prefix() . 'document_title', strtoupper( __( 'Packing Slip', 'woocommerce-germanized-pro' ) ) ) ); ?></strong></p>
 		<!-- /wp:storeabill/document-title -->
 
 		<!-- wp:columns -->
@@ -82,8 +85,8 @@ class DefaultTemplate extends Template {
 			<div class="wp-block-column">
 				<!-- wp:paragraph -->
 				<p>
-					<?php echo esc_html__( 'Shipment number', 'woocommerce-germanized-pro' ); ?>: <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr__( 'Formatted shipment number', 'woocommerce-germanized-pro' ); ?>" data-shortcode="document?data=shipment_number"><span class="editor-placeholder"></span><?php echo $preview->get_shipment_number(); ?></span><br>
-					<?php echo esc_html__( 'Order number', 'woocommerce-germanized-pro' ); ?>: <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr__( 'Order number', 'woocommerce-germanized-pro' ); ?>" data-shortcode="document?data=order_number"><span class="editor-placeholder"></span><?php echo $preview->get_order_number(); ?></span><br>
+					<?php echo esc_html__( 'Shipment number', 'woocommerce-germanized-pro' ); ?>: <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr__( 'Formatted shipment number', 'woocommerce-germanized-pro' ); ?>" data-shortcode="document?data=shipment_number"><span class="editor-placeholder"></span><?php echo esc_html( $preview->get_shipment_number() ); ?></span><br>
+					<?php echo esc_html__( 'Order number', 'woocommerce-germanized-pro' ); ?>: <span class="document-shortcode sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr__( 'Order number', 'woocommerce-germanized-pro' ); ?>" data-shortcode="document?data=order_number"><span class="editor-placeholder"></span><?php echo esc_html( $preview->get_order_number() ); ?></span><br>
 					<?php do_action( self::get_hook_prefix() . 'after_document_details' ); ?><br>
 				</p>
 				<!-- /wp:paragraph -->
@@ -127,31 +130,31 @@ class DefaultTemplate extends Template {
 			<div class="wp-block-storeabill-item-table-column is-horizontally-aligned-<?php echo ( self::has_price_column() ? 'center' : 'right' ); ?>">
 				<span class="item-column-heading-text"><strong><?php echo esc_html_x( 'Quantity', 'item-table-column', 'woocommerce-germanized-pro' ); ?></strong></span>
 				<!-- wp:storeabill/item-quantity -->
-				<p class="wp-block-storeabill-item-quantity sab-block-item-content">{content}</p>
+				<p class="wp-block-storeabill-item-quantity sab-block-item-content"><span class="placeholder-content sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'Quantity', 'item-table-column', 'woocommerce-germanized-pro' ); ?>"><span class="editor-placeholder"></span>{content}</span></p>
 				<!-- /wp:storeabill/item-quantity -->
 
 				<?php do_action( self::get_hook_prefix() . 'after_item_quantity' ); ?>
 			</div>
 			<!-- /wp:storeabill/item-table-column -->
 
-            <?php if ( self::has_price_column() ) : ?>
-                <!-- wp:storeabill/item-table-column {"align":"right","headingTextColor":"#000000","headingBackgroundColor":"<?php echo esc_attr( $heading_bg_color ); ?>"} -->
-                <div class="wp-block-storeabill-item-table-column is-horizontally-aligned-right">
-                    <span class="item-column-heading-text"><strong><?php echo esc_html_x( 'Total', 'item-table-column', 'woocommerce-germanized-pro' ); ?></strong></span>
-                    <!-- wp:storeabill/item-line-total {"showPricesIncludingTax":true} -->
-                    <p class="wp-block-storeabill-item-line-total sab-block-item-content">{content}</p>
-                    <!-- /wp:storeabill/item-line-total -->
+			<?php if ( self::has_price_column() ) : ?>
+				<!-- wp:storeabill/item-table-column {"align":"right","headingTextColor":"#000000","headingBackgroundColor":"<?php echo esc_attr( $heading_bg_color ); ?>"} -->
+				<div class="wp-block-storeabill-item-table-column is-horizontally-aligned-right">
+					<span class="item-column-heading-text"><strong><?php echo esc_html_x( 'Total', 'item-table-column', 'woocommerce-germanized-pro' ); ?></strong></span>
+					<!-- wp:storeabill/item-line-total {"showPricesIncludingTax":true} -->
+					<p class="wp-block-storeabill-item-line-total sab-block-item-content"><span class="placeholder-content sab-tooltip" contenteditable="false" data-tooltip="<?php echo esc_attr_x( 'Total', 'item-table-column', 'woocommerce-germanized-pro' ); ?>"><span class="editor-placeholder"></span>{content}</span></p>
+					<!-- /wp:storeabill/item-line-total -->
 
-                    <?php do_action( self::get_hook_prefix() . 'after_item_line_total' ); ?>
-                </div>
-                <!-- /wp:storeabill/item-table-column -->
-            <?php endif; ?>
+					<?php do_action( self::get_hook_prefix() . 'after_item_line_total' ); ?>
+				</div>
+				<!-- /wp:storeabill/item-table-column -->
+			<?php endif; ?>
 		</div>
 		<!-- /wp:storeabill/item-table -->
 
 		<?php do_action( self::get_hook_prefix() . 'after_item_table' ); ?>
 
-		<?php echo self::get_default_footer(); ?>
+		<?php echo self::get_default_footer(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		<?php
 		$html = ob_get_clean();
 

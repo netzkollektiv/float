@@ -3,7 +3,7 @@
 Plugin Name: WP All Export Pro
 Plugin URI: http://www.wpallimport.com/export/
 Description: Export any post type to a CSV or XML file. Edit the exported data, and then re-import it later using WP All Import.
-Version: 1.7.2
+Version: 1.8.3
 Author: Soflyy
 */
 
@@ -32,7 +32,7 @@ if (class_exists('PMXE_Plugin') and PMXE_EDITION == "free") {
 
     include_once __DIR__ . '/src/WordPress/AdminNotice.php';
     include_once __DIR__ . '/src/WordPress/AdminErrorNotice.php';
-    $notice = new \Wpae\WordPress\AdminErrorNotice(printf(__('Please de-activate and remove the free version of the WP All Export before activating the paid version.', 'wp_all_export_plugin')));
+    $notice = new \Wpae\WordPress\AdminErrorNotice(printf(esc_html__('Please de-activate and remove the free version of the WP All Export before activating the paid version.', 'wp_all_export_plugin')));
     $notice->render();
 
     deactivate_plugins(str_replace('\\', '/', dirname(__FILE__)) . '/wp-all-export-pro.php');
@@ -46,7 +46,7 @@ if (class_exists('PMXE_Plugin') and PMXE_EDITION == "free") {
      */
     define('PMXE_PREFIX', 'pmxe_');
 
-	define('PMXE_VERSION', '1.7.2');
+    define('PMXE_VERSION', '1.8.3');
 
     define('PMXE_EDITION', 'paid');
 
@@ -368,7 +368,6 @@ if (class_exists('PMXE_Plugin') and PMXE_EDITION == "free") {
          */
         public function adminInit()
         {
-
             $addons_not_included = get_option('wp_all_export_pro_addons_not_included',false);
 
             $addons = new \Wpae\App\Service\Addons\AddonService();
@@ -401,11 +400,11 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
             }
 
             if (!is_dir($uploads['basedir'] . DIRECTORY_SEPARATOR . WP_ALL_EXPORT_UPLOADS_BASE_DIRECTORY) or !is_writable($uploads['basedir'] . DIRECTORY_SEPARATOR . WP_ALL_EXPORT_UPLOADS_BASE_DIRECTORY)) {
-                $this->showNoticeAndDisablePlugin(sprintf(__('Uploads folder %s must be writable', 'wp_all_export_plugin'), $uploads['basedir'] . DIRECTORY_SEPARATOR . WP_ALL_EXPORT_UPLOADS_BASE_DIRECTORY));
+                $this->showNoticeAndDisablePlugin(sprintf(esc_html__('Uploads folder %s must be writable', 'wp_all_export_plugin'), $uploads['basedir'] . DIRECTORY_SEPARATOR . WP_ALL_EXPORT_UPLOADS_BASE_DIRECTORY));
             }
 
             if (!is_dir($uploads['basedir'] . DIRECTORY_SEPARATOR . self::UPLOADS_DIRECTORY) or !is_writable($uploads['basedir'] . DIRECTORY_SEPARATOR . self::UPLOADS_DIRECTORY)) {
-                $this->showNoticeAndDisablePlugin(sprintf(__('Uploads folder %s must be writable', 'wp_all_export_plugin'), $uploads['basedir'] . DIRECTORY_SEPARATOR . self::UPLOADS_DIRECTORY));
+                $this->showNoticeAndDisablePlugin(sprintf(esc_html__('Uploads folder %s must be writable', 'wp_all_export_plugin'), $uploads['basedir'] . DIRECTORY_SEPARATOR . self::UPLOADS_DIRECTORY));
             }
 
             if (!$addons_not_included && $this->addons->userExportsExistAndAddonNotInstalled() && current_user_can('manage_options')) {
@@ -423,6 +422,18 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
                     . '<p><a class="button button-primary" href="https://wpallimport.com/portal/downloads" target="_blank">' . __('Download Add-On', PMXE_Plugin::LANGUAGE_DOMAIN) . '</a></p>', 'wpae_acf_addon_not_installed_notice');
             }
 
+            if($this->addons->wooCommerceRealTimeExportsExistAndAddonNotInstalled() && current_user_can('manage_options')) {
+                $this->showDismissibleNotice(__('<strong>WP All Export Pro:</strong> An export configured to run in real time requires the WooCommerce Export Add-On and will not export newly created records while the add-on is deactivated.</p>'), 'wpae_real_time_woocommerce_addon_not_installed_notice');
+            }
+
+            if($this->addons->userRealTimeExportsExistAndAddonNotInstalled() && current_user_can('manage_options')) {
+                $this->showDismissibleNotice(__('<strong>WP All Export Pro:</strong> An export configured to run in real time requires the User Export Add-On and will not export newly created users while the add-on is deactivated.</p>'), 'wpae_real_time_woocommerce_addon_not_installed_notice');
+            }
+
+            if($this->addons->acfRealTimeExportsExistAndNotInstalled() && current_user_can('manage_options')) {
+                $this->showDismissibleNotice(__('<strong>WP All Export Pro:</strong> An export configured to run in real time requires the ACF Export Add-On and will not export newly created records while the add-on is deactivated.</p>'), 'wpae_real_time_woocommerce_addon_not_installed_notice');
+            }
+
             $functions = $uploads['basedir'] . DIRECTORY_SEPARATOR . WP_ALL_EXPORT_UPLOADS_BASE_DIRECTORY . DIRECTORY_SEPARATOR . 'functions.php';
 
             if (!@file_exists($functions)) @touch($functions);
@@ -433,7 +444,6 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
             $page = strtolower($input->getpost('page', ''));
 
             if (preg_match('%^' . preg_quote(str_replace('_', '-', self::PREFIX), '%') . '([\w-]+)$%', $page)) {
-                //$this->adminDispatcher($page, strtolower($input->getpost('action', 'index')));
 
                 $action = strtolower($input->getpost('action', 'index')).'_action';
 
@@ -472,6 +482,9 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
                     if (!$controller instanceof PMXE_Controller_Admin) {
                         throw new Exception("Administration page `$page` matches to a wrong controller type.");
                     }
+
+                    $reviewsUI = new \Wpae\Reviews\ReviewsUI();
+                    add_action('admin_notices', [$reviewsUI, 'render']);
 
                     if ($controller instanceof PMXE_Admin_Manage && $action == 'update_action' && isset($_GET['id'])) {
                         $addons = new \Wpae\App\Service\Addons\AddonService();
@@ -662,10 +675,12 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
                     return TRUE;
                 }
                 if (!$is_prefix) {
-                    $pathAlt = self::ROOT_DIR . '/' . $subdir . '/' . $filePathAlt;
                     if (strpos($className, '_') !== false) {
-                        $pathAlt = $this->lreplace('_', DIRECTORY_SEPARATOR, $pathAlt);
+                        $filePathAlt = $this->lreplace('_', DIRECTORY_SEPARATOR, $filePathAlt);
                     }
+
+                    $pathAlt = self::ROOT_DIR . DIRECTORY_SEPARATOR . $subdir . DIRECTORY_SEPARATOR . $filePathAlt;
+
                     if (is_file($pathAlt)) {
                         require_once $pathAlt;
                         return TRUE;
@@ -906,6 +921,9 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
             $parent_id = false;
             $export_post_type = false;
             $client_mode_enabled = false;
+            $created_at = false;
+            $created_at_gmt = false;
+            $rte_last_row = false;
 
             // Check if field exists
             foreach ($tablefields as $tablefield) {
@@ -913,6 +931,10 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
                 if ('parent_id' == $tablefield->Field) $parent_id = true;
                 if ('export_post_type' == $tablefield->Field) $export_post_type = true;
                 if ('client_mode_enabled' == $tablefield->Field) $client_mode_enabled= true;
+                if ('created_at' == $tablefield->Field) $created_at = true;
+                if ('created_at_gmt' == $tablefield->Field) $created_at_gmt = true;
+                if ('rte_last_row' == $tablefield->Field) $rte_last_row = true;
+
             }
 
             if (!$iteration) {
@@ -927,6 +949,19 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
 
             if (!$client_mode_enabled) {
                 $wpdb->query("ALTER TABLE {$table} ADD `client_mode_enabled` TINYINT NOT NULL DEFAULT '0';");
+            }
+
+            if ( ! $created_at ){
+                $wpdb->query("ALTER TABLE {$table} ADD `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;");
+                $wpdb->query("UPDATE {$table} SET `created_at` = `registered_on` WHERE 1");
+            }
+
+            if ( ! $created_at_gmt ){
+                $wpdb->query("ALTER TABLE {$table} ADD `created_at_gmt` DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00';");
+            }
+
+            if ( ! $rte_last_row ){
+                $wpdb->query("ALTER TABLE {$table} ADD `rte_last_row` MEDIUMTEXT NOT NULL DEFAULT '';");
             }
 
             update_option("wp_all_export_pro_db_version", PMXE_VERSION);
@@ -1076,8 +1111,12 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
                 'scheduling_times' => array(),
                 'scheduling_timezone' => 'UTC',
 
-                'allow_client_mode' => 0
+                'allow_client_mode' => 0,
+                'enable_real_time_exports' => 0,
+                'enable_real_time_exports_running' => 0,
+                'do_not_generate_file_on_new_records' => 0,
 
+                'security_token' => ''
             );
         }
 
@@ -1121,6 +1160,25 @@ Some of the features you used in WP All Export Pro now require paid add-ons. If 
                 'author' => 'Soflyy'  // author of this plugin
             )
         );
+
+		// Provide updater for version 1.0.0 of the Gravity Forms Export Add-On.
+		if(class_exists('GF_Export_Add_On') && in_array(GF_Export_Add_On::VERSION, ['1.0.0','1.0.1'])){
+			// Plugin path.
+			$wpae_gf_path = plugin_dir_path( __DIR__ ) . 'wpae-gravity-forms-export-addon/wpae-gf-addon.php';
+
+			// Make sure the plugin file actually exists.
+			if(file_exists($wpae_gf_path)) {
+
+				// Provide supplemental updater for early GF Export Add-On version.
+				$wpae_gf_updater = new PMXE_Updater( $wp_all_export_options['info_api_url'], $wpae_gf_path, array(
+					'version'   => GF_Export_Add_On::VERSION,        // current version number
+					'license'   => false,
+					'item_name' => 'Gravity Forms Export Add-On Pro',    // name of this plugin
+					'author'    => 'Soflyy'  // author of this plugin
+				) );
+			}
+
+	    }
     }
 
     add_action('admin_init', 'wp_all_export_pro_updater', 0);

@@ -10,7 +10,6 @@ import {
 import { getFontSizeStyle } from "@storeabill/utils";
 
 export default function save( { attributes } ) {
-
     const {
         content,
         align,

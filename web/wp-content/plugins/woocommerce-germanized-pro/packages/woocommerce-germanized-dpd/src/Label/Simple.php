@@ -22,6 +22,7 @@ class Simple extends Label {
 		'page_format'   => '',
 		'customs_terms' => '',
 		'customs_paper' => '',
+		'pickup_date'   => '',
 	);
 
 	public function get_type() {
@@ -34,6 +35,10 @@ class Simple extends Label {
 
 	public function get_customs_terms( $context = 'view' ) {
 		return $this->get_prop( 'customs_terms', $context );
+	}
+
+	public function get_pickup_date( $context = 'view' ) {
+		return $this->get_prop( 'pickup_date', $context );
 	}
 
 	public function get_customs_paper( $context = 'view' ) {
@@ -50,6 +55,10 @@ class Simple extends Label {
 
 	public function set_customs_paper( $value ) {
 		$this->set_prop( 'customs_paper', $value );
+	}
+
+	public function set_pickup_date( $date ) {
+		$this->set_prop( 'pickup_date', $date );
 	}
 
 	public function get_shipping_provider( $context = 'view' ) {
@@ -71,9 +80,5 @@ class Simple extends Label {
 		$result = Package::get_api()->get_label( $this );
 
 		return $result;
-	}
-
-	public function delete( $force_delete = false ) {
-		return parent::delete( $force_delete );
 	}
 }

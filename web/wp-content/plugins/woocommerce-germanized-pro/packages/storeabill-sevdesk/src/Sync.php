@@ -97,10 +97,10 @@ class Sync extends SyncHandler {
 
 		if ( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Customer' ) ) {
 			return $this->sync_customer( $object );
-		} elseif( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Invoice' ) ) {
+		} elseif ( is_a( $object, '\Vendidero\StoreaBill\Interfaces\Invoice' ) ) {
 			if ( 'simple' === $object->get_invoice_type() ) {
 				return $this->sync_invoice( $object );
-			} elseif( 'cancellation' === $object->get_invoice_type() ) {
+			} elseif ( 'cancellation' === $object->get_invoice_type() ) {
 				return $this->sync_cancellation( $object );
 			}
 		}
@@ -141,13 +141,13 @@ class Sync extends SyncHandler {
 		$response = array();
 
 		if ( ! $this->get_api()->has_failed( $results ) ) {
-			foreach( $results['objects'] as $customer ) {
+			foreach ( $results['objects'] as $customer ) {
 				/**
 				 * Exclude companies from searching.
 				 */
-			    if ( isset( $customer['name'] ) && ! empty( $customer['name'] ) ) {
-			        continue;
-                }
+				if ( isset( $customer['name'] ) && ! empty( $customer['name'] ) ) {
+					continue;
+				}
 
 				$customer_number = ! empty( $customer['customerNumber'] ) ? $customer['customerNumber'] : $customer['id'];
 				/* translators: 1: customer first name 2: customer last name 3: customer number */
@@ -163,9 +163,11 @@ class Sync extends SyncHandler {
 	 */
 	protected function sync_customer( $customer ) {
 		$data = array(
+			'customer'         => $customer,
 			'first_name'       => $customer->get_first_name(),
 			'last_name'        => $customer->get_last_name(),
 			'title'            => $customer->get_formatted_title(),
+			'academic_title'   => '',
 			'email'            => $customer->get_email(),
 			'phone'            => $customer->get_phone(),
 			'company'          => $customer->get_company_name(),
@@ -173,20 +175,20 @@ class Sync extends SyncHandler {
 			'vat_id'           => $customer->get_vat_id(),
 			'is_vat_exempt'    => $customer->is_vat_exempt(),
 			'address'          => array(
-				'street'       => $customer->get_billing_address(),
-				'zip'          => $customer->get_billing_postcode(),
-				'country'      => $customer->get_billing_country(),
-				'city'         => $customer->get_billing_city(),
+				'street'  => $customer->get_billing_address(),
+				'zip'     => $customer->get_billing_postcode(),
+				'country' => $customer->get_billing_country(),
+				'city'    => $customer->get_billing_city(),
 			),
 			'shipping_address' => array(
-				'street'       => $customer->get_shipping_address(),
-				'zip'          => $customer->get_shipping_postcode(),
-				'country'      => $customer->get_shipping_country(),
-				'city'         => $customer->get_shipping_city(),
+				'street'  => $customer->get_shipping_address(),
+				'zip'     => $customer->get_shipping_postcode(),
+				'country' => $customer->get_shipping_country(),
+				'city'    => $customer->get_shipping_city(),
 			),
 		);
 
-		$contact = new Contact( $data, $this->get_api(), $customer->get_external_sync_handler_data( self::get_name() ) );
+		$contact = new Contact( apply_filters( "{$this->get_hook_prefix()}contact_data", $data, $customer, $this ), $this->get_api(), $customer->get_external_sync_handler_data( self::get_name() ) );
 		$result  = $contact->save();
 
 		if ( true === $result ) {
@@ -206,37 +208,39 @@ class Sync extends SyncHandler {
 	 * @return bool|\WP_Error
 	 */
 	protected function sync_invoice( $invoice ) {
-		$customer_id   = false;
-		$address_data  = $invoice->get_address();
-		$title         = isset( $address_data['title'] ) ? $address_data['title'] : '';
+		$customer_id  = false;
+		$address_data = $invoice->get_address();
+		$title        = isset( $address_data['title'] ) ? $address_data['title'] : '';
 
 		$customer_data = array(
-			'first_name'       => $invoice->get_first_name(),
-			'last_name'        => $invoice->get_last_name(),
-			'email'            => $invoice->get_email(),
-			'phone'            => $invoice->get_phone(),
-			'company'          => $invoice->get_company(),
-			'title'            => $title,
-			'vat_id'           => $invoice->get_vat_id(),
-			'is_vat_exempt'    => $invoice->is_reverse_charge(),
-			'address'          => array(
-				'street'       => $invoice->get_address_1(),
-				'zip'          => $invoice->get_postcode(),
-				'country'      => $invoice->get_country(),
-				'city'         => $invoice->get_city(),
-			)
+			'customer'       => $invoice->get_customer(),
+			'first_name'     => $invoice->get_first_name(),
+			'last_name'      => $invoice->get_last_name(),
+			'email'          => $invoice->get_email(),
+			'phone'          => $invoice->get_phone(),
+			'company'        => $invoice->get_company(),
+			'title'          => $title,
+			'academic_title' => '',
+			'vat_id'         => $invoice->get_vat_id(),
+			'is_vat_exempt'  => $invoice->is_reverse_charge(),
+			'address'        => array(
+				'street'  => $invoice->get_address_1(),
+				'zip'     => $invoice->get_postcode(),
+				'country' => $invoice->get_country(),
+				'city'    => $invoice->get_city(),
+			),
 		);
 
 		if ( $invoice->has_differing_shipping_address() ) {
-		    $address = $invoice->get_shipping_address();
+			$address = $invoice->get_shipping_address();
 
-		    $customer_data['shipping_address'] = array(
-			    'street'       => isset( $address['address_1'] ) ? $address['address_1'] : null,
-			    'zip'          => isset( $address['postcode'] ) ? $address['postcode'] : null,
-			    'country'      => $invoice->get_shipping_country(),
-			    'city'         => isset( $address['city'] ) ? $address['city'] : null,
-            );
-        }
+			$customer_data['shipping_address'] = array(
+				'street'  => isset( $address['address_1'] ) ? $address['address_1'] : null,
+				'zip'     => isset( $address['postcode'] ) ? $address['postcode'] : null,
+				'country' => $invoice->get_shipping_country(),
+				'city'    => isset( $address['city'] ) ? $address['city'] : null,
+			);
+		}
 
 		$sync_data          = $invoice->get_external_sync_handler_data( self::get_name() );
 		$customer_sync_data = array();
@@ -253,7 +257,7 @@ class Sync extends SyncHandler {
 			$customer_sync_data          = array_replace_recursive( $customer_sync_data, $existing_customer_sync_data->get_data() );
 		}
 
-		$contact = new Contact( $customer_data, $this->api, $customer_sync_data );
+		$contact = new Contact( apply_filters( "{$this->get_hook_prefix()}invoice_customer_data", $customer_data, $invoice, $this ), $this->api, $customer_sync_data );
 		$result  = $contact->save();
 
 		if ( ! is_wp_error( $result ) ) {
@@ -291,28 +295,28 @@ class Sync extends SyncHandler {
 
 			/**
 			 * In case API does not return a 404 assume an error occurred
-             * which should not trigger a re-submit of the voucher.
+			 * which should not trigger a re-submit of the voucher.
 			 */
 			if ( ! $this->get_api()->is_404( $remote_data ) ) {
-			    $exists = true;
+				$exists = true;
 
-			    if ( ! $this->get_api()->has_failed( $remote_data ) ) {
-				    $remote_status = $remote_data['objects'][0]['status'];
-                }
-            }
+				if ( ! $this->get_api()->has_failed( $remote_data ) ) {
+					$remote_status = (int) $remote_data['objects'][0]['status'];
+				}
+			}
 		}
 
 		/**
 		 * Build up items array. Items are being merged by category ID and tax rate.
 		 */
-		foreach( $invoice->get_items( $invoice->get_item_types_for_totals() ) as $item ) {
+		foreach ( $invoice->get_items( $invoice->get_item_types_for_totals() ) as $item ) {
 			$category_id = $this->get_category_id( $item, $invoice );
 			$item_total  = $item->get_total();
 
 			$item_data = array(
 				'accountingType' => array(
 					'id'         => $category_id,
-					'objectName' => 'AccountingType'
+					'objectName' => 'AccountingType',
 				),
 				'net'            => $invoice->prices_include_tax() ? 'false' : 'true',
 				/* translators: 1: quantity 2: item name 3: item type */
@@ -324,42 +328,48 @@ class Sync extends SyncHandler {
 			if ( $exists && $sync_data->get_id() ) {
 				$item_data['voucher'] = array(
 					'id'         => $sync_data->get_id(),
-					'objectName' => 'Voucher'
+					'objectName' => 'Voucher',
 				);
 			}
 
 			if ( $item->get_total_tax() > 0 ) {
 				$taxes = $item->get_taxes();
 
-				foreach( $taxes as $tax ) {
+				foreach ( $taxes as $tax ) {
 					$percentage  = $tax->get_tax_rate()->get_percent();
 					$total_gross = $tax->get_total_net() + $tax->get_total_tax();
 					$total       = $tax->get_total_net();
 
 					// Vouchers
 					if ( $total_gross > $item_total ) {
-					    $total_gross = $item_total;
-                    }
+						$total_gross = $item_total;
+					}
 
-					$item_tax_data = array_merge( $item_data, array(
-						'sum'       => $total,
-						'sumNet'    => $tax->get_total_net(),
-						'sumTax'    => $tax->get_total_tax(),
-						'sumGross'  => $total_gross,
-						'taxRate'   => $percentage,
-					) );
+					$item_tax_data = array_merge(
+						$item_data,
+						array(
+							'sum'      => $total,
+							'sumNet'   => $tax->get_total_net(),
+							'sumTax'   => $tax->get_total_tax(),
+							'sumGross' => $total_gross,
+							'taxRate'  => $percentage,
+						)
+					);
 
-					if ( sizeof( $taxes ) > 1 ) {
+					if ( count( $taxes ) > 1 ) {
 						$item_tax_data['comment'] = $item_tax_data['comment'] . ' | ' . $tax->get_tax_rate()->get_formatted_percentage();
 					}
 
 					$items[] = apply_filters( "{$this->get_hook_prefix()}voucher_taxable_item", $item_tax_data, $item, $invoice, $tax );
 				}
 			} else {
-			    $item_data = array_merge( $item_data, array(
-				    'sum'     => $item->get_total(),
-				    'taxRate' => 0,
-			    ) );
+				$item_data = array_merge(
+					$item_data,
+					array(
+						'sum'     => $item->get_total(),
+						'taxRate' => 0,
+					)
+				);
 
 				$items[] = apply_filters( "{$this->get_hook_prefix()}voucher_non_taxable_item", $item_data, $item, $invoice );
 			}
@@ -370,7 +380,7 @@ class Sync extends SyncHandler {
 
 		if ( ! Countries::is_eu_country( $invoice->get_country() ) ) {
 			$tax_type = 'noteu';
-		} elseif( $invoice->is_reverse_charge() ) {
+		} elseif ( $invoice->is_reverse_charge() ) {
 			$tax_type = 'eu';
 		}
 
@@ -382,42 +392,45 @@ class Sync extends SyncHandler {
 		}
 
 		$voucher = array(
-			'voucher' => array(
-				'objectName'	  => 'Voucher',
-				'mapAll'		  => 'true',
-				'voucherDate'	  => $invoice->get_date_created()->date_i18n( 'Y-m-d' ),
+			'voucher'          => array(
+				'objectName'      => 'Voucher',
+				'mapAll'          => 'true',
+				'voucherDate'     => $this->format_api_date( $invoice->get_date_created() ),
 				'description'     => $invoice->get_formatted_number(),
-				'comment'	      => $this->get_invoice_remark( $invoice ),
-				'status'		  => $status,
-				'total'			  => $invoice->get_total(),
-				'payDate'		  => $invoice->get_date_paid() ? $invoice->get_date_paid()->date_i18n( 'Y-m-d' ) : null,
-				'deliveryDate'    => $invoice->get_date_of_service() ? $invoice->get_date_of_service()->date_i18n( 'Y-m-d' ) : $invoice->get_date_created()->date_i18n( 'Y-m-d' ),
-				'paymentDeadline' => $invoice->get_date_due() ? $invoice->get_date_due()->date_i18n( 'Y-m-d' ) : null,
-				'taxType'		  => apply_filters( $this->get_hook_prefix() . 'tax_type', $tax_type, $invoice ),
-				'creditDebit'	  => 'cancellation' === $invoice->get_invoice_type() ? 'C' : 'D',
-				'voucherType'	  => 'VOU',
+				'comment'         => $this->get_invoice_remark( $invoice ),
+				'status'          => $status,
+				'total'           => $invoice->get_total(),
+				'payDate'         => null,
+				'deliveryDate'    => $invoice->get_date_of_service() ? $this->format_api_date( $invoice->get_date_of_service() ) : $this->format_api_date( $invoice->get_date_created() ),
+				'paymentDeadline' => $invoice->get_date_due() ? $this->format_api_date( $invoice->get_date_due() ) : null,
+				'taxType'         => apply_filters( $this->get_hook_prefix() . 'tax_type', $tax_type, $invoice ),
+				'creditDebit'     => 'cancellation' === $invoice->get_invoice_type() ? 'C' : 'D',
+				'voucherType'     => 'VOU',
 				'vatNumber'       => $invoice->get_vat_id(),
-				'supplier'        => $customer_id ? array( 'id' => $customer_id, 'objectName' => 'Contact' ) : null,
+				'supplier'        => $customer_id ? array(
+					'id'         => $customer_id,
+					'objectName' => 'Contact',
+				) : null,
 			),
 			'voucherPosSave'   => $items,
 			'filename'         => $filename ? $filename : null,
-			'voucherPosDelete' => null
+			'voucherPosDelete' => null,
 		);
 
 		$cost_centre = apply_filters( $this->get_hook_prefix() . 'invoice_cost_centre_id', '', $invoice );
 
 		if ( ! empty( $cost_centre ) ) {
-		    $voucher['voucher']['costCentre'] = array(
-                'id'         => $cost_centre,
-                'objectName' => 'CostCentre'
-            );
-        }
+			$voucher['voucher']['costCentre'] = array(
+				'id'         => $cost_centre,
+				'objectName' => 'CostCentre',
+			);
+		}
 
 		if ( $exists ) {
 			/**
 			 * In case the remote status is draft - allow updating the voucher.
 			 */
-			if ( 50 == $remote_status ) {
+			if ( 50 === $remote_status ) {
 				$voucher['voucher']['id'] = $sync_data->get_id();
 
 				/**
@@ -428,13 +441,13 @@ class Sync extends SyncHandler {
 				if ( ! $this->get_api()->has_failed( $voucher_items ) ) {
 					$voucher['voucherPosDelete'] = array();
 
-					foreach( $voucher_items['objects'] as $item ) {
+					foreach ( $voucher_items['objects'] as $item ) {
 						$voucher['voucherPosDelete'][] = array(
 							'objectName' => 'VoucherPos',
-							'id'         => $item['id']
+							'id'         => $item['id'],
 						);
 					}
-                }
+				}
 
 				$result = $this->get_api()->update_voucher( $sync_data->get_id(), $voucher );
 			} else {
@@ -449,9 +462,12 @@ class Sync extends SyncHandler {
 				$objects    = $result->get( 'objects' );
 				$voucher_id = $objects['voucher']['id'];
 
-				$invoice->update_external_sync_handler( self::get_name(), array(
-					'id' =>$voucher_id
-				) );
+				$invoice->update_external_sync_handler(
+					self::get_name(),
+					array(
+						'id' => $voucher_id,
+					)
+				);
 			}
 		}
 
@@ -460,17 +476,17 @@ class Sync extends SyncHandler {
 				$book_result = $this->book_invoice( $invoice );
 
 				if ( is_wp_error( $book_result ) ) {
-                    return $book_result;
+					return $book_result;
 				}
 			}
-        }
+		}
 
 		if ( ! is_wp_error( $result ) ) {
 			return true;
 		}
 
 		return $result;
- 	}
+	}
 
 	/**
 	 * @see
@@ -484,7 +500,7 @@ class Sync extends SyncHandler {
 		 */
 		$category_id = 26;
 
-		if ( 'cancellation' === $invoice->get_invoice_type()  ) {
+		if ( 'cancellation' === $invoice->get_invoice_type() ) {
 			/**
 			 * Erlösminderung
 			 */
@@ -492,14 +508,14 @@ class Sync extends SyncHandler {
 		}
 
 		if ( 'product' === $item->get_item_type() ) {
-            $product_type     = $this->get_product_type( $item );
-            $option_name      = "invoice_" . ( 'simple' !== $invoice->get_invoice_type() ? $invoice->get_invoice_type() . '_' : '' ) . "product_type_{$product_type}_cat_id";
-            $type_category_id = $this->get_setting( $option_name );
+			$product_type     = $this->get_product_type( $item );
+			$option_name      = 'invoice_' . ( 'simple' !== $invoice->get_invoice_type() ? $invoice->get_invoice_type() . '_' : '' ) . "product_type_{$product_type}_cat_id";
+			$type_category_id = $this->get_setting( $option_name );
 
-            if ( ! empty( $type_category_id ) ) {
-                $category_id = $type_category_id;
-            }
-        }
+			if ( ! empty( $type_category_id ) ) {
+				$category_id = $type_category_id;
+			}
+		}
 
 		return apply_filters( $this->get_hook_prefix() . 'item_category_id', $category_id, $item, $invoice );
 	}
@@ -508,52 +524,64 @@ class Sync extends SyncHandler {
 	 * @param ProductItem $item
 	 */
 	protected function get_product_type( $item ) {
-	    $type = 'default';
+		$type = 'default';
 
-	    if ( $item->is_service() ) {
-	        $type = 'service';
-        } elseif( $item->is_virtual() ) {
-	        $type = 'virtual';
-        }
+		if ( $item->is_service() ) {
+			$type = 'service';
+		} elseif ( $item->is_virtual() ) {
+			$type = 'virtual';
+		}
 
-	    return $type;
-     }
+		return $type;
+	}
 
 	/**
 	 * @param Invoice $invoice
 	 */
- 	public function is_booked( $invoice ) {
+	public function is_booked( $invoice ) {
 		$is_booked = false;
 
-	    if ( $invoice->has_been_externally_synced( self::get_name() ) ) {
-		    $sync_data   = $invoice->get_external_sync_handler_data( self::get_name() );
-		    $remote_data = $this->get_api()->get_voucher( $sync_data->get_id() );
-		    $status      = 1000;
+		if ( $invoice->has_been_externally_synced( self::get_name() ) ) {
+			$sync_data   = $invoice->get_external_sync_handler_data( self::get_name() );
+			$remote_data = $this->get_api()->get_voucher( $sync_data->get_id() );
+			$status      = 1000;
 
-		    if ( ! $this->get_api()->has_failed( $remote_data ) ) {
-		    	$status = $remote_data['objects'][0]['status'];
-		    }
+			if ( ! $this->get_api()->has_failed( $remote_data ) ) {
+				$status = (int) $remote_data['objects'][0]['status'];
+			}
 
-		    /**
-		     * If the voucher has been booked - status is set to 1000 (paid).
-		     */
-		    if ( true === wc_string_to_bool( $sync_data->get( 'is_booked' ) ) && 1000 == $status ) {
-		    	$is_booked = true;
-		    }
-	    }
+			/**
+			 * If the voucher has been booked - status is set to 1000 (paid).
+			 */
+			if ( true === wc_string_to_bool( $sync_data->get( 'is_booked' ) ) && 1000 === $status ) {
+				$is_booked = true;
+			}
+		}
 
-	    return $is_booked;
-    }
+		return $is_booked;
+	}
+
+	/**
+	 * Use a custom time format which will not cause issues with timezone offsets configured in sevDesk.
+	 * Only passing the date to sevDesk leads to sevDesk assuming Y-m-d 00:00:00 which might produce day-offsets
+	 * if a different timezone is configured in sevDesk.
+	 *
+	 * @param \WC_DateTime $date
+	 *
+	 * @return string
+	 */
+	protected function format_api_date( $date ) {
+		return $date->date_i18n( 'Y-m-d' ) . ' 12:00:00';
+	}
 
 	/**
 	 * @param Invoice $invoice
 	 */
- 	public function book_invoice( $invoice ) {
-	    /**
+	public function book_invoice( $invoice ) {
+		/**
 		 * Do only book invoice if option is turned on, the invoice was synced before and has not yet been booked.
 		 */
 		if ( $this->auto_book_vouchers() && $invoice->has_been_externally_synced( self::get_name() ) && $invoice->is_paid() && ! $this->is_booked( $invoice ) ) {
-
 			$sync_data          = $invoice->get_external_sync_handler_data( self::get_name() );
 			$amount             = $invoice->get_total();
 			$account_id         = $this->get_account_id( $invoice->get_payment_method_name() );
@@ -563,142 +591,169 @@ class Sync extends SyncHandler {
 			$is_manual          = $this->is_manual_account( $account_id );
 			$accounts           = $this->get_accounts();
 			$default_account_id = $this->get_default_account_id();
+			$is_cancellation    = 'cancellation' === $invoice->get_invoice_type();
+			$amount             = $is_cancellation ? $amount * -1 : $amount;
 
 			/**
 			 * No account id was found.
-             * Use case: Booking should only happen for certain gateway(s) and no default account has been chosen.
+			 * Use case: Booking should only happen for certain gateway(s) and no default account has been chosen.
 			 */
 			if ( empty( $account_id ) ) {
-			    return false;
-            }
+				return false;
+			}
 
 			$start_date_obj = clone $invoice->get_date_created();
 			$end_date_obj   = clone ( $invoice->get_date_paid() ? $invoice->get_date_paid() : $invoice->get_date_created() );
 
-			// By default start searching 1 week in the past
+			/**
+			 * Start searching 1 week in the past and make sure we allow searching
+			 * for transactions up to 5 hours later as some gateways may book refunds belated.
+			*/
 			$start_date_obj->modify( '-1 week' );
+			$end_date_obj->modify( '+ 5 hours' );
 
 			$start_date = $start_date_obj->getOffsetTimestamp();
 			$end_date   = $end_date_obj->getOffsetTimestamp();
 
-            /**
-             * Search the transaction based on amount and date.
-             */
-            $transaction_result = $this->get_api()->search_transactions( array(
-                'amount_from' => $invoice->get_total(),
-                'account'     => apply_filters( "{$this->get_hook_prefix()}search_transaction_account_id", $account_id, $invoice, $this ),
-                'start_date'  => apply_filters( "{$this->get_hook_prefix()}search_transaction_start_date", $start_date, $invoice, $this ),
-                'end_date'    => apply_filters( "{$this->get_hook_prefix()}search_transaction_end_date", $end_date, $invoice, $this ),
-            ) );
+			$transaction_args = array(
+				'account'    => apply_filters( "{$this->get_hook_prefix()}search_transaction_account_id", $account_id, $invoice, $this ),
+				'start_date' => apply_filters( "{$this->get_hook_prefix()}search_transaction_start_date", $start_date, $invoice, $this ),
+				'end_date'   => apply_filters( "{$this->get_hook_prefix()}search_transaction_end_date", $end_date, $invoice, $this ),
+			);
 
-            if ( ! $this->get_api()->has_failed( $transaction_result ) && ! empty( $transaction_result['objects'] ) ) {
-                $is_match = false;
+			if ( ! $is_cancellation ) {
+				$transaction_args['amount_from'] = $amount;
+			} else {
+				$transaction_args['amount_to'] = $amount;
+			}
 
-                foreach( $transaction_result['objects'] as $transaction ) {
+			/**
+			 * Search the transaction based on amount and date.
+			 */
+			$transaction_result = $this->get_api()->search_transactions( $transaction_args );
 
-                    if ( 'Bankeinzug' === $transaction['payeePayerName'] ) {
-                        continue;
-                    }
+			if ( ! $this->get_api()->has_failed( $transaction_result ) && ! empty( $transaction_result['objects'] ) ) {
+				$is_match = false;
 
-	                $remote_purposes       = explode( '/', $transaction['paymtPurpose'] );
-	                $remote_main_purpose   = ! empty( $remote_purposes[0] ) ? trim( $remote_purposes[0] ) : '';
-	                $remote_transaction_id = '';
+				foreach ( $transaction_result['objects'] as $transaction ) {
+					if ( 'Bankeinzug' === $transaction['payeePayerName'] ) {
+						continue;
+					}
 
-	                // Parse remote transaction id
-	                foreach( $remote_purposes as $remote_purpose_piece ) {
-	                    $remote_purpose_piece = trim( strtolower( $remote_purpose_piece ) );
+					$remote_purposes                  = explode( '/', $transaction['paymtPurpose'] );
+					$remote_main_purpose              = ! empty( $remote_purposes[0] ) ? trim( $remote_purposes[0] ) : '';
+					$remote_main_purpose_only_numbers = preg_replace( '/[^0-9]/', '', $remote_main_purpose );
+					$remote_transaction_id            = '';
 
-	                    if ( strstr( $remote_purpose_piece, 'txid' ) ) {
-	                        $remote_transaction_id = trim( str_replace( 'txid', '', $remote_purpose_piece ) );
-                        }
-                    }
+					// Parse remote transaction id
+					foreach ( $remote_purposes as $remote_purpose_piece ) {
+						$remote_purpose_piece = trim( strtolower( $remote_purpose_piece ) );
+						$purpose_only_numbers = preg_replace( '/[^0-9]/', '', $remote_purpose_piece );
 
-	                // Check if transaction id matches
-	                if ( ! empty( $invoice_trans_id ) && ! empty( $remote_transaction_id ) && $remote_transaction_id == $invoice_trans_id ) {
-		                $is_match = true;
-	                } else {
-		                if ( ! empty( $remote_main_purpose ) ) {
-			                $purpose_numbers = preg_replace( '/[^0-9]/', '', $purpose );
+						/**
+						 * Fallback to the first piece with numbers in case the first part of the
+						 * remote purpose contains a string-only line, e.g.: Rückerstattung / Bestellung 12345 erstatten / Bestellung 12345 / TXID D21223231D
+						 */
+						if ( empty( $remote_main_purpose_only_numbers ) && ! empty( $purpose_only_numbers ) ) {
+							$remote_main_purpose              = $remote_purpose_piece;
+							$remote_main_purpose_only_numbers = $purpose_only_numbers;
+						}
 
-			                /**
-			                 * In case the purpose contains numbers (e.g. order id) make sure to check whether numbers from the original purpose
-			                 * match remote purpose numbers to prevent that searching for 83718 matches 3718.
-			                 */
-			                if ( ! empty( $purpose_numbers ) ) {
-				                $remote_purpose_numbers = preg_replace( '/[^0-9]/', '', $remote_main_purpose );
+						if ( strstr( $remote_purpose_piece, 'txid' ) ) {
+							$remote_transaction_id = trim( str_replace( 'txid', '', $remote_purpose_piece ) );
+						}
+					}
 
-				                // Check if numeric representation (e.g. order number) matches
-				                if ( $remote_purpose_numbers == $purpose_numbers ) {
-					                $is_match = true;
-				                }
-			                } else {
-			                    // Fallback string existence search
-				                $is_match = strstr( $remote_main_purpose, $purpose );
-			                }
-		                }
-	                }
+					// Check if transaction id matches
+					if ( ! empty( $invoice_trans_id ) && ! empty( $remote_transaction_id ) && $remote_transaction_id === $invoice_trans_id ) {
+						$is_match = true;
+					} else {
+						if ( ! empty( $remote_main_purpose ) ) {
+							$purpose_numbers = preg_replace( '/[^0-9]/', '', $purpose );
 
-	                // Stop if we've found the first match
-	                if ( $is_match ) {
-		                $transaction_id = $transaction['id'];
-		                $account_id     = $transaction['checkAccount']['id'];
+							/**
+							 * In case the purpose contains numbers (e.g. order id) make sure to check whether numbers from the original purpose
+							 * match remote purpose numbers to prevent that searching for 83718 matches 3718.
+							 */
+							if ( ! empty( $purpose_numbers ) ) {
+								$remote_purpose_numbers = preg_replace( '/[^0-9]/', '', $remote_main_purpose );
 
-		                break;
-	                }
-                }
-            }
+								// Check if numeric representation (e.g. order number) matches
+								if ( (string) $remote_purpose_numbers === (string) $purpose_numbers ) {
+									$is_match = true;
+								}
+							} else {
+								// Fallback string existence search
+								$is_match = strstr( $remote_main_purpose, $purpose );
+							}
+						}
+					}
+
+					// Stop if we've found the first match
+					if ( $is_match ) {
+						$transaction_id = $transaction['id'];
+						$account_id     = $transaction['checkAccount']['id'];
+
+						break;
+					}
+				}
+			}
 
 			/**
 			 * Online accounts to not allow booking vouchers without a matching transaction.
-             * Use default account as fallback.
+			 * Use default account as fallback.
 			 */
 			if ( ( ! $is_manual && empty( $transaction_id ) ) || ! array_key_exists( $account_id, $accounts ) ) {
 				$account_id = apply_filters( "{$this->get_hook_prefix()}book_voucher_failed_default_account_id", $default_account_id, $invoice, $this );
- 			}
+			}
 
 			if ( ! empty( $account_id ) ) {
-				$result = $this->get_api()->book_voucher( $sync_data->get_id(), $amount, array(
-					'date'        => $invoice->get_date_paid()->date_i18n( 'Y-m-d' ),
-					'transaction' => apply_filters( "{$this->get_hook_prefix()}book_voucher_transaction_id", $transaction_id, $invoice, $this ),
-					'account'     => apply_filters( "{$this->get_hook_prefix()}book_voucher_account_id", $account_id, $invoice, $this ),
-				) );
+				$result = $this->get_api()->book_voucher(
+					$sync_data->get_id(),
+					$amount,
+					array(
+						'date'        => $this->format_api_date( $invoice->get_date_paid() ),
+						'transaction' => apply_filters( "{$this->get_hook_prefix()}book_voucher_transaction_id", $transaction_id, $invoice, $this ),
+						'account'     => apply_filters( "{$this->get_hook_prefix()}book_voucher_account_id", $account_id, $invoice, $this ),
+					)
+				);
 
 				if ( ! is_wp_error( $result ) ) {
 					$invoice->update_external_sync_handler( self::get_name(), array( 'is_booked' => 'yes' ) );
 					return true;
 				} else {
-				    return $result;
-                }
-            }
+					return $result;
+				}
+			}
 		}
 
 		return false;
-    }
+	}
 
-    protected function get_default_account_id() {
-	    return $this->get_setting( 'vouchers_book_default_account' );
-    }
+	protected function get_default_account_id() {
+		return $this->get_setting( 'vouchers_book_default_account' );
+	}
 
-    protected function is_manual_account( $account_id ) {
- 	    $accounts = $this->get_accounts( 'manual' );
+	protected function is_manual_account( $account_id ) {
+		$accounts = $this->get_accounts( 'manual' );
 
- 	    return array_key_exists( $account_id, $accounts ) ? true : false;
-    }
+		return array_key_exists( $account_id, $accounts ) ? true : false;
+	}
 
-    protected function get_account_id( $payment_method ) {
- 	    $default_account = $this->get_default_account_id();
- 	    $account_id      = $default_account;
+	protected function get_account_id( $payment_method ) {
+		$default_account = $this->get_default_account_id();
+		$account_id      = $default_account;
 
-        if ( 'yes' === $this->get_setting( 'vouchers_book_gateway_specific' ) ) {
-	        $gateway_accounts = (array) $this->get_setting( 'vouchers_book_gateway_accounts' );
+		if ( 'yes' === $this->get_setting( 'vouchers_book_gateway_specific' ) ) {
+			$gateway_accounts = (array) $this->get_setting( 'vouchers_book_gateway_accounts' );
 
-	        if ( array_key_exists( $payment_method, $gateway_accounts ) && ! empty( $gateway_accounts[ $payment_method ] ) ) {
-		        $account_id = $gateway_accounts[ $payment_method ];
-	        }
-        }
+			if ( array_key_exists( $payment_method, $gateway_accounts ) && ! empty( $gateway_accounts[ $payment_method ] ) ) {
+				$account_id = $gateway_accounts[ $payment_method ];
+			}
+		}
 
-        return $account_id;
-    }
+		return $account_id;
+	}
 
 	/**
 	 * @param ExternalSyncable $object
@@ -738,8 +793,8 @@ class Sync extends SyncHandler {
 	}
 
 	public function auto_book_vouchers() {
-	    return 'yes' === $this->get_setting( 'vouchers_book' );
-    }
+		return 'yes' === $this->get_setting( 'vouchers_book' );
+	}
 
 	/**
 	 * @param \WP_Error|RESTResponse $response
@@ -751,14 +806,14 @@ class Sync extends SyncHandler {
 
 		if ( ! is_wp_error( $response ) ) {
 			if ( $response->is_error() ) {
-			    $code = $response->get_code();
-			    $body = $response->get_body();
+				$code = $response->get_code();
+				$body = $response->get_body();
 
 				\Vendidero\StoreaBill\Package::extended_log( sprintf( 'Error (%s) while performing sevDesk request: ' . wc_print_r( $body, true ), $code ) );
 
 				if ( 400 === $code ) {
-			        $code = 404;
-                }
+					$code = 404;
+				}
 
 				if ( $r_error = $response->get( 'error' ) ) {
 					if ( isset( $r_error['message'] ) ) {
@@ -794,11 +849,11 @@ class Sync extends SyncHandler {
 	protected function get_accounts( $type = '' ) {
 		if ( is_null( $this->accounts ) ) {
 			$this->accounts = array(
-                'manual' => array(),
-                'auto'   => array()
-            );
+				'manual' => array(),
+				'auto'   => array(),
+			);
 
-			foreach( $this->api->get_accounts() as $account ) {
+			foreach ( $this->api->get_accounts() as $account ) {
 				/* translators: 1: account name  2: account id */
 				$title = sprintf( _x( '%1$s (%2$s)', 'sevdesk', 'woocommerce-germanized-pro' ), esc_html( $account['name'] ), esc_html( $account['id'] ) );
 
@@ -806,14 +861,14 @@ class Sync extends SyncHandler {
 				 * Set default account
 				 */
 				if ( isset( $account['defaultAccount'] ) && '1' === $account['defaultAccount'] ) {
-			        $this->default_account = $account['id'];
-                }
+					$this->default_account = $account['id'];
+				}
 
-                if ( in_array( $account['type'], array( 'offline', 'register' ) ) ) {
-                    $this->accounts['manual'][ $account['id'] ] = $title;
-                } else {
-	                $this->accounts['auto'][ $account['id'] ] = $title;
-                }
+				if ( in_array( $account['type'], array( 'offline', 'register' ), true ) ) {
+					$this->accounts['manual'][ $account['id'] ] = $title;
+				} else {
+					$this->accounts['auto'][ $account['id'] ] = $title;
+				}
 			}
 		}
 
@@ -826,10 +881,10 @@ class Sync extends SyncHandler {
 		if ( is_null( $this->categories ) ) {
 			$this->categories = array();
 
-			foreach( $this->api->get_categories() as $category ) {
-			    if ( ! empty( $type ) && $category['type'] !== $type ) {
-			        continue;
-                }
+			foreach ( $this->api->get_categories() as $category ) {
+				if ( ! empty( $type ) && $category['type'] !== $type ) {
+					continue;
+				}
 
 				/* translators: 1: category name  2: category accounting system number or id */
 				$this->categories[ $category['id'] ] = sprintf( _x( '%1$s (%2$s)', 'sevdesk', 'woocommerce-germanized-pro' ), esc_html( $category['name'] ), esc_html( isset( $category['accountingSystemNumber']['number'] ) ? $category['accountingSystemNumber']['number'] : $category['id'] ) );
@@ -840,10 +895,10 @@ class Sync extends SyncHandler {
 	}
 
 	protected function get_account_options( $type = '' ) {
-	    $accounts = $this->get_accounts( $type );
-	    $options  = array( '' => _x( 'None', 'sevdesk accounts', 'woocommerce-germanized-pro' ) ) + $accounts;
+		$accounts = $this->get_accounts( $type );
+		$options  = array( '' => _x( 'None', 'sevdesk accounts', 'woocommerce-germanized-pro' ) ) + $accounts;
 
-	    return $options;
+		return $options;
 	}
 
 	protected function get_category_options() {
@@ -857,36 +912,36 @@ class Sync extends SyncHandler {
 		ob_start();
 		$current_settings = (array) $this->get_setting( 'vouchers_book_gateway_accounts' );
 		?>
-        <tr valign="top">
-            <th scope="row" class="titledesc">
-                <span class="sab-label-wrap"><?php echo esc_html( $data['title'] ); ?></span>
-            </th>
-            <td class="forminp" id="sab-order-status-payment-method">
-                <table class="widefat sab-order-status-payment-method-table sab-settings-table fixed striped page" cellspacing="0">
-                    <input type="text" name="sab_settings_hider" style="display: none" data-show_if_sync_handler_sevdesk_vouchers_book_gateway_specific="" />
-                    <thead>
-                    <tr>
-                        <th><?php echo esc_html_x(  'Payment method', 'sevdesk', 'woocommerce-germanized-pro' ); ?></th>
-                        <th><?php echo esc_html_x(  'Account', 'sevdesk', 'woocommerce-germanized-pro' ); ?> <?php echo sab_help_tip( _x( 'Choose one or more order statuses. Leave empty to disable automation for the method.', 'sevdesk', 'woocommerce-germanized-pro' ) ); ?></th>
-                    </tr>
-                    </thead>
-                    <tbody class="sab-order-status-payment-methods">
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<span class="sab-label-wrap"><?php echo esc_html( $data['title'] ); ?></span>
+			</th>
+			<td class="forminp" id="sab-order-status-payment-method">
+				<table class="widefat sab-order-status-payment-method-table sab-settings-table fixed striped page" cellspacing="0">
+					<input type="text" name="sab_settings_hider" style="display: none" data-show_if_sync_handler_sevdesk_vouchers_book_gateway_specific="" />
+					<thead>
+					<tr>
+						<th><?php echo esc_html_x( 'Payment method', 'sevdesk', 'woocommerce-germanized-pro' ); ?></th>
+						<th><?php echo esc_html_x( 'Account', 'sevdesk', 'woocommerce-germanized-pro' ); ?> <?php echo sab_help_tip( _x( 'Choose one or more order statuses. Leave empty to disable automation for the method.', 'sevdesk', 'woocommerce-germanized-pro' ) ); ?></th>
+					</tr>
+					</thead>
+					<tbody class="sab-order-status-payment-methods">
 					<?php foreach ( Helper::get_available_payment_methods() as $method_id => $gateway ) : ?>
-                        <tr>
-                            <td><?php echo $gateway->get_title(); ?></td>
-                            <td>
-                                <select class="sab-enhanced-select" name="<?php echo $this->get_setting_field_key( 'vouchers_book_gateway_accounts' ); ?>[<?php echo esc_attr( $method_id ); ?>]" data-allow-clear="true" data-placeholder="<?php echo esc_html_x(  'Use default account', 'sevdesk', 'woocommerce-germanized-pro' ); ?>">
-                                    <?php foreach( $this->get_account_options() as $id => $title ) : ?>
-                                        <option value="<?php echo esc_attr( $id ); ?>" <?php selected( $id, array_key_exists( $method_id, $current_settings ) ? $current_settings[ $method_id ] : false ); ?>><?php echo esc_attr( $title ); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </td>
-                        </tr>
+						<tr>
+							<td><?php echo esc_html( $gateway->get_title() ); ?></td>
+							<td>
+								<select class="sab-enhanced-select" name="<?php echo esc_attr( $this->get_setting_field_key( 'vouchers_book_gateway_accounts' ) ); ?>[<?php echo esc_attr( $method_id ); ?>]" data-allow-clear="true" data-placeholder="<?php echo esc_html_x( 'Use default account', 'sevdesk', 'woocommerce-germanized-pro' ); ?>">
+									<?php foreach ( $this->get_account_options() as $id => $title ) : ?>
+										<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $id, array_key_exists( $method_id, $current_settings ) ? $current_settings[ $method_id ] : false ); ?>><?php echo esc_attr( $title ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+						</tr>
 					<?php endforeach; ?>
-                    </tbody>
-                </table>
-            </td>
-        </tr>
+					</tbody>
+				</table>
+			</td>
+		</tr>
 		<?php
 		return ob_get_clean();
 	}
@@ -907,9 +962,9 @@ class Sync extends SyncHandler {
 		 * Prevent loops
 		 */
 		if ( 'edit' === $context && ! empty( $this->settings ) && $this->is_enabled() ) {
-		    $account_options         = $this->get_account_options();
-			$manual_account_options  = $this->get_account_options( 'manual' );
-		    $category_options        = $this->get_category_options();
+			$account_options        = $this->get_account_options();
+			$manual_account_options = $this->get_account_options( 'manual' );
+			$category_options       = $this->get_category_options();
 		}
 
 		$settings['voucher_section_start'] = array(
@@ -925,15 +980,15 @@ class Sync extends SyncHandler {
 			'default'     => 'yes',
 		);
 
-		foreach( Product::get_product_types() as $product_type => $title ) {
-			$settings["invoice_product_type_{$product_type}_cat_id"] = array(
-				'title'       => sprintf( _x( '%s Product', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
-				'type'        => 'select',
-				'class'       => 'sab-enhanced-select',
-				'desc_tip'    => sprintf( _x( 'Choose an accounting type for products of type %s', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
-				'default'     => '',
-				'options'     => $category_options,
-				'custom_attributes'  => array(
+		foreach ( Product::get_product_types() as $product_type => $title ) {
+			$settings[ "invoice_product_type_{$product_type}_cat_id" ] = array(
+				'title'             => sprintf( _x( '%s Product', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
+				'type'              => 'select',
+				'class'             => 'sab-enhanced-select',
+				'desc_tip'          => sprintf( _x( 'Choose an accounting type for products of type %s', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
+				'default'           => '',
+				'options'           => $category_options,
+				'custom_attributes' => array(
 					'data-allow-clear' => true,
 					'data-placeholder' => _x( 'Einnahmen / Erlöse (8200)', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
 				),
@@ -947,15 +1002,15 @@ class Sync extends SyncHandler {
 			'default'     => 'yes',
 		);
 
-		foreach( Product::get_product_types() as $product_type => $title ) {
-			$settings["invoice_cancellation_product_type_{$product_type}_cat_id"] = array(
-				'title'       => sprintf( _x( '%s Products', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
-				'type'        => 'select',
-				'class'       => 'sab-enhanced-select',
-				'desc_tip'    => sprintf( _x( 'Choose an accounting type for products of type %s', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
-				'default'     => '',
-				'options'     => $category_options,
-				'custom_attributes'  => array(
+		foreach ( Product::get_product_types() as $product_type => $title ) {
+			$settings[ "invoice_cancellation_product_type_{$product_type}_cat_id" ] = array(
+				'title'             => sprintf( _x( '%s Products', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
+				'type'              => 'select',
+				'class'             => 'sab-enhanced-select',
+				'desc_tip'          => sprintf( _x( 'Choose an accounting type for products of type %s', 'sevdesk', 'woocommerce-germanized-pro' ), $title ),
+				'default'           => '',
+				'options'           => $category_options,
+				'custom_attributes' => array(
 					'data-allow-clear' => true,
 					'data-placeholder' => _x( 'Erlösminderung (8700)', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
 				),
@@ -970,33 +1025,33 @@ class Sync extends SyncHandler {
 		);
 
 		$settings['vouchers_book_default_account'] = array(
-			'title'       => _x( 'Default account', 'sevdesk', 'woocommerce-germanized-pro' ),
-			'type'        => 'select',
-			'class'       => 'sab-enhanced-select',
-			'desc_tip'    => _x( 'Link voucher to a specific transaction if possible.', 'sevdesk', 'woocommerce-germanized-pro' ),
-			'default'     => '',
-			'options'     => $manual_account_options,
-			'custom_attributes'  => array(
+			'title'             => _x( 'Default account', 'sevdesk', 'woocommerce-germanized-pro' ),
+			'type'              => 'select',
+			'class'             => 'sab-enhanced-select',
+			'desc_tip'          => _x( 'Link voucher to a specific transaction if possible.', 'sevdesk', 'woocommerce-germanized-pro' ),
+			'default'           => '',
+			'options'           => $manual_account_options,
+			'custom_attributes' => array(
 				'data-allow-clear' => true,
-                'data-placeholder' => _x( 'None', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
+				'data-placeholder' => _x( 'None', 'sevdesk accounts', 'woocommerce-germanized-pro' ),
 				'data-show_if_sync_handler_sevdesk_vouchers_book' => '',
 			),
 		);
 
 		$settings['vouchers_book_gateway_specific'] = array(
-			'title'       => _x( 'Gateways', 'sevdesk', 'woocommerce-germanized-pro' ),
-			'type'        => 'sab_toggle',
-			'description' => _x( 'Choose specific booking account per gateway.', 'sevdesk', 'woocommerce-germanized-pro' ) . '<div class="sab-additional-desc">' . _x( 'By enabling this option, you may choose an account per gateway to make sure vouchers paid via a specific gateway are booked to a specific account.', 'sevdesk', 'woocommerce-germanized-pro' ) . '</div>',
-			'default'     => 'no',
-			'custom_attributes'  => array(
+			'title'             => _x( 'Gateways', 'sevdesk', 'woocommerce-germanized-pro' ),
+			'type'              => 'sab_toggle',
+			'description'       => _x( 'Choose specific booking account per gateway.', 'sevdesk', 'woocommerce-germanized-pro' ) . '<div class="sab-additional-desc">' . _x( 'By enabling this option, you may choose an account per gateway to make sure vouchers paid via a specific gateway are booked to a specific account.', 'sevdesk', 'woocommerce-germanized-pro' ) . '</div>',
+			'default'           => 'no',
+			'custom_attributes' => array(
 				'data-show_if_sync_handler_sevdesk_vouchers_book' => '',
 			),
 		);
 
 		$settings['vouchers_book_gateway_accounts'] = array(
-			'title'       => _x( 'Accounts', 'sevdesk', 'woocommerce-germanized-pro' ),
-			'type'        => 'sab_sevdesk_accounts',
-			'sanitize_callback' => array( $this, 'sanitize_gateway_accounts' )
+			'title'             => _x( 'Accounts', 'sevdesk', 'woocommerce-germanized-pro' ),
+			'type'              => 'sab_sevdesk_accounts',
+			'sanitize_callback' => array( $this, 'sanitize_gateway_accounts' ),
 		);
 
 		$settings['customer_section_start'] = array(

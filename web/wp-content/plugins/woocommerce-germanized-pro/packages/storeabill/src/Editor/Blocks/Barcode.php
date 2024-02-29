@@ -29,7 +29,7 @@ class Barcode extends DynamicBlock {
 				'default' => 'C39',
 			),
 			'codeType'    => $this->get_schema_string( 'document?data=order_number' ),
-			'size'        => $this->get_schema_string( "normal" ),
+			'size'        => $this->get_schema_string( 'normal' ),
 		);
 	}
 
@@ -64,13 +64,13 @@ class Barcode extends DynamicBlock {
 				$bank_account = sab_get_base_bank_account_data();
 
 				if ( ! empty( $bank_account['iban'] ) && ! empty( $bank_account['bic'] ) ) {
-					if ( apply_filters( "storeabill_invoice_display_girocode", ( ! $document->is_paid() && $document->get_total() > 0 ), $document ) ) {
-						$subject      = $document->get_title();
-						$total        = $document->get_total();
-						$currency     = is_callable( array( $document, 'get_currency' ) ) ? $document->get_currency() : 'EUR';
-						$currency     = empty( $currency ) ? 'EUR' : $currency;
+					if ( apply_filters( 'storeabill_invoice_display_girocode', ( ! $document->is_paid() && $document->get_total() > 0 ), $document ) ) {
+						$subject  = apply_filters( 'storeabill_invoice_girocode_subject', $document->get_title(), $document );
+						$total    = $document->get_total();
+						$currency = is_callable( array( $document, 'get_currency' ) ) ? $document->get_currency() : 'EUR';
+						$currency = empty( $currency ) ? 'EUR' : $currency;
 
-						$code         = 'BCD\n001\n1\nSCT\n' . $bank_account['bic'] . '\n' . $bank_account['holder'] . '\n' . $bank_account['iban'] . '\n' . strtoupper( $currency ) . wc_format_decimal( $total, 2 ) . '\n\n' . $subject;
+						$code = 'BCD\n001\n1\nSCT\n' . $bank_account['bic'] . '\n' . $bank_account['holder'] . '\n' . $bank_account['iban'] . '\n' . strtoupper( $currency ) . wc_format_decimal( $total, 2 ) . '\n\n' . $subject;
 
 						// Force barcode type to be QR
 						$barcode_type = 'QR';
@@ -78,8 +78,8 @@ class Barcode extends DynamicBlock {
 				}
 			}
 		} else {
-			$shortcode_query  = sab_query_to_shortcode( $this->attributes['codeType'] );
-			$code             = trim( do_shortcode( $shortcode_query ) );
+			$shortcode_query = sab_query_to_shortcode( $this->attributes['codeType'] );
+			$code            = trim( do_shortcode( $shortcode_query ) );
 		}
 
 		$styles = sab_generate_block_styles( $this->attributes );
@@ -87,14 +87,14 @@ class Barcode extends DynamicBlock {
 
 		if ( 'small' === $this->attributes['size'] ) {
 			$size = 0.8;
-		} elseif( 'medium' === $this->attributes['size'] ) {
+		} elseif ( 'medium' === $this->attributes['size'] ) {
 			$size = 1.5;
-		} elseif( 'big' === $this->attributes['size'] ) {
+		} elseif ( 'big' === $this->attributes['size'] ) {
 			$size = 2;
 		}
 
 		if ( ! empty( $code ) ) {
-			$this->content = '<barcode disableborder="1" error="M" style="' . sab_print_styles( $styles, false ) . '" class="barcode" code="' . esc_attr( $code ) . '" type="' . esc_attr( $barcode_type ) .'" size="' . esc_attr( $size ) . '" />';
+			$this->content = '<barcode disableborder="1" error="M" style="' . sab_print_styles( $styles, false ) . '" class="barcode" code="' . esc_attr( $code ) . '" type="' . esc_attr( $barcode_type ) . '" size="' . esc_attr( $size ) . '" />';
 		}
 
 		return $this->wrap( $this->content, $this->attributes );

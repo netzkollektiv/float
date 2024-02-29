@@ -10,5 +10,5 @@ defined( 'ABSPATH' ) || exit;
 global $document;
 ?>
 <header id="header-first-page">
-    <?php echo sab_render_blocks( $document->get_template()->get_first_page()->get_header_blocks() ); ?>
+	<?php echo sab_render_blocks( $document->get_template()->get_first_page()->get_header_blocks() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 </header>

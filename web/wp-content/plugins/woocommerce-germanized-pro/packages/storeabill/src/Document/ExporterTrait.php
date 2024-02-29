@@ -50,7 +50,9 @@ trait ExporterTrait {
 	}
 
 	public function has_errors() {
-		return sab_wp_error_has_errors( $this->errors );
+		$errors = $this->get_errors();
+
+		return sab_wp_error_has_errors( $errors );
 	}
 
 	public function add_error( $msg ) {
@@ -87,6 +89,15 @@ trait ExporterTrait {
 	 */
 	public function get_start_date() {
 		return apply_filters( "{$this->get_hook_prefix()}start_date", $this->start_date );
+	}
+
+	/**
+	 * @param \WC_DateTime|\DateTime $datetime
+	 *
+	 * @return string
+	 */
+	protected function get_gm_date( $datetime, $format = 'Y-m-d' ) {
+		return is_a( $datetime, 'WC_DateTime' ) ? $datetime->date( $format ) : $datetime->format( $format );
 	}
 
 	/**
@@ -174,11 +185,15 @@ trait ExporterTrait {
 		 * Store current options as default options for the next export.
 		 */
 		$option_name = $this->get_hook_prefix() . 'default_settings';
-		$new_options = apply_filters( "{$this->get_hook_prefix()}new_default_settings", array(
-			'filters'    => $this->get_filters(),
-			'start_date' => $this->get_start_date()->format( 'Y-m-d' ),
-			'end_date'   => $this->get_end_date()->format( 'Y-m-d' ),
-		), $this );
+		$new_options = apply_filters(
+			"{$this->get_hook_prefix()}new_default_settings",
+			array(
+				'filters'    => $this->get_filters(),
+				'start_date' => $this->get_gm_date( $this->get_start_date() ),
+				'end_date'   => $this->get_gm_date( $this->get_end_date() ),
+			),
+			$this
+		);
 
 		update_option( $option_name, $new_options );
 	}
@@ -190,11 +205,14 @@ trait ExporterTrait {
 			$settings = array();
 		}
 
-		$settings = wp_parse_args( $settings, array(
-			'filters'    => array(),
-			'start_date' => '',
-			'end_date'   => ''
-		) );
+		$settings = wp_parse_args(
+			$settings,
+			array(
+				'filters'    => array(),
+				'start_date' => '',
+				'end_date'   => '',
+			)
+		);
 
 		return apply_filters( "{$this->get_hook_prefix()}default_settings", $settings, $this );
 	}
@@ -224,7 +242,7 @@ trait ExporterTrait {
 				$data    = $server->response_to_data( $response, false );
 				$headers = $response->get_headers();
 
-				$result['total']     = sizeof( $data );
+				$result['total']     = count( $data );
 				$result['documents'] = $data;
 
 				if ( isset( $headers['X-WP-Total'] ) ) {
@@ -254,6 +272,12 @@ trait ExporterTrait {
 	}
 
 	public function get_admin_url() {
-		return add_query_arg( array( 'export_type' => $this->get_type(), 'document_type' => $this->get_document_type() ), admin_url( 'admin.php?page=sab-accounting-export' ) );
+		return add_query_arg(
+			array(
+				'export_type'   => $this->get_type(),
+				'document_type' => $this->get_document_type(),
+			),
+			admin_url( 'admin.php?page=sab-accounting-export' )
+		);
 	}
 }

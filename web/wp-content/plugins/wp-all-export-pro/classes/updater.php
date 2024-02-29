@@ -66,7 +66,7 @@ if (!class_exists('PMXE_Updater')) {
         {
             if ($file == $this->name) {
                 $row_meta = array(
-                    'changelog' => '<a href="' . admin_url('plugin-install.php?tab=plugin-information&plugin=wp-all-export-pro&section=changelog&TB_iframe=true&width=600&height=800') . '" class="thickbox open-plugin-details-modal" title="' . esc_attr(__('View WP All Export Pro Changelog', 'wp_all_export_plugin')) . '">' . __('Changelog', 'wp_all_export_plugin') . '</a>',
+                    'changelog' => '<a href="' . admin_url('plugin-install.php?tab=plugin-information&plugin='.$this->slug.'&section=changelog&TB_iframe=true&width=600&height=800') . '" class="thickbox open-plugin-details-modal" title="' . esc_attr('View '. urldecode($this->api_data['item_name']) .' Changelog') . '">' . __('Changelog', 'wp_all_export_plugin') . '</a>',
                 );
 
                 return array_merge($links, $row_meta);
@@ -180,6 +180,11 @@ if (!class_exists('PMXE_Updater')) {
                 return;
             }
 
+            // Only show this enhanced notification for WP All Export Pro itself.
+            if($this->slug != 'wp-all-export-pro'){
+                return;
+            }
+
             // Remove our filter on the site transient
             remove_filter('pre_set_site_transient_update_plugins', array($this, 'check_update'), 21);
 
@@ -188,6 +193,10 @@ if (!class_exists('PMXE_Updater')) {
             if (!is_object($update_cache) || empty($update_cache->response) || empty($update_cache->response[$this->name])) {
 
                 global $wpdb;
+
+                if(!is_object($update_cache)) {
+                    $update_cache = new stdClass();
+                }
 
                 $cache_key = md5('edd_plugin_' . sanitize_key($this->name) . '_version_info');
 
@@ -506,7 +515,7 @@ if (!class_exists('PMXE_Updater')) {
             }
 
             if (!current_user_can('update_plugins')) {
-                wp_die(__('You do not have permission to install plugin updates', 'edd'), __('Error', 'edd'), array('response' => 403));
+                wp_die(esc_html__('You do not have permission to install plugin updates', 'edd'), __('Error', 'edd'), array('response' => 403));
             }
 
             $response = $this->api_request('show_changelog', array('slug' => $_REQUEST['slug']));

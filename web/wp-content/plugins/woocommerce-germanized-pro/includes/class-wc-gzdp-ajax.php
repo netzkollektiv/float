@@ -9,11 +9,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * AJAX Event Handler
  *
- * @class 		WC_AJAX
- * @version		2.2.0
- * @package		WooCommerce/Classes
- * @category	Class
- * @author 		WooThemes
+ * @class       WC_AJAX
+ * @version     2.2.0
+ * @package     WooCommerce/Classes
+ * @category    Class
+ * @author      WooThemes
  */
 class WC_GZDP_AJAX {
 
@@ -33,9 +33,8 @@ class WC_GZDP_AJAX {
 	}
 
 	public static function confirm_order() {
-
 		if ( current_user_can( 'edit_shop_orders' ) && check_admin_referer( 'woocommerce-gzdp-confirm-order' ) ) {
-			$order_id = absint( $_GET['order_id'] );
+			$order_id = isset( $_GET['order_id'] ) ? absint( $_GET['order_id'] ) : false;
 
 			if ( $order_id ) {
 				$order = wc_get_order( $order_id );
@@ -43,7 +42,7 @@ class WC_GZDP_AJAX {
 			}
 		}
 
-		wp_safe_redirect( wp_get_referer() ? wp_get_referer() : admin_url( 'edit.php?post_type=shop_order' ) );
+		wp_safe_redirect( esc_url_raw( wp_get_referer() ? wp_get_referer() : admin_url( 'edit.php?post_type=shop_order' ) ) );
 		die();
 	}
 }

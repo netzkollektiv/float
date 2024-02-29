@@ -20,13 +20,18 @@ class Bundles implements Compatibility {
 		add_action( 'storeabill_after_render_document', array( __CLASS__, 'unregister_hooks' ), 50 );
 	}
 
-	public static function unregister_hooks() {
-		$document_types = apply_filters( 'storeabill_bundles_compatibility_document_types', array(
-			'invoice',
-			'invoice_cancellation',
-		) );
+	protected static function get_bundle_document_types() {
+		return apply_filters(
+			'storeabill_bundles_compatibility_document_types',
+			array(
+				'invoice',
+				'invoice_cancellation',
+			)
+		);
+	}
 
-		foreach( $document_types as $document_type ) {
+	public static function unregister_hooks() {
+		foreach ( self::get_bundle_document_types() as $document_type ) {
 			remove_filter( "storeabill_{$document_type}_item_table_items", array( __CLASS__, 'hide_bundled_items' ), 10 );
 			remove_filter( "storeabill_{$document_type}_item_table_column_classes", array( __CLASS__, 'add_bundle_classes' ), 10 );
 			remove_action( "storeabill_{$document_type}_item_table_after_row", array( __CLASS__, 'add_bundle_items' ), 10 );
@@ -36,13 +41,10 @@ class Bundles implements Compatibility {
 		}
 	}
 
-	public static function register_hooks() {
-		$document_types = apply_filters( 'storeabill_bundles_compatibility_document_types', array(
-			'invoice',
-			'invoice_cancellation',
-		) );
+	public static function register_hooks( $document ) {
+		wp_cache_delete( 'sab_bundle_items_map_' . $document->get_id(), 'sab-bundle-items' );
 
-		foreach( $document_types as $document_type ) {
+		foreach ( self::get_bundle_document_types() as $document_type ) {
 			add_filter( "storeabill_{$document_type}_item_table_items", array( __CLASS__, 'hide_bundled_items' ), 10, 2 );
 			add_filter( "storeabill_{$document_type}_item_table_column_classes", array( __CLASS__, 'add_bundle_classes' ), 10, 3 );
 			add_action( "storeabill_{$document_type}_item_table_after_row", array( __CLASS__, 'add_bundle_items' ), 10, 5 );
@@ -70,45 +72,28 @@ class Bundles implements Compatibility {
 	 * @param Document $document
 	 */
 	protected static function document_has_bundle( $document ) {
-		$has_bundle = false;
+		$bundle_items = self::get_bundle_items_map( $document );
 
-		if ( function_exists( 'wc_pb_is_bundle_container_order_item' ) ) {
-			foreach( $document->get_items() as $item ) {
-				if ( $order_item = self::get_document_order_item( $item ) ) {
-					$bundle_items = self::get_bundled_items( $order_item, $document );
-
-					if ( ! empty( $bundle_items ) ) {
-						$has_bundle = true;
-						break;
-					}
-				}
-			}
-		}
-
-		return $has_bundle;
+		return ( ! empty( $bundle_items ) ? true : false );
 	}
 
 	/**
-     * @param array $classes
+	 * @param array $classes
 	 * @param Item $item
 	 * @param Invoice $document
 	 */
 	public static function add_bundle_classes( $classes, $item, $document ) {
-		if (
-			function_exists( 'wc_pb_is_bundle_container_order_item' ) &&
-            function_exists( 'wc_pb_is_bundled_order_item' )
-        ) {
-			if ( $order_item = self::get_document_order_item( $item ) ) {
-				if ( wc_pb_is_bundle_container_order_item( $order_item ) ) {
-					$classes[] = 'sab-bundle-container-item';
-				} elseif( wc_pb_is_bundled_order_item( $order_item, $document->get_order() ) ) {
-					$classes[] = 'sab-bundle-child-item';
-				}
-			}
-        }
+		$bundle_items  = self::get_bundle_items_map( $document );
+		$bundled_items = self::get_bundled_items_ids( $document );
+
+		if ( array_key_exists( $item->get_id(), $bundle_items ) ) {
+			$classes[] = 'sab-bundle-container-item';
+		} elseif ( in_array( $item->get_id(), $bundled_items, true ) ) {
+			$classes[] = 'sab-bundle-child-item';
+		}
 
 		return $classes;
-    }
+	}
 
 	/**
 	 * @param Item $item
@@ -117,95 +102,92 @@ class Bundles implements Compatibility {
 	 * @param integer $count
 	 * @param integer $item_size
 	 */
-    public static function maybe_hide_bundle_container_prices( $item, $document, $columns, $count, $item_size ) {
-	    if ( function_exists( 'wc_pb_is_bundle_container_order_item' ) ) {
-		    if ( $order_item = self::get_document_order_item( $item ) ) {
-			    if ( wc_pb_is_bundle_container_order_item( $order_item ) ) {
-				    $items = self::get_bundled_items( $order_item, $document );
+	public static function maybe_hide_bundle_container_prices( $item, $document, $columns, $count, $item_size ) {
+		$bundle_items = self::get_bundle_items_map( $document );
 
-				    if ( ! empty( $items ) ) {
-					    /**
-					     * Bundled prices with zero total
-					     */
-					    $hide_zero_prices = apply_filters( "storeabill_{$document->get_type()}_hide_container_bundle_zero_prices", true, $item, $document );
+		if ( array_key_exists( $item->get_id(), $bundle_items ) ) {
+			/**
+			 * Bundled prices with zero total
+			 */
+			$hide_zero_prices = apply_filters( "storeabill_{$document->get_type()}_hide_container_bundle_zero_prices", true, $item, $document );
 
-					    if ( $item->get_total() == 0 && $hide_zero_prices ) {
-						    add_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
-						    add_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
-						    add_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
-					    }
-				    }
-			    }
-		    }
-	    }
-    }
+			if ( 0.0 === (float) $item->get_total() && $hide_zero_prices ) {
+				add_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
+				add_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
+				add_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
+			}
+		}
+	}
 
 	/**
 	 * @param \Vendidero\StoreaBill\Document\Item $item
 	 */
-    protected static function get_document_order_item( $item ) {
-	    if ( $ref_item = $item->get_reference() ) {
-	    	if ( is_callable( array( $ref_item, 'get_order_item' ) ) ) {
-			    $order_item = $ref_item->get_order_item();
+	protected static function get_document_order_item( $item ) {
+		if ( $ref_item = $item->get_reference() ) {
+			if ( is_callable( array( $ref_item, 'get_order_item' ) ) ) {
+				$order_item = $ref_item->get_order_item();
 
-			    if ( is_a( $order_item, 'WC_Order_Item_Product' ) ) {
+				if ( is_a( $order_item, 'WC_Order_Item_Product' ) ) {
 					return $order_item;
-			    }
-		    }
-	    }
+				}
+			}
+		}
 
-	    return false;
-    }
+		return false;
+	}
 
 	/**
 	 * @param Item $item
 	 * @param Invoice $document
-     * @param array $columns
-     * @param integer $count
-     * @param integer $item_size
+	 * @param array $columns
+	 * @param integer $count
+	 * @param integer $item_size
 	 */
 	public static function add_bundle_items( $item, $document, $columns, $count, $item_size ) {
-		if ( function_exists( 'wc_pb_is_bundle_container_order_item' ) ) {
-			if ( $order_item = self::get_document_order_item( $item ) ) {
-				if ( wc_pb_is_bundle_container_order_item( $order_item ) ) {
-					/**
-					 * Maybe remove filters set within maybe_hide_bundle_container_prices
-					 */
-					remove_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
-					remove_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
-					remove_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
+		$bundle_items = self::get_bundle_items_map( $document );
 
-					$items = self::get_bundled_items( $order_item, $document );
+		if ( array_key_exists( $item->get_id(), $bundle_items ) ) {
+			/**
+			 * Maybe remove filters set within maybe_hide_bundle_container_prices
+			 */
+			remove_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
+			remove_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
+			remove_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
 
-					if ( ! empty( $items ) ) {
-						foreach ( $items as $bundled_item ) {
-							/**
-							 * Bundled prices with zero total
-							 */
-							$hide_zero_prices = apply_filters( "storeabill_{$document->get_type()}_hide_bundled_zero_prices", true, $bundled_item, $document );
+			$item_keys = $bundle_items[ $item->get_id() ];
 
-							if ( $bundled_item->get_total() == 0 && $hide_zero_prices ) {
-								add_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
-								add_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
-								add_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
-							}
+			if ( ! empty( $item_keys ) ) {
+				foreach ( $item_keys as $item_key ) {
+					if ( $bundled_item = $document->get_item( $item_key ) ) {
+						/**
+						 * Bundled prices with zero total
+						 */
+						$hide_zero_prices = apply_filters( "storeabill_{$document->get_type()}_hide_bundled_zero_prices", true, $bundled_item, $document );
 
-							sab_get_template( 'blocks/item-table/row.php', array(
+						if ( 0.0 === (float) $bundled_item->get_total() && $hide_zero_prices ) {
+							add_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
+							add_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
+							add_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
+						}
+
+						sab_get_template(
+							'blocks/item-table/row.php',
+							array(
 								'document'  => $document,
 								'count'     => $count,
 								'item'      => $bundled_item,
 								'item_size' => $item_size,
-								'columns'   => $columns
-							) );
+								'columns'   => $columns,
+							)
+						);
 
-							/**
-							 * Bundled prices with zero total
-							 */
-							if ( $bundled_item->get_total() == 0 && $hide_zero_prices ) {
-								remove_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
-								remove_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
-								remove_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
-							}
+						/**
+						 * Bundled prices with zero total
+						 */
+						if ( 0.0 === (float) $bundled_item->get_total() && $hide_zero_prices ) {
+							remove_filter( 'storeabill_formatted_price', array( __CLASS__, 'hide_price' ), 10 );
+							remove_filter( 'storeabill_formatted_tax_rate_percentage', array( __CLASS__, 'hide_tax_rate' ), 10 );
+							remove_filter( 'storeabill_formatted_tax_rate_percentage_html', array( __CLASS__, 'hide_tax_rate' ), 10 );
 						}
 					}
 				}
@@ -219,38 +201,6 @@ class Bundles implements Compatibility {
 
 	public static function hide_price( $price ) {
 		return '-';
-	}
-
-	/**
-	 * @param \WC_Order_Item_Product $order_item
-     * @param Document $document
-	 */
-	protected static function get_bundled_items( $order_item, $document ) {
-	    if ( ! function_exists( 'wc_pb_get_bundled_order_items' ) ) {
-	        return array();
-        }
-
-		$bundled_items = array();
-
-	    if ( $order = self::get_document_order( $document ) ) {
-		    $order_item_ids = wc_pb_get_bundled_order_items( $order_item, $order, true );
-
-		    foreach( $document->get_items( 'product' ) as $item ) {
-		    	if ( $ref_item = $item->get_reference() ) {
-		    		if ( is_a( $ref_item, '\Vendidero\StoreaBill\WooCommerce\OrderItem' ) ) {
-		    			$order_item_id = $ref_item->get_id();
-				    } elseif ( is_callable( array( $ref_item, 'get_order_item_id' ) ) ) {
-					    $order_item_id = $ref_item->get_order_item_id();
-				    }
-
-		    		if ( in_array( $order_item_id, $order_item_ids ) ) {
-		    			$bundled_items[] = $item;
-				    }
-			    }
-		    }
-	    }
-
-        return $bundled_items;
 	}
 
 	/**
@@ -273,6 +223,84 @@ class Bundles implements Compatibility {
 	}
 
 	/**
+	 * @param $document
+	 *
+	 * @return string[]
+	 */
+	protected static function get_bundled_items_ids( $document ) {
+		$bundle_item_map = self::get_bundle_items_map( $document );
+		$bundle_items    = array();
+
+		foreach ( $bundle_item_map as $bundled_item_ids ) {
+			$bundle_items = array_merge( $bundle_items, $bundled_item_ids );
+		}
+
+		return $bundle_items;
+	}
+
+	/**
+	 * @param $document
+	 *
+	 * @return mixed
+	 */
+	protected static function get_bundle_items_map( $document ) {
+		$items_map = wp_cache_get( 'sab_bundle_items_map_' . $document->get_id(), 'sab-bundle-items' );
+
+		if ( false === $items_map || ! is_array( $items_map ) ) {
+			$items_map = array();
+
+			if ( function_exists( 'wc_pb_is_bundled_order_item' ) && function_exists( 'wc_pb_get_bundled_order_item_container' ) ) {
+				if ( $order = $document->get_order() ) {
+					$bundled_items = array();
+					$items_left    = array();
+
+					foreach ( $document->get_items( 'product' ) as $key => $item ) {
+						if ( $order_item = self::get_document_order_item( $item ) ) {
+							if ( wc_pb_is_bundled_order_item( $order_item, $order ) ) {
+								$bundled_items[ $order_item->get_id() ] = array(
+									'order_item' => $order_item,
+									'item_key'   => $key,
+									'item'       => $item,
+								);
+							} else {
+								$items_left[ $order_item->get_id() ] = array(
+									'order_item' => $order_item,
+									'item_key'   => $key,
+									'item'       => $item,
+								);
+							}
+						}
+					}
+
+					/**
+					 * Map each bundled item to it's parent in case the parent/container item does actually exist.
+					 * If no container item can be found - do not treat this item as a bundle.
+					 */
+					if ( ! empty( $bundled_items ) ) {
+						foreach ( $bundled_items as $order_item_id => $bundled_data ) {
+							if ( $parent_order_item_id = wc_pb_get_bundled_order_item_container( $bundled_data['order_item'], $order, true ) ) {
+								if ( is_numeric( $parent_order_item_id ) && array_key_exists( $parent_order_item_id, $items_left ) ) {
+									$document_item_id = $items_left[ $parent_order_item_id ]['item_key'];
+
+									if ( ! array_key_exists( $document_item_id, $items_map ) ) {
+										$items_map[ $document_item_id ] = array();
+									}
+
+									$items_map[ $document_item_id ][] = $bundled_data['item_key'];
+								}
+							}
+						}
+					}
+				}
+			}
+
+			wp_cache_set( 'sab_bundle_items_map_' . $document->get_id(), $items_map, 'sab-bundle-items' );
+		}
+
+		return $items_map;
+	}
+
+	/**
 	 * Remove bundled items from table.
 	 *
 	 * @param Item[] $items
@@ -281,13 +309,11 @@ class Bundles implements Compatibility {
 	 * @return mixed
 	 */
 	public static function hide_bundled_items( $items, $document ) {
-		if ( function_exists( 'wc_pb_is_bundled_order_item' ) ) {
-			foreach( $items as $key => $item ) {
-				if ( $order_item = self::get_document_order_item( $item ) ) {
-					if ( wc_pb_is_bundled_order_item( $order_item, $document->get_order() ) ) {
-						unset( $items[ $key ] );
-					}
-				}
+		$bundled_items = self::get_bundled_items_ids( $document );
+
+		foreach ( $items as $key => $item ) {
+			if ( in_array( $key, $bundled_items, true ) ) {
+				unset( $items[ $key ] );
 			}
 		}
 

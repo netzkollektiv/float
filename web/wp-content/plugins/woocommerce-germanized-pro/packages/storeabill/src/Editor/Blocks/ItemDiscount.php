@@ -26,13 +26,13 @@ class ItemDiscount extends ItemTableColumnBlock {
 		$attributes = parent::get_attributes();
 
 		$attributes['discountType'] = array(
-			'type'        => 'string',
-			'enum'        => array( 'absolute', 'percentage' ),
-			'default'     => 'absolute',
+			'type'    => 'string',
+			'enum'    => array( 'absolute', 'percentage' ),
+			'default' => 'absolute',
 		);
 
 		$attributes['showPricesIncludingTax'] = $this->get_schema_boolean( true );
-		$attributes['hideIfEmpty'] = $this->get_schema_boolean( false );
+		$attributes['hideIfEmpty']            = $this->get_schema_boolean( false );
 
 		return $attributes;
 	}

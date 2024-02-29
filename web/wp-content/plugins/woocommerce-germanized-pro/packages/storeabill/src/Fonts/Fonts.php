@@ -67,7 +67,7 @@ final class Fonts {
 		$fonts  = self::get_all_fonts();
 		$select = array();
 
-		foreach( $fonts as $name => $font ) {
+		foreach ( $fonts as $name => $font ) {
 			$select[ $name ] = array(
 				'name'     => $font->get_name(),
 				'variants' => $font->get_variants(),
@@ -90,30 +90,37 @@ final class Fonts {
 	 */
 	public static function get_default_font() {
 		if ( is_null( self::$default_font ) ) {
-			self::$default_font = new Font( 'publicsans', array(
-				'label' => 'PublicSans',
-				'files' => array(
-					'pdf' => array(
-						'regular'     => 'PublicSans-Regular.ttf',
-						'bold'        => 'PublicSans-Bold.ttf',
-						'italic'      => 'PublicSans-Italic.ttf',
-						'bold_italic' => 'PublicSans-BoldItalic.ttf',
-					),
-					'html' => array(
-						'regular'     => 'PublicSans-Regular.woff',
-						'bold'        => 'PublicSans-Bold.woff',
-						'italic'      => 'PublicSans-Italic.woff',
-						'bold_italic' => 'PublicSans-BoldItalic.woff',
+			self::$default_font = new Font(
+				'publicsans',
+				array(
+					'label' => 'PublicSans',
+					'files' => array(
+						'pdf'  => array(
+							'regular'     => 'PublicSans-Regular.ttf',
+							'bold'        => 'PublicSans-Bold.ttf',
+							'italic'      => 'PublicSans-Italic.ttf',
+							'bold_italic' => 'PublicSans-BoldItalic.ttf',
+						),
+						'html' => array(
+							'regular'     => 'PublicSans-Regular.woff',
+							'bold'        => 'PublicSans-Bold.woff',
+							'italic'      => 'PublicSans-Italic.woff',
+							'bold_italic' => 'PublicSans-BoldItalic.woff',
+						),
 					),
 				)
-			) );
+			);
 		}
 
 		return apply_filters( 'storeabill_default_font', self::$default_font );
 	}
 
+	public static function clean_font_name( $name ) {
+		return str_replace( '_', '-', sanitize_title( $name ) );
+	}
+
 	public static function clean_font_family( $family ) {
-		$family = preg_replace("/[^a-zA-Z0-9]+/", "", $family );
+		$family = preg_replace( '/[^a-zA-Z0-9]+/', '', $family );
 
 		return $family;
 	}
@@ -129,7 +136,7 @@ final class Fonts {
 
 			$standard_fonts = apply_filters( 'storeabill_standard_fonts', array() );
 
-			foreach( $standard_fonts as $name => $font_data ) {
+			foreach ( $standard_fonts as $name => $font_data ) {
 				$font_data['name'] = $name;
 
 				if ( ! isset( $font_data['label'] ) ) {
@@ -168,7 +175,7 @@ final class Fonts {
 	 * @return array
 	 */
 	public static function get_font_subsets() {
-		return [
+		return array(
 			'cyrillic'     => 'Cyrillic',
 			'cyrillic-ext' => 'Cyrillic Extended',
 			'devanagari'   => 'Devanagari',
@@ -185,7 +192,7 @@ final class Fonts {
 			'tamil'        => 'Tamil',
 			'telugu'       => 'Telugu',
 			'thai'         => 'Thai',
-		];
+		);
 	}
 
 	/**

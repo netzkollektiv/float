@@ -92,14 +92,34 @@ class Models extends REST {
 	}
 
 	public function get_categories() {
-		$result     = $this->get_sync_helper()->parse_response( $this->get( 'AccountingType', array( 'onlyOwn' => false, 'parent' => array( 'objectName' => 'AccountingType', 'id' => '24' ), 'embed' => 'accountingSystemNumber' ) ) );
+		$result     = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'AccountingType',
+				array(
+					'onlyOwn' => false,
+					'parent'  => array(
+						'objectName' => 'AccountingType',
+						'id'         => '24',
+					),
+					'embed'   => 'accountingSystemNumber',
+				)
+			)
+		);
 		$categories = array();
 
 		if ( ! is_wp_error( $result ) ) {
 			$categories = array_merge( $categories, $result->get_body()['objects'] );
 		}
 
-		$result = $this->get_sync_helper()->parse_response( $this->get( 'AccountingType', array( 'onlyOwn' => true, 'embed' => 'accountingSystemNumber' ) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'AccountingType',
+				array(
+					'onlyOwn' => true,
+					'embed'   => 'accountingSystemNumber',
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
 			$categories = array_merge( $categories, $result->get_body()['objects'] );
@@ -131,7 +151,15 @@ class Models extends REST {
 	protected function get_response( $url, $type = 'GET', $body_args = array(), $header = array() ) {
 		if ( ! isset( $body_args['file'] ) ) {
 			$to_string = function( $data ) {
-				return is_null( $data ) ? 'null' : strval( $data );
+				if ( is_null( $data ) ) {
+					$data = 'null';
+				} elseif ( is_bool( $data ) ) {
+					$data = $data ? 'true' : 'false';
+				} else {
+					$data = strval( $data );
+				}
+
+				return $data;
 			};
 
 			$body_args = $this->array_map_recursive( $to_string, $body_args );
@@ -163,11 +191,20 @@ class Models extends REST {
 	 * @return bool
 	 */
 	public function is_404( $result ) {
-		return ( is_wp_error( $result ) && 404 === $result->get_error_code() );
+		return ( is_wp_error( $result ) && 404 === (int) $result->get_error_code() );
 	}
 
 	public function search_contacts( $term ) {
-		$result = $this->get_sync_helper()->parse_response( $this->get( 'Search/search', array( 'searchType' => 'CONTACT', 'term' => $term, 'embed' => 'contact,contact.parent,parent,category' ) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'Search/search',
+				array(
+					'searchType' => 'CONTACT',
+					'term'       => $term,
+					'embed'      => 'contact,contact.parent,parent,category',
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
 			return $result->get_body();
@@ -177,31 +214,37 @@ class Models extends REST {
 	}
 
 	public function book_voucher( $voucher_id, $amount, $args = array() ) {
-		$args = wp_parse_args( $args, array(
-			'date'        => current_time( 'Y-m-d' ),
-			'type'        => 0,
-			'account'     => '',
-			'transaction' => '',
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'date'        => current_time( 'Y-m-d' ),
+				'type'        => 0,
+				'account'     => '',
+				'transaction' => '',
+			)
+		);
 
 		$query_args = array(
 			'date'       => $args['date'],
 			'type'       => $args['type'],
+			/**
+			 * This typo is part of the sevDesk API
+			 */
 			'ammount'    => $amount,
-			'createFeed' => 'true'
+			'createFeed' => 'true',
 		);
 
 		if ( ! empty( $args['account'] ) ) {
 			$query_args['checkAccount'] = array(
 				'objectName' => 'CheckAccount',
-				'id'         => $args['account']
+				'id'         => $args['account'],
 			);
 		}
 
 		if ( ! empty( $args['transaction'] ) ) {
 			$query_args['checkAccountTransaction'] = array(
 				'objectName' => 'CheckAccountTransaction',
-				'id'         => $args['transaction']
+				'id'         => $args['transaction'],
 			);
 		}
 
@@ -209,29 +252,32 @@ class Models extends REST {
 	}
 
 	public function search_transactions( $args = array() ) {
-		$args = wp_parse_args( $args, array(
-			'amount_from' => null,
-			'amount_to'   => null,
-			'is_booked'   => false,
-			'account'     => '',
-			'limit'       => 100,
-			'status'      => 100,
-			'start_date'  => '',
-			'end_date'    => '',
-		) );
+		$args = wp_parse_args(
+			$args,
+			array(
+				'amount_from' => null,
+				'amount_to'   => null,
+				'is_booked'   => false,
+				'account'     => '',
+				'limit'       => 100,
+				'status'      => 100,
+				'start_date'  => '',
+				'end_date'    => '',
+			)
+		);
 
 		$query_args = array(
-			'limit'        => $args['limit'],
-			'endAmount'    => $args['amount_to'],
-			'startAmount'  => $args['amount_from'],
-			'isBooked'     => $args['is_booked'] ? 'true' : 'false',
-			'status'       => $args['status'],
-			'hideFees'     => 'true',
-			'orderBy'      => array(
+			'limit'       => $args['limit'],
+			'endAmount'   => $args['amount_to'],
+			'startAmount' => $args['amount_from'],
+			'isBooked'    => $args['is_booked'] ? 'true' : 'false',
+			'status'      => $args['status'],
+			'hideFees'    => 'true',
+			'orderBy'     => array(
 				array(
 					'field'       => 'entryDate',
-					'arrangement' => 'desc'
-				)
+					'arrangement' => 'desc',
+				),
 			),
 		);
 
@@ -246,9 +292,9 @@ class Models extends REST {
 		if ( ! empty( $args['account'] ) ) {
 			$query_args['checkAccount'] = array(
 				'objectName' => 'CheckAccount',
-				'id'         => $args['account']
+				'id'         => $args['account'],
 			);
- 		}
+		}
 
 		$result = $this->get_sync_helper()->parse_response( $this->get( 'CheckAccountTransaction', apply_filters( "{$this->hook_prefix}search_transactions_query", $query_args, $this->sync_helper, $this ) ) );
 
@@ -260,7 +306,17 @@ class Models extends REST {
 	}
 
 	public function get_addresses( $contact_id, $type = 47 ) {
-		$result = $this->get_sync_helper()->parse_response( $this->get( 'ContactAddresses/' . $contact_id, array( 'category' => array( 'id' => $type, 'objectName' => 'Category' ) ) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'ContactAddresses/' . $contact_id,
+				array(
+					'category' => array(
+						'id'         => $type,
+						'objectName' => 'Category',
+					),
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
 			return $result->get_body();
@@ -286,16 +342,21 @@ class Models extends REST {
 	}
 
 	public function get_communication_ways( $contact_id, $type = 'EMAIL' ) {
-		$result = $this->get_sync_helper()->parse_response( $this->get( 'CommunicationWay', array(
-			'type' => $type,
-			'contact' => array(
-				'id'         => $contact_id,
-				'objectName' => 'Contact'
-			),
-		) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'CommunicationWay',
+				array(
+					'type'    => $type,
+					'contact' => array(
+						'id'         => $contact_id,
+						'objectName' => 'Contact',
+					),
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
-			if ( sizeof( $result->get( 'objects' ) ) > 0 ) {
+			if ( count( $result->get( 'objects' ) ) > 0 ) {
 				return $result->get( 'objects' );
 			} else {
 				return false;
@@ -306,16 +367,21 @@ class Models extends REST {
 	}
 
 	protected function get_communication_way( $id, $type = 'EMAIL' ) {
-		$result = $this->get_sync_helper()->parse_response( $this->get( 'CommunicationWay', array(
-			'communicationWay' => array(
-				'id'         => $id,
-				'objectName' => 'CommunicationWay'
-			),
-			'type' => $type,
-		) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'CommunicationWay',
+				array(
+					'communicationWay' => array(
+						'id'         => $id,
+						'objectName' => 'CommunicationWay',
+					),
+					'type'             => $type,
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
-			if ( sizeof( $result->get( 'objects' ) ) > 0 ) {
+			if ( count( $result->get( 'objects' ) ) > 0 ) {
 				return $result->get( 'objects' )[0]['value'];
 			} else {
 				return false;
@@ -358,12 +424,17 @@ class Models extends REST {
 	}
 
 	public function get_voucher( $id ) {
-		$result = $this->get_sync_helper()->parse_response( $this->get( 'Voucher/' . $id, array(
-			'origin' => array(
-				'objectName' => 'Voucher',
-				'id'         => $id,
-			),
-		) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->get(
+				'Voucher/' . $id,
+				array(
+					'origin' => array(
+						'objectName' => 'Voucher',
+						'id'         => $id,
+					),
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
 			return $result->get_body();
@@ -403,9 +474,14 @@ class Models extends REST {
 	}
 
 	public function update_voucher_status( $id, $status ) {
-		$result = $this->get_sync_helper()->parse_response( $this->put( 'Voucher/' . $id . '/changeStatus', array(
-			'value' => $status,
-		) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->put(
+				'Voucher/' . $id . '/changeStatus',
+				array(
+					'value' => $status,
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) ) {
 			return $result->get_body();
@@ -421,7 +497,7 @@ class Models extends REST {
 	 *
 	 * @return string|\WP_Error
 	 */
-	public function upload_voucher_file( $file, $voucherType = 'D' ) {
+	public function upload_voucher_file( $file, $voucher_type = 'D' ) {
 		try {
 			$curl_file = new \CURLFile( $file, 'application/pdf' );
 
@@ -432,7 +508,14 @@ class Models extends REST {
 			 */
 			$callback = function( $handle ) use ( $curl_file ) {
 				if ( function_exists( 'curl_init' ) && function_exists( 'curl_exec' ) ) {
-					curl_setopt( $handle, CURLOPT_POSTFIELDS, array( 'file' => $curl_file, 'type' => 'voucher' ) );
+					curl_setopt( // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+						$handle,
+						CURLOPT_POSTFIELDS,
+						array(
+							'file' => $curl_file,
+							'type' => 'voucher',
+						)
+					);
 				}
 			};
 
@@ -443,20 +526,12 @@ class Models extends REST {
 			if ( ! is_wp_error( $result ) ) {
 				$filename = $result->get( 'objects' )['filename'];
 
-				/**
-				 * Create JPG preview
-				 */
-				/*$jpg_result = $this->post( 'Voucher/Factory/createFromPdf', array(
-					'fileName'    => $filename,
-					'mimeType'    => 'image/jpg',
-					'creditDebit' => $voucherType,
-				) );*/
-
 				return $filename;
 			}
 
 			return $result;
-		} catch( \Exception $e ) {}
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		}
 
 		return new \WP_Error( 'api-error', _x( 'Error while uploading file to voucher', 'sevdesk', 'woocommerce-germanized-pro' ) );
 	}
@@ -481,7 +556,7 @@ class Models extends REST {
 		} else {
 			$countries = $this->get_countries();
 
-			foreach( $countries as $country ) {
+			foreach ( $countries as $country ) {
 				if ( strtoupper( $country['code'] ) === $code ) {
 					$this->country_code_to_id[ $code ] = absint( $country['id'] );
 					break;

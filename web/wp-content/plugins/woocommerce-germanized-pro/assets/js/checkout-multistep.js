@@ -10,33 +10,34 @@ window.germanized = window.germanized || {};
         params: {},
 
         init: function() {
-            this.params = wc_gzd_multistep_checkout_params;
-            var self    = germanized.multistep_checkout;
+            this.params  = wc_gzd_multistep_checkout_params;
+            var self     = germanized.multistep_checkout,
+                $wrapper = $( self.params.content_wrapper );
 
             // Support other Payment Plugins - just add a wrap around their custom payment wrapper
-            if ( $( '#payment-manual' ).length ) {
-                $( '#payment-manual' ).wrap( '<div id="order-payment"></div>' );
-                $( '#order_payment_heading' ).insertBefore( '#payment-manual' );
+            if ( $wrapper.find( '#payment-manual' ).length ) {
+                $wrapper.find( '#payment-manual' ).wrap( '<div id="order-payment"></div>' );
+                $wrapper.find( '#order_payment_heading' ).insertBefore( '#payment-manual' );
             } else {
-                $( '#payment' ).wrap( '<div id="order-payment"></div>' );
-                $( '#order_payment_heading' ).insertBefore( '#payment' );
+                $wrapper.find( '#payment' ).wrap( '<div id="order-payment"></div>' );
+                $wrapper.find( '#order_payment_heading' ).insertBefore( '#payment' );
             }
 
-            if (  $( '#order_review > #order-payment ~ *' ).length === 0 ) {
-                $( '#order-payment ~ *' ).wrapAll( '<div id="order-verify"></div>' );
+            if (  $wrapper.find( '#order_review > #order-payment ~ *' ).length === 0 ) {
+                $wrapper.find( '#order-payment ~ *' ).wrapAll( '<div id="order-verify"></div>' );
             } else {
-                $( '#order_review > #order-payment ~ *' ).wrapAll( '<div id="order-verify"></div>' );
+                $wrapper.find( '#order_review > #order-payment ~ *' ).wrapAll( '<div id="order-verify"></div>' );
             }
 
-            $( '#order_review_heading' ).prependTo( '#order-verify' );
+            $wrapper.find( '#order_review_heading' ).prependTo( '#order-verify' );
 
             $.each( self.params.steps, function( index, elem ) {
-                if ( $( elem.selector ).length )  {
+                if ( $wrapper.find( elem.selector ).length )  {
                     // Wrap selector with step-wrapper
-                    $( elem.selector ).wrap( '<div class="' + self.params.wrapper + ' ' + elem.wrapper_classes.join( ' ' ) +  '" id="step-wrapper-' + elem.id +  '" data-id="' + elem.id +  '"></div>' );
+                    $wrapper.find( elem.selector ).wrap( '<div class="' + self.params.wrapper + ' ' + elem.wrapper_classes.join( ' ' ) +  '" id="step-wrapper-' + elem.id +  '" data-id="' + elem.id +  '"></div>' );
 
                     if ( elem.submit_html ) {
-                        $( '#step-wrapper-' + elem.id ).append( elem.submit_html );
+                        $wrapper.find( '#step-wrapper-' + elem.id ).append( elem.submit_html );
                     }
                 }
             });
@@ -59,8 +60,39 @@ window.germanized = window.germanized || {};
                 .on( 'change', '.step', self.onChangeStep )
                 .on( 'refresh', '.step-wrapper', self.onRefreshStep );
 
+            $( document.body ).on( 'updated_checkout', self.onUpdateCheckout )
+
+            /**
+             * Add a hidden input field containing the current step to be submitted as a fallback
+             * to make sure even requests (e.g. WooCommerce Payments) done without jQuery will transmit the correct step.
+             */
+            $( document )
+                .on( 'click', '.next-step-button', self.beforeChangeStep )
+                .on( 'click', '.prev-step-button', self.beforeChangeStep );
+
             // Trigger change on first step
             $( '.step-nav li a.step:first' ).trigger( 'change' );
+        },
+
+        onUpdateCheckout: function() {
+            var self     = germanized.multistep_checkout,
+                $wrapper = $( self.params.content_wrapper );
+
+            /**
+             * Force prepending the order review heading to the verify block.
+             */
+            $wrapper.find( '#order_review_heading' ).prependTo( '#order-verify' );
+        },
+
+        beforeChangeStep: function() {
+            var self         = germanized.multistep_checkout,
+                $currentStep = self.getCurrentStep();
+
+            $( '#wc_gzdp_step_submit' ).remove();
+            /**
+             * Append to this wrapper as it gets refreshed/cleared after AJAX calls.
+             */
+            $( '.woocommerce-gzdp-checkout-verify-data' ).append( '<input id="wc_gzdp_step_submit" type="text" name="wc_gzdp_step_submit" value="' + $currentStep.data( 'id' ) + '" style="display: none" />' );
         },
 
         refreshCurrentStep: function( step ) {
@@ -93,7 +125,7 @@ window.germanized = window.germanized || {};
                 e.preventDefault();
                 e.stopPropagation();
             } else {
-                $( document.body ).bind( 'updated_checkout', function() {
+                $( document.body ).on( 'updated_checkout', function() {
                     if ( $( document ).find( '.woocommerce-checkout-payment .blockUI' ).length ) {
                         $( document ).find( '.woocommerce-checkout-payment' ).unblock();
                     }
@@ -102,26 +134,54 @@ window.germanized = window.germanized || {};
                 // Trigger Wrapper Refresh
                 $button.parents( '.step-wrapper' ).trigger( 'refresh' );
 
-                $( 'body' ).bind( 'wc_gzdp_step_refreshed', function() {
-                    if ( $( '.woocommerce-error' ).length == 0 ) {
+                $( 'body' ).on( 'wc_gzdp_step_refreshed', function() {
+                    if ( ! self.checkoutHasErrors() ) {
                         // next step
                         $( '.step-' + next ).trigger( 'change', $( '.step-' + next ) );
                     }
 
-                    $( 'body' ).unbind( 'wc_gzdp_step_refreshed' );
+                    $( 'body' ).off( 'wc_gzdp_step_refreshed' );
                 });
             }
+        },
+
+        checkoutHasErrors: function() {
+            var hasError = false,
+                $errorWrapper = $( '.woocommerce-NoticeGroup-updateOrderReview, .woocommerce-NoticeGroup-checkout' ).find( '.woocommerce-error' );
+
+            /**
+             * Explicitly check whether the error wrapper exists and has children.
+             * Some payment plugins might treat the failure response created by the AJAX
+             * step response manually and try to add (empty) error messages returned by the request via JS.
+             */
+            if ( $errorWrapper.length > 0 && ( $errorWrapper.children().length > 0 || $errorWrapper.text().trim() ) ) {
+                hasError = true;
+
+                /**
+                 * Some payment plugins e.g. Stripe do not remove the child-elements (e.g. li)
+                 * but leave empty orphan elements. Explicitly check the li content and prevent error state.
+                 */
+                if ( $errorWrapper.find( 'li' ).length > 0 ) {
+                    var error_text = $.trim( $errorWrapper.find( 'li' ).text() );
+
+                    if ( '' === error_text ) {
+                        hasError = false;
+                    }
+                }
+            }
+
+            return hasError;
         },
 
         onRefreshStep: function() {
             if ( $( this ).find( '.step-buttons' ).length ) {
                 $( this ).find( '.step-buttons' ).prepend( '<input type="hidden" id="wc-gzdp-step-submit" name="wc_gzdp_step_submit" value="' + $( this ).data( 'id' ) + '" />' );
 
-                $( 'body' ).bind( 'checkout_error', function( e ) {
+                $( 'body' ).on( 'checkout_error.multistep_checkout', function( e ) {
                     $( '#wc-gzdp-step-submit' ).remove();
 
                     $( 'body' ).trigger( 'wc_gzdp_step_refreshed' );
-                    $( 'body' ).unbind( 'checkout_error' );
+                    $( 'body' ).off( 'checkout_error.multistep_checkout' );
                 });
             }
         },
@@ -131,6 +191,7 @@ window.germanized = window.germanized || {};
                 self = germanized.multistep_checkout;
 
             self.refreshCurrentStep( id );
+            $( '#wc_gzdp_step_submit' ).remove();
 
             if ( $( '#step-wrapper-' + id ).length ) {
 
@@ -165,7 +226,7 @@ window.germanized = window.germanized || {};
             }
         },
 
-        onClickStep: function(  ) {
+        onClickStep: function() {
             if ( ! $( this ).attr( 'href' ) ) {
                 return false;
             }
@@ -176,16 +237,25 @@ window.germanized = window.germanized || {};
             $( '.step-' + step ).trigger( 'change', $( this ) );
         },
 
+        getCheckoutUrl: function() {
+            return wc_checkout_params.checkout_url;
+        },
+
         onAjaxSend: function( ev, jqXHR, settings ) {
             var self = germanized.multistep_checkout;
 
-            if ( wc_checkout_params.checkout_url === settings.url ) {
-                var $current = self.getCurrentStep();
+            if ( self.getCheckoutUrl() === settings.url ) {
+                self.beforeSubmitCheckout( ev, settings );
+            }
+        },
 
-                if ( 'order' !== $current.data( 'id' ) ) {
-                    settings.data += '&wc_gzdp_step_submit=' + $current.data( 'id' );
-                    germanized.multistep_checkout.nextStep( ev );
-                }
+        beforeSubmitCheckout: function( ev, settings ) {
+            var self     = germanized.multistep_checkout,
+                $current = self.getCurrentStep();
+
+            if ( 'order' !== $current.data( 'id' ) ) {
+                settings.data += '&wc_gzdp_step_submit=' + $current.data( 'id' );
+                germanized.multistep_checkout.nextStep( ev );
             }
         },
 
@@ -193,33 +263,77 @@ window.germanized = window.germanized || {};
             return $( '.step-wrapper-active' ).length > 0 ? $( '.step-wrapper-active' ) : $( '.step-wrapper-1' );
         },
 
+        init_payment_methods: function() {
+            var $payment_methods = $( '.woocommerce-checkout' ).find( 'input[name="payment_method"]' );
+
+            // If there is one method, we can hide the radio input
+            if ( 1 === $payment_methods.length ) {
+                $payment_methods.eq(0).hide();
+            }
+
+            // If there are none selected, select the first.
+            if ( 0 === $payment_methods.filter( ':checked' ).length ) {
+                $payment_methods.eq(0).prop( 'checked', true );
+            }
+
+            // Get name of new selected method.
+            var checkedPaymentMethod = $payment_methods.filter( ':checked' ).eq(0).prop( 'id' );
+
+            if ( $payment_methods.length > 1 ) {
+                // Hide open descriptions.
+                $( 'div.payment_box:not(".' + checkedPaymentMethod + '")' ).filter( ':visible' ).slideUp( 0 );
+            }
+
+            // Trigger click event for selected method
+            $payment_methods.filter( ':checked' ).eq(0).trigger( 'click' );
+        },
+
+        onRefreshFragments: function( response ) {
+            var self = germanized.multistep_checkout;
+
+            // Check if fragment exists in object
+            if ( response.fragments.hasOwnProperty( '.woocommerce-gzdp-checkout-verify-data' ) ) {
+                $( '.woocommerce-gzdp-checkout-verify-data' ).replaceWith( response.fragments['.woocommerce-gzdp-checkout-verify-data'] );
+            }
+
+            if ( response.fragments.hasOwnProperty( '.woocommerce-checkout-payment' ) && response.fragments.hasOwnProperty( 'wc-gzdp-payment-wrap-needs-init' ) ) {
+                $( '.woocommerce-checkout-payment' ).replaceWith( response.fragments['.woocommerce-checkout-payment'] );
+
+                self.init_payment_methods();
+                $( document.body ).trigger( 'updated_checkout' );
+            }
+
+            if ( response.fragments.hasOwnProperty( '.step-nav' ) ) {
+                $( '.step-nav' ).replaceWith( response.fragments['.step-nav'] );
+
+                $( 'ul.step-nav li a' ).each( function() {
+                    var id = $( this ).data( 'href' );
+
+                    if ( response.fragments.hasOwnProperty( '.step-buttons-' + id ) ) {
+                        $( '.step-buttons-' + id ).replaceWith( response.fragments['.step-buttons-' + id] );
+                    }
+                });
+            }
+        },
+
+        getUpdateOrderReviewUrl: function () {
+            return wc_checkout_params.wc_ajax_url.toString().replace( '%%endpoint%%', 'update_order_review' );
+        },
+
         onAjaxComplete: function( ev, jqXHR, settings ) {
-            if ( jqXHR != null && jqXHR.hasOwnProperty( 'responseText' ) ) {
+            var self = germanized.multistep_checkout;
+
+            if ( ( settings.url === self.getUpdateOrderReviewUrl() || settings.url === self.getCheckoutUrl() ) && jqXHR != null && jqXHR.hasOwnProperty( 'responseText' ) ) {
                 var response = null;
 
                 try {
-                    response = $.parseJSON( jqXHR.responseText );
+                    response = JSON.parse( jqXHR.responseText );
                 } catch ( error ) {
                     response = null;
                 }
 
                 if ( response !== null && response.hasOwnProperty( 'fragments' ) ) {
-                    // Check if fragment exists in object
-                    if ( response.fragments.hasOwnProperty( '.woocommerce-gzdp-checkout-verify-data' ) ) {
-                        $( '.woocommerce-gzdp-checkout-verify-data' ).replaceWith( response.fragments['.woocommerce-gzdp-checkout-verify-data'] );
-                    }
-
-                    if ( response.fragments.hasOwnProperty( '.step-nav' ) ) {
-                        $( '.step-nav' ).replaceWith( response.fragments['.step-nav'] );
-
-                        $( 'ul.step-nav li a' ).each( function() {
-                            var id = $( this ).data( 'href' );
-
-                            if ( response.fragments.hasOwnProperty( '.step-buttons-' + id ) ) {
-                                $( '.step-buttons-' + id ).replaceWith( response.fragments['.step-buttons-' + id] );
-                            }
-                        });
-                    }
+                    self.onRefreshFragments( response );
                 }
             }
         }

@@ -23,7 +23,7 @@ class WC_GZDP_Privacy {
 
 	public function export_customer_pdfs( $archive_pathname, $archive_url, $html_report_pathname, $request_id ) {
 		// Get the request data.
-		$request = function_exists( 'wp_get_user_request' ) ? wp_get_user_request( $request_id ) : wp_get_user_request_data( $request_id );
+		$request = function_exists( 'wp_get_user_request' ) ? wp_get_user_request( $request_id ) : wp_get_user_request_data( $request_id ); // phpcs:ignore WordPress.WP.DeprecatedFunctions.wp_get_user_request_dataFound
 
 		if ( ! $request || 'export_personal_data' !== $request->action_name ) {
 			return;
@@ -33,7 +33,7 @@ class WC_GZDP_Privacy {
 		$user           = get_user_by( 'email', $email_address ); // Check if user has an ID in the DB to load stored personal data.
 		$pdfs_to_export = array();
 
-		$order_query    = array(
+		$order_query = array(
 			'limit'    => -1,
 			'customer' => array( $email_address ),
 		);
@@ -47,7 +47,7 @@ class WC_GZDP_Privacy {
 		if ( 0 < count( $orders ) ) {
 			foreach ( $orders as $order ) {
 				if ( $invoices = wc_gzdp_get_invoices_by_order( $order ) ) {
-					foreach( $invoices as $invoice ) {
+					foreach ( $invoices as $invoice ) {
 						if ( $path = $invoice->get_pdf_path() ) {
 							$pdfs_to_export[ $path ] = $invoice->get_filename();
 						}
@@ -58,7 +58,7 @@ class WC_GZDP_Privacy {
 
 		if ( ! empty( $pdfs_to_export ) ) {
 			// Open zipfile
-			$zip = new ZipArchive;
+			$zip = new ZipArchive();
 
 			if ( true === $zip->open( $archive_pathname, 1 ) ) {
 
@@ -72,31 +72,43 @@ class WC_GZDP_Privacy {
 	}
 
 	public function export_customer_data( $data ) {
-		return array_merge( $data, array(
-			'billing_vat_id'  => __( 'Billing VAT ID', 'woocommerce-germanized-pro' ),
-			'shipping_vat_id' => __( 'Shipping VAT ID', 'woocommerce-germanized-pro' ),
-		) );
+		return array_merge(
+			$data,
+			array(
+				'billing_vat_id'  => __( 'Billing VAT ID', 'woocommerce-germanized-pro' ),
+				'shipping_vat_id' => __( 'Shipping VAT ID', 'woocommerce-germanized-pro' ),
+			)
+		);
 	}
 
 	public function export_order_data( $data ) {
-		return array_merge( $data, array(
-			'_billing_vat_id'  => __( 'Billing VAT ID', 'woocommerce-germanized-pro' ),
-			'_shipping_vat_id' => __( 'Shipping VAT ID', 'woocommerce-germanized-pro' ),
-		) );
+		return array_merge(
+			$data,
+			array(
+				'_billing_vat_id'  => __( 'Billing VAT ID', 'woocommerce-germanized-pro' ),
+				'_shipping_vat_id' => __( 'Shipping VAT ID', 'woocommerce-germanized-pro' ),
+			)
+		);
 	}
 
 	public function erase_customer_data( $data ) {
-		return array_merge( $data, array(
-			'billing_vat_id'  => __( 'Billing VAT ID', 'woocommerce-germanized-pro' ),
-			'shipping_vat_id' => __( 'Shipping VAT ID', 'woocommerce-germanized-pro' ),
-		) );
+		return array_merge(
+			$data,
+			array(
+				'billing_vat_id'  => __( 'Billing VAT ID', 'woocommerce-germanized-pro' ),
+				'shipping_vat_id' => __( 'Shipping VAT ID', 'woocommerce-germanized-pro' ),
+			)
+		);
 	}
 
 	public function erase_order_data( $data ) {
-		return array_merge( $data, array(
-			'_shipping_vat_id' => 'text',
-			'_billing_vat_id'  => 'text',
-		) );
+		return array_merge(
+			$data,
+			array(
+				'_shipping_vat_id' => 'text',
+				'_billing_vat_id'  => 'text',
+			)
+		);
 	}
 }
 

@@ -1,6 +1,7 @@
 <?php
 
 namespace Vendidero\StoreaBill\WooCommerce;
+
 use WC_Product;
 
 defined( 'ABSPATH' ) || exit;
@@ -23,10 +24,10 @@ class Product implements \Vendidero\StoreaBill\Interfaces\Product {
 	public function __construct( $product ) {
 		if ( is_numeric( $product ) ) {
 			$product = wc_get_product( $product );
+		}
 
-			if ( ! is_a( $product, 'WC_Product' ) ) {
-				throw new \Exception( _x( 'Invalid product.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
-			}
+		if ( ! is_a( $product, 'WC_Product' ) ) {
+			throw new \Exception( _x( 'Invalid product.', 'storeabill-core', 'woocommerce-germanized-pro' ) );
 		}
 
 		$this->product = $product;
@@ -79,6 +80,12 @@ class Product implements \Vendidero\StoreaBill\Interfaces\Product {
 		return $is_service;
 	}
 
+	public function is_photovoltaic_system() {
+		$is_photovoltaic_system = sab_string_to_bool( $this->product->get_meta( '_photovoltaic_system' ) );
+
+		return $is_photovoltaic_system;
+	}
+
 	public function get_parent_id() {
 		return $this->product->get_parent_id();
 	}
@@ -93,50 +100,65 @@ class Product implements \Vendidero\StoreaBill\Interfaces\Product {
 		return false;
 	}
 
+	public function get_attribute_by_slug( $slug ) {
+		$attribute      = false;
+		$slug           = wc_sanitize_taxonomy_name( $slug );
+		$attribute_name = $slug;
+		$wc_product     = $this->get_product();
+
+		// If this is a global taxonomy (prefixed with pa_) use the prefix to determine the name.
+		if ( taxonomy_exists( wc_attribute_taxonomy_name( $slug ) ) ) {
+			$attribute_name = wc_attribute_taxonomy_name( $slug );
+		}
+
+		if ( $attribute_value = $wc_product->get_attribute( $slug ) ) {
+			$label = wc_attribute_label( $attribute_name, $wc_product );
+
+			$attribute = new \Vendidero\StoreaBill\Document\Attribute(
+				array(
+					'key'   => $slug,
+					'value' => $attribute_value,
+					'label' => $label,
+				)
+			);
+		} elseif ( $wc_product->get_parent_id() > 0 ) {
+			/*
+			 * In case the product is a child product - lets check the parent product
+			 * for the attribute data in case it was not found for the child.
+			 */
+			if ( $parent = wc_get_product( $wc_product->get_parent_id() ) ) {
+				if ( $attribute_value = $parent->get_attribute( $slug ) ) {
+					$label = wc_attribute_label( $attribute_name, $parent );
+
+					$attribute = new \Vendidero\StoreaBill\Document\Attribute(
+						array(
+							'key'   => $slug,
+							'value' => $attribute_value,
+							'label' => $label,
+						)
+					);
+				}
+			}
+		}
+
+		return $attribute;
+	}
+
 	public function get_additional_attributes( $custom_attribute_slugs, $existing_slugs = array() ) {
 		$attributes = array();
 
-		foreach( $custom_attribute_slugs as $slug ) {
-			$slug           = wc_sanitize_taxonomy_name( $slug );
-			$attribute_name = $slug;
-			$wc_product     = $this->get_product();
+		foreach ( $custom_attribute_slugs as $slug ) {
+			$slug = wc_sanitize_taxonomy_name( $slug );
 
 			/**
 			 * Slug does already exist
 			 */
-			if ( in_array( $slug, $existing_slugs ) ) {
+			if ( in_array( $slug, $existing_slugs, true ) ) {
 				continue;
 			}
 
-			// If this is a global taxonomy (prefixed with pa_) use the prefix to determine the name.
-			if ( taxonomy_exists( wc_attribute_taxonomy_name( $slug ) ) ) {
-				$attribute_name = wc_attribute_taxonomy_name( $slug );
-			}
-
-			if ( $attribute_value = $wc_product->get_attribute( $slug ) ) {
-				$label = wc_attribute_label( $attribute_name, $wc_product );
-
-				$attributes[] = new \Vendidero\StoreaBill\Document\Attribute( array(
-					'key'   => $slug,
-					'value' => $attribute_value,
-					'label' => $label
-				) );
-			} elseif ( $wc_product->get_parent_id() > 0 ) {
-				/*
-				 * In case the product is a child product - lets check the parent product
-				 * for the attribute data in case it was not found for the child.
-				 */
-				if ( $parent = wc_get_product( $wc_product->get_parent_id() ) ) {
-					if ( $attribute_value = $parent->get_attribute( $slug ) ) {
-						$label = wc_attribute_label( $attribute_name, $parent );
-
-						$attributes[] = new \Vendidero\StoreaBill\Document\Attribute( array(
-							'key'   => $slug,
-							'value' => $attribute_value,
-							'label' => $label
-						) );
-					}
-				}
+			if ( $attribute = $this->get_attribute_by_slug( $slug ) ) {
+				$attributes[] = $attribute;
 			}
 		}
 
@@ -181,7 +203,7 @@ class Product implements \Vendidero\StoreaBill\Interfaces\Product {
 			}
 		}
 
-		return strip_tags( wc_get_product_category_list( $product->get_id(), $sep, $before, $after ) );
+		return wp_strip_all_tags( wc_get_product_category_list( $product->get_id(), $sep, $before, $after ) );
 	}
 
 	/**
@@ -196,7 +218,7 @@ class Product implements \Vendidero\StoreaBill\Interfaces\Product {
 	public function is_callable( $method ) {
 		if ( method_exists( $this, $method ) ) {
 			return true;
-		} elseif( is_callable( array( $this->get_product(), $method ) ) ) {
+		} elseif ( is_callable( array( $this->get_product(), $method ) ) ) {
 			return true;
 		}
 

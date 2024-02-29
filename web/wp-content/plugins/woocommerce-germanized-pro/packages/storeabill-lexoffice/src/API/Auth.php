@@ -4,6 +4,7 @@ namespace Vendidero\StoreaBill\Lexoffice\API;
 
 use Vendidero\StoreaBill\API\REST;
 use Vendidero\StoreaBill\API\RESTResponse;
+use Vendidero\StoreaBill\ExternalSync\Helper;
 use Vendidero\StoreaBill\Interfaces\OAuth;
 use Vendidero\StoreaBill\Lexoffice\Package;
 use Vendidero\StoreaBill\Lexoffice\Sync;
@@ -45,7 +46,7 @@ class Auth extends REST implements OAuth {
 	}
 
 	protected function get_basic_auth() {
-		return 'Basic ' . base64_encode( Package::get_client_id() . ':' . Package::get_client_secret() );
+		return 'Basic ' . base64_encode( Package::get_client_id() . ':' . Package::get_client_secret() ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 	}
 
 	/**
@@ -57,7 +58,8 @@ class Auth extends REST implements OAuth {
 		if ( ! empty( $expires_on ) ) {
 			try {
 				$expires_on = new \DateTime( "@$expires_on" );
-			} catch( \Exception $e ) {}
+			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			}
 		}
 
 		return $expires_on;
@@ -77,7 +79,8 @@ class Auth extends REST implements OAuth {
 		if ( ! empty( $expires_on ) ) {
 			try {
 				$expires_on = new \DateTime( "@$expires_on" );
-			} catch( \Exception $e ) {}
+			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			}
 		}
 
 		return $expires_on;
@@ -92,18 +95,21 @@ class Auth extends REST implements OAuth {
 	}
 
 	public function get_authorization_url() {
-		$url = add_query_arg( array(
-			'client_id'     => Package::get_client_id(),
-			'response_type' => 'code',
-			'redirect_uri'  => '/api/oauth2/authorization_code',
-			'scopes'        => 'profile.read,vouchers.read,vouchers.write,contacts.read,contacts.write,files.write'
-		), $this->get_url() . 'authorize' );
+		$url = add_query_arg(
+			array(
+				'client_id'     => Package::get_client_id(),
+				'response_type' => 'code',
+				'redirect_uri'  => '/api/oauth2/authorization_code',
+				'scopes'        => 'profile.read,vouchers.read,vouchers.write,contacts.read,contacts.write,files.write,transaction-assignment-hint.write',
+			),
+			$this->get_url() . 'authorize'
+		);
 
 		if ( $this->is_connected() ) {
 			$url = add_query_arg( array( 'reauthorize' => '' ), $url );
 		}
 
-		return $url;
+		return esc_url_raw( $url );
 	}
 
 	public function is_manual_authorization() {
@@ -137,11 +143,16 @@ class Auth extends REST implements OAuth {
 	}
 
 	public function auth( $authorization_code = '' ) {
-		$result = $this->get_sync_helper()->parse_response( $this->post( 'token', array(
-			'grant_type'   => 'authorization_code',
-			'code'         => $authorization_code,
-			'redirect_uri' => '/api/oauth2/authorization_code',
-		) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->post(
+				'token',
+				array(
+					'grant_type'   => 'authorization_code',
+					'code'         => $authorization_code,
+					'redirect_uri' => '/api/oauth2/authorization_code',
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) && $result->get( 'access_token' ) ) {
 			$this->update_access_token( $result->get( 'access_token' ) );
@@ -159,6 +170,8 @@ class Auth extends REST implements OAuth {
 			$refresh_token_expires->modify( '+23 months' );
 
 			$this->update_refresh_token_expires_on( $refresh_token_expires );
+
+			Helper::auth_successful( $this->get_sync_helper() );
 
 			return true;
 		} else {
@@ -186,10 +199,15 @@ class Auth extends REST implements OAuth {
 	}
 
 	public function refresh() {
-		$result = $this->get_sync_helper()->parse_response( $this->post( 'token', array(
-			'grant_type'    => 'refresh_token',
-			'refresh_token' => $this->get_refresh_token()
-		) ) );
+		$result = $this->get_sync_helper()->parse_response(
+			$this->post(
+				'token',
+				array(
+					'grant_type'    => 'refresh_token',
+					'refresh_token' => $this->get_refresh_token(),
+				)
+			)
+		);
 
 		if ( ! is_wp_error( $result ) && $result->get( 'access_token' ) ) {
 			$this->update_access_token( $result->get( 'access_token' ) );

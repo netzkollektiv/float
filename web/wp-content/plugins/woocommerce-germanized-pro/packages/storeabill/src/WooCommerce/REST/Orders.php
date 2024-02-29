@@ -34,7 +34,7 @@ class Orders extends \WC_REST_Controller {
 	public function register_routes() {
 		register_rest_route(
 			$this->namespace,
-			'/' . $this->rest_base . '/(?P<id>[\d]+)' . '/invoices',
+			'/' . $this->rest_base . '/(?P<id>[\d]+)/invoices',
 			array(
 				'args'   => array(
 					'id' => array(
@@ -54,7 +54,7 @@ class Orders extends \WC_REST_Controller {
 
 		register_rest_route(
 			$this->namespace,
-			'/' . $this->rest_base . '/(?P<id>[\d]+)' . '/invoices/sync',
+			'/' . $this->rest_base . '/(?P<id>[\d]+)/invoices/sync',
 			array(
 				'args'   => array(
 					'id' => array(
@@ -74,7 +74,7 @@ class Orders extends \WC_REST_Controller {
 
 		register_rest_route(
 			$this->namespace,
-			'/' . $this->rest_base . '/(?P<id>[\d]+)' . '/invoices/finalize',
+			'/' . $this->rest_base . '/(?P<id>[\d]+)/invoices/finalize',
 			array(
 				'args'   => array(
 					'id' => array(
@@ -160,7 +160,7 @@ class Orders extends \WC_REST_Controller {
 
 		$objects = array();
 
-		foreach( $order->get_documents() as $document ) {
+		foreach ( $order->get_documents() as $document ) {
 			if ( ! sab_rest_check_permissions( $document->get_type(), 'read', $document->get_id() ) ) {
 				continue;
 			}
@@ -182,5 +182,13 @@ class Orders extends \WC_REST_Controller {
 		$response = rest_ensure_response( $objects );
 
 		return $response;
+	}
+
+	public function get_item_schema() {
+		if ( $controller = \Vendidero\StoreaBill\REST\Server::instance()->get_controller( 'invoices' ) ) {
+			return $controller->get_item_schema();
+		}
+
+		return parent::get_item_schema();
 	}
 }

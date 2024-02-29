@@ -5,12 +5,20 @@
   width: 100%;
   margin: $global-block-margin 0;
   z-index: 1;
+
+  &:not(.wp-block-separator).has-background {
+    padding: $global-block-margin;
+  }
 }
 
 .editor-styles-wrapper {
   .block-editor-block-list__block {
     margin-top: 0;
     margin-bottom: $global-block-margin;
+  }
+
+  .wp-block {
+    gap: 0 !important;
   }
 }
 
@@ -19,9 +27,19 @@ mark {
 }
 
 .sab-document-main {
-  .components-base-control .components-base-control__help {
+  .components-base-control .components-base-control__help, .sab-help {
     font-size: 11px;
     margin-top: 5px;
+    color: rgb(117, 117, 117);
+  }
+  .sab-document-line-item-types {
+    min-height: auto;
+
+    .sab-title {
+      font-weight: 500;
+      text-align: left;
+      color: #1e1e1e;
+    }
   }
 }
 
@@ -101,6 +119,10 @@ mark {
   }
 }
 
+.wp-block[data-type="storeabill/document-styles"] {
+  display: none;
+}
+
 /**
  * Hide the block mover toolbar for header and footer
  */
@@ -110,7 +132,7 @@ mark {
   }
 }
 
-div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-block) {
+div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-block, .wp-block-group__inner-container):not(.edit-post-visual-editor__post-title-wrapper) {
   background: #fff;
   width: 21cm;
   min-height: 29.7cm;
@@ -170,6 +192,11 @@ div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-b
     font-size: .9em;
     margin: 0;
     z-index: 0;
+
+    &.has-text-align-right {
+      left: 0;
+      right: auto;
+    }
   }
 
   &.is-selected {
@@ -277,10 +304,14 @@ div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-b
 
 .editor-styles-wrapper {
   .wp-block-columns {
+    margin-left: -$global-margin;
+    margin-right: -$global-margin;
+    max-width: unset;
+    width: unset;
+
     .wp-block-column {
-      &:not(:first-child) {
-        margin-left: $global-margin;
-      }
+      box-sizing: border-box;
+      padding: 0 $global-margin;
     }
 
     /**
@@ -289,6 +320,13 @@ div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-b
     .wp-block-column[style*="flex-basis"] {
       flex-grow: 0;
       flex-shrink: 0;
+    }
+  }
+
+  .wp-block-group.reset-columns-margin {
+    .wp-block-columns {
+      margin-left: 0;
+      margin-right: 0;
     }
   }
 }
@@ -329,6 +367,16 @@ div:not(.block-editor-inner-blocks) > .block-editor-block-list__layout:not(.wp-b
 .wp-block[data-type="storeabill/third-country-notice"],
 .wp-block[data-type="storeabill/differential-taxation-notice"] {
   margin-bottom: 0;
+}
+
+.wp-block .address-wrapper {
+  p.address-heading {
+    margin: 0;
+  }
+  p.sab-address-content {
+    margin-top: $global_margin/2;
+    margin-bottom: 0;
+  }
 }
 
 /**
