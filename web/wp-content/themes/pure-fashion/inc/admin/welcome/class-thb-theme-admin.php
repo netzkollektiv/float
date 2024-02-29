@@ -278,7 +278,7 @@ class Thb_Theme_Admin {
 	 */
 	public function thb_init_admin_pages() {
 		global $pagenow;
-		$page_name = filter_input( INPUT_GET, 'page', FILTER_SANITIZE_STRING );
+		$page_name = filter_input( INPUT_GET, 'page', FILTER_UNSAFE_RAW );
 		// Script and styles.
 		add_action( 'admin_enqueue_scripts', array( & $this, 'thb_admin_page_enqueue' ) );
 

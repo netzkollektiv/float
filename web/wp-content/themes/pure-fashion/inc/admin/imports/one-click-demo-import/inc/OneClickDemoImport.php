@@ -537,8 +537,8 @@ class OneClickDemoImport {
 		$import_actions->register_hooks();
 
 		// Importer options array.
-		$thb_import_options = filter_input( INPUT_POST, 'thb_import_options', FILTER_SANITIZE_STRING );
-		$fetch_attacments   = strpos( $thb_import_options, 'ty-contents-media' ) ? true : false;
+		$thb_import_options = filter_input( INPUT_POST, 'thb_import_options', FILTER_UNSAFE_RAW );
+		$fetch_attacments   = strpos( (string)$thb_import_options, 'ty-contents-media' ) ? true : false;
 		$importer_options   = apply_filters(
 			'pt-ocdi/importer_options',
 			array(
